@@ -5,11 +5,13 @@ import hashlib, os, re, shutil, subprocess, zipfile
 root=Path(__file__).resolve().parents[1]
 dist=root/'dist';dist.mkdir(exist_ok=True)
 version=re.search(r'versionName\s*=\s*"([^"]+)"',(root/'app/build.gradle.kts').read_text(encoding='utf-8')).group(1)
+if not re.fullmatch(r'\d+\.\d+\.\d+',version):
+    raise ValueError('Public versionName must use X.Y.Z without internal suffixes.')
 name='ColorHandOperation-'+version
 apk=dist/(name+'.apk');shutil.copy2(root/'app/build/outputs/apk/debug/app-debug.apk',apk)
 sdk=Path(os.environ.get('ANDROID_SDK_ROOT',str(root/'.toolchains/android-sdk')))
 subprocess.run([str(sdk/'build-tools/36.0.0/apksigner.bat'),'verify','--verbose',str(apk)],check=True)
-archive=dist/('ColorHandOperation-'+version.split('-')[0]+'-source.zip')
+archive=dist/('ColorHandOperation-'+version+'-source.zip')
 excluded={'.git','.gradle','.checks','.toolchains','build','dist','verification','__pycache__','.idea','.cxx'}
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
     for directory,children,files in os.walk(root):
