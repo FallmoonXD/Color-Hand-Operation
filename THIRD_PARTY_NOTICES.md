@@ -1,6 +1,6 @@
 # 资源与依赖来源
 
-本项目不是 Samsung、OPPO 或 OnePlus 官方应用。厂商名称仅用于说明兼容对象与设计来源。
+Color Hand Operation 是个人项目，与 Samsung、OPPO、OnePlus 官方无关。这里记录使用到的依赖和素材来源。
 
 ## AndroidHiddenApiBypass
 
@@ -13,13 +13,13 @@ Gradle wrapper 来自 Gradle 项目，使用 Apache License 2.0。构建时下�
 
 ## OEM 图形与视觉来源
 
-- OHO+ 手势箭头、图标原始轮廓及归档矢量来自用户提供的 Samsung One Hand Operation+ 9.3.13.0。当前应用图标改变了配色、材质与滑动符号；`design/color-hand-operation-icon.json` 记录原始文件哈希和改编内容。
+- OHO+ 手势箭头、图标原始轮廓及归档矢量来自 Samsung One Hand Operation+ 9.3.13.0。当前彩色图标在 Clip Studio Paint 中重新调整了背景、配色和混合效果，MD3 保留原有三色阶设计。分层文件在 `design/user-layered/`，原始素材和导出文件哈希见 `design/color-hand-operation-icon.json`。
 - ColorOS 回退向量及材质参考见 `docs/ui-source-provenance.json`、`docs/overlay-submenu-icon-sources.md`。运行时优先读取可用的系统资源。
 - `app/src/main/assets/` 的 AGSL 与 ColorOS 光学管线研究相关；出处及验证范围保留在材质文档中。
 - 手机上的 OPPO 视频、音乐、主题商店图标仅用于目视参考，未作为新的应用图标位图打包。
 
-这些来源记录不等于第三方授权书。仓库没有将 OEM 素材重新声明为自有版权或统一覆盖为 MIT/Apache 等许可；目前也没有覆盖整个工程的统一再分发许可。
+第三方素材的权利归原作者所有。项目目前没有统一的开源许可证；上面的来源说明不改变各项素材原有的授权范围。
 
 ## 开发工具
 
-Python 图标预览使用 Pillow、resvg_py，轮廓合并使用 skia-pathops。它们是可选开发依赖，不包含在 APK 中，也不随仓库复制其安装目录。版本和安装命令记录于相应工具文件。
+图标预览使用 Pillow 和 resvg_py，旧矢量图标的轮廓合并使用 skia-pathops。分层图的导入还用到了 Clip Studio Paint 和 psd-tools。这些仅用于开发，不打包进 APK，普通构建也不需要安装。

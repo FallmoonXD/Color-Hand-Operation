@@ -12,7 +12,7 @@ apk=dist/(name+'.apk');shutil.copy2(root/'app/build/outputs/apk/debug/app-debug.
 sdk=Path(os.environ.get('ANDROID_SDK_ROOT',str(root/'.toolchains/android-sdk')))
 subprocess.run([str(sdk/'build-tools/36.0.0/apksigner.bat'),'verify','--verbose',str(apk)],check=True)
 archive=dist/('ColorHandOperation-'+version+'-source.zip')
-excluded={'.git','.gradle','.checks','.toolchains','build','dist','verification','__pycache__','.idea','.cxx'}
+excluded={'.git','.gradle','.checks','.toolchains','build','dist','verification','__pycache__','.idea','.codex','.cxx'}
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
     for directory,children,files in os.walk(root):
         children[:]=sorted(child for child in children if child not in excluded)

@@ -1,24 +1,28 @@
 {
-  "mode": "oho-coloros-neutral-glass-17",
-  "native_xml_count": 7,
-  "original_phone_screen_geometry": {
-    "phone": true,
-    "screen": true
-  },
-  "hand_geometry": "Boolean union of archived visible rear/front contours, no added anatomy or cuff division",
-  "three_dots_removed": true,
-  "arrow_direction": "left / inward",
-  "monochrome": "Three disjoint tones: phone, filled screen, continuous hand and arm",
-  "material": "Neutral white/gray diffuse acrylic with thin edges following original contours; no palm shading",
-  "foreground_composite_alpha": 0.94,
+  "mode": "user-layered-overlay-17",
+  "native_resources": 9,
+  "source_composite_max_channel_error": 0,
+  "runtime_layer_pixels": 864,
+  "visible_region": "72,72,288,288 of 432x432; original icon size/position retained",
+  "material": "User CSP Overlay composite preserved in effective foreground RGB; no additional foreground alpha",
+  "monochrome": "Existing production XML and SVG preserved byte for byte",
+  "notification": "Existing notification icon and preview preserved byte for byte",
   "resources_sha256": {
-    "app\\src\\main\\res\\drawable\\app_icon_background.xml": "cde85f94072f20124c64970b00e3d3695b6f2a42f83f6e4dad6af153ae17b609",
-    "app\\src\\main\\res\\drawable\\app_icon_foreground.xml": "108a7d80af4a8b70bfe3c916dbc63cfe19ee2237165573393c58e32321a9950f",
-    "app\\src\\main\\res\\drawable\\app_icon_monochrome.xml": "9f63222424911da4fedcdd9478731b9c4dab7eba63daad1fd8b730306ab12aff",
-    "app\\src\\main\\res\\drawable\\ic_stat_hand_operation.xml": "54ada4e2e1a47b2f2916343b591651c8a73fe32b3bee8fcc89b749f5e17efff2",
-    "app\\src\\main\\res\\drawable\\app_icon.xml": "83669a48b3592c2cc4fa0b95220dc1b06b06c940273644ca6dcf19f0d3a97820",
-    "app\\src\\main\\res\\mipmap-anydpi-v33\\ic_launcher.xml": "92e203b350c8559761acb9db548646621fedf79d30c04b6fe6ab56b43621a9b4",
-    "app\\src\\main\\res\\mipmap-anydpi-v33\\ic_launcher_round.xml": "92e203b350c8559761acb9db548646621fedf79d30c04b6fe6ab56b43621a9b4"
+    "app/src/main/res/drawable/app_icon_background.xml": "64f1d249c6e7c42de3d690b831c8482f69ca71af9b0203f9db0cf5f0b105dfb1",
+    "app/src/main/res/drawable/app_icon_foreground.xml": "ef94f0832bfd0726609a25134d4ef075d7708508fc077371efe0478b09fe617b",
+    "app/src/main/res/drawable/app_icon_monochrome.xml": "9f63222424911da4fedcdd9478731b9c4dab7eba63daad1fd8b730306ab12aff",
+    "app/src/main/res/drawable-nodpi/app_icon_color_background.png": "ec49dd32e5d794d00edd03d2dc39d859f551f5c67ffd0514c389adf8e3a46b4e",
+    "app/src/main/res/drawable-nodpi/app_icon_color_foreground.png": "9e15bcd1224f524890dc6519822332256d5b28bc6640771aa2371bc1c643f493",
+    "app/src/main/res/drawable/app_icon.xml": "83669a48b3592c2cc4fa0b95220dc1b06b06c940273644ca6dcf19f0d3a97820",
+    "app/src/main/res/drawable/ic_stat_hand_operation.xml": "54ada4e2e1a47b2f2916343b591651c8a73fe32b3bee8fcc89b749f5e17efff2",
+    "app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml": "92e203b350c8559761acb9db548646621fedf79d30c04b6fe6ab56b43621a9b4",
+    "app/src/main/res/mipmap-anydpi-v33/ic_launcher_round.xml": "92e203b350c8559761acb9db548646621fedf79d30c04b6fe6ab56b43621a9b4"
   },
-  "preview_note": "SVG comes from native XML. Installed VectorDrawable rendering is checked separately."
+  "preserved_sha256": {
+    "app/src/main/res/drawable/app_icon_monochrome.xml": "9f63222424911da4fedcdd9478731b9c4dab7eba63daad1fd8b730306ab12aff",
+    "app/src/main/res/drawable/ic_stat_hand_operation.xml": "54ada4e2e1a47b2f2916343b591651c8a73fe32b3bee8fcc89b749f5e17efff2",
+    "design/color-hand-operation-monochrome.svg": "47c707ef52c579c706063b10e1b3cfa648c0ae041f77dc035fc8305ebc7e77df",
+    "design/notification-icon-preview.png": "47c667af74f4dd7b4d8a4455c613a5bfec9f1a436928037865e0266df3130237"
+  },
+  "preview_note": "Color previews use the packaged bitmap layers. MD3 uses the original vector; installed Android rendering is checked separately."
 }

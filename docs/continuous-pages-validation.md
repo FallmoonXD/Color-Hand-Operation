@@ -6,7 +6,7 @@
 
 ## 返回时的真实页面层级
 
-0.3.10 保留的是独立 Dialog。进入配置页时隐藏 Dialog，等配置页返回动画结束再恢复，所以操作列表虽然保留了滚动位置，却在页面退场后才出现。该版本的已完成实机记录继续保存在 [0.3.10 选择页保留验收](retained-menu-validation.md)，不覆盖为本次实现的结论。
+0.3.10 保留的是独立 Dialog。进入配置页时隐藏 Dialog，等配置页返回动画结束再恢复，所以操作列表虽然保留了滚动位置，却在页面退场后才出现。该版本的已完成实机记录继续保存在 [0.3.10 选择页保留测试](retained-menu-validation.md)，不覆盖为本次实现的结论。
 
 0.3.11 使用 `ColorActionSheet.showEmbedded()` 将选择页的真实视图挂到所属触钮页的 `ColorSettingsScaffold.root` 中。`MainActivity.ActionChooser` 保留这个 scaffold、滚动容器、勾选状态绑定和颜色指示器：
 
@@ -55,7 +55,7 @@ python -X utf8 standalone/validation/settings-sheet/run-retention.py
 - 导航键行尾使用统一齿轮，编辑菜单锚定于该按钮；隐藏当前位置不适用的移动/移除命令。添加、更换进入采用同一 Settings scaffold 的“选择导航动作”二级页，不再叠加旧居中列表。
 - 从配置页返回时，选择列表绑定和底层手势摘要都读取最新配置。嵌入的原页面保持身份，不靠重建页面刷新摘要。
 
-## 本轮设备验证
+## 设备验证
 
 在已连接的一加 PKR110 / ColorOS 17 上安装并验证。构建 APK SHA-256：`dcb9500bf3c941432e334ffaf7f68c72af52e2e7081fad87fe0ad3e23188dc4c`。
 

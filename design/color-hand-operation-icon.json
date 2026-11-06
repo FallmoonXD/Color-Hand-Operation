@@ -1,5 +1,5 @@
 {
-  "mode": "oho-coloros-neutral-glass-17",
+  "mode": "user-layered-overlay-17",
   "viewport": 432,
   "adaptive_view_box": [
     72,
@@ -35,25 +35,10 @@
     }
   },
   "design": {
-    "concept": "Neutral white and gray phone/screen/continuous hand. Original OHO phone and hand silhouette, no separate cuff or palm structure. Thin restrained glass edges reference OPPO Video, Music and Theme Store launcher art.",
-    "material": "One composite alpha .94, diffuse neutral white/gray fills, thin inward contour highlights. No newly drawn hand structure, no sleeve split or local palm shading.",
-    "background_reference": "analysis/coloros17-settings/resources/res/drawable/about_device_top_video_last_frame_17.webp",
-    "reference_pixel_samples": {
-      "ink": "#1F1C4A",
-      "indigo": "#262561",
-      "violet": "#554BA7",
-      "lavender": "#C292DE",
-      "coral": "#EF7C75",
-      "orange": "#F54E17",
-      "gold_rim": "#F0AD14"
-    },
-    "sampling_note": "Colors sampled from the installed Settings bitmap; not original shader stop values.",
-    "monochrome": "Three disjoint regions: phone .64, filled screen .34, whole visible hand and arm 1. Rear/front hand union is one shape; no cuff or palm split.",
-    "reference_apps": [
-      "OPPO Video default launcher icon",
-      "Music default launcher icon",
-      "Theme Store default launcher icon"
-    ]
+    "concept": "User-authored orange/violet diagonal background and Overlay-composited phone/hand foreground, exported from the supplied CLIP STUDIO PAINT design.",
+    "material": "Preserve the authored composite, including warm/purple foreground tint and existing contour highlights.",
+    "monochrome": "Unchanged original production MD3 vector: phone .64, screen .34, continuous hand and arm 1.",
+    "blend_mode": "CSP/PSD Overlay, group opacity 100%; the layer name still says 94% but is not the actual opacity."
   },
   "notification": {
     "source": "independent opaque symbol",
@@ -67,5 +52,48 @@
       -45.8
     ],
     "note": "Compact opaque phone-and-hand symbol retained for status-bar legibility; separate from tonal launcher monochrome."
+  },
+  "user_design": {
+    "canvas": [
+      2048,
+      2048
+    ],
+    "runtime_layer_pixels": 864,
+    "visible_fraction": [
+      0.16666666666666666,
+      0.16666666666666666,
+      0.6666666666666666,
+      0.6666666666666666
+    ],
+    "source_files": {
+      "CHO-Color-Layered.clip": {
+        "file": "user-layered/CHO-Color-Layered.clip",
+        "sha256": "a5cd3b13ae17ddcac142497e2ebe890c37ceeb94dc24ce89b5340f4742338593"
+      },
+      "CHO-MD3-Layered.clip": {
+        "file": "user-layered/CHO-MD3-Layered.clip",
+        "sha256": "e2eb249aadf9d8a278e93b02e3ddb0ac29fa1731610fc3edd1f9d952de43ee77"
+      },
+      "color-background.png": {
+        "file": "user-layered/color-background.png",
+        "sha256": "40a93161ff27a7c87f41738cb11c71545dd430b8fca89b831ec9f08dd54a82e1"
+      },
+      "color-composite.png": {
+        "file": "user-layered/color-composite.png",
+        "sha256": "64a7c5b077ca5ca656ec7507c935b7156e9ca4de2a5d3ebde83c7c6ef5309918"
+      },
+      "color-foreground.png": {
+        "file": "user-layered/color-foreground.png",
+        "sha256": "2c102da138df62a2d6148abba8562bacf0b84b6212d12208a1ee4bb5a6dbab4b"
+      }
+    },
+    "composite_max_channel_error": 0,
+    "preserved_sha256": {
+      "app/src/main/res/drawable/app_icon_monochrome.xml": "9f63222424911da4fedcdd9478731b9c4dab7eba63daad1fd8b730306ab12aff",
+      "app/src/main/res/drawable/ic_stat_hand_operation.xml": "54ada4e2e1a47b2f2916343b591651c8a73fe32b3bee8fcc89b749f5e17efff2",
+      "design/color-hand-operation-monochrome.svg": "47c707ef52c579c706063b10e1b3cfa648c0ae041f77dc035fc8305ebc7e77df",
+      "design/notification-icon-preview.png": "47c667af74f4dd7b4d8a4455c613a5bfec9f1a436928037865e0266df3130237"
+    },
+    "export_method": "Clip Studio Paint 5.1.5 native full-size PNG and layered PSD. Source files are unchanged. Foreground effective RGB is baked from the native composite and backdrop, retaining PSD alpha."
   }
 }

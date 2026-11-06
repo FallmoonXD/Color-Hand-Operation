@@ -1,8 +1,8 @@
 # OHO+ 设置信息架构审计
 
-审计对象为本地 OHO+ 9.3.13.0 解包资源与 JADX 源码。以下是原版层级和交互证据，不是当前 EdgeFlow 已经完成的声明。目标是保留 OHO+ 的页面组织、位置和导航，ColorOS 17 负责材质与控件外观。
+根据 OHO+ 9.3.13.0 的资源和 JADX 代码整理原版页面层级。CHO 沿用其页面组织和导航方式，控件与材质采用 ColorOS 17 风格。
 
-现有 `analysis/oho-9.3.13/reference/` 主要采集手势、工具、音量和小组件；没有找到可确认原版首页/主菜单的截图。不能把旧 visual-test 的设置截图当作三星 OHO 首页。原版不是通过 `res/xml` PreferenceScreen 构造首页，而是 `res/layout` 与 Activity 共同构造；本次结构证据来自这两者。
+现有 `analysis/oho-9.3.13/reference/` 主要采集手势、工具、音量和小组件；没有找到可确认原版首页/主菜单的截图。旧 visual-test 截图来自项目自身，不是三星 OHO 首页。原版不是通过 `res/xml` PreferenceScreen 构造首页，而是 `res/layout` 与 Activity 共同构造；本次结构证据来自这两者。
 
 ## 首页：真实自上而下顺序
 

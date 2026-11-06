@@ -1,6 +1,6 @@
 # ColorOS 设置页、参数预览与页面动画
 
-2026-11-05。本记录对应 MainActivity 及共享页框架，不替代根代理的实机验收报告。
+2026-11-05。记录 MainActivity、共享页面框架和离线测试。
 
 ## 结构与主题
 
@@ -32,13 +32,13 @@ Main使用系统OnBackAnimationCallback接收手势进度，不拦截屏幕边�
 
 ## 已做验证与边界
 
-所有当前生产Java已编译通过。未运行本轮ADB、截图或设备触摸测试；实机拖动取消、主题变化、动画观感和服务状态验证由根代理进行。页面采用独立实现的共享控件，没有加载Settings.apk中的Java类，也不声称整个Settings App完全相同。边界滚动后续实现范围见下文。
+生产 Java 编译通过。拖动取消、主题变化、动画和服务状态另做设备测试。页面使用项目内的共享控件，不加载 Settings.apk 的 Java 类；边界滚动的后续实现见下文。
 
 ## 字号与字重继承链复核
 
 行标题由COUIPreferenceTitleStyle继承TextAppearance.COUI.List.Title，再继承couiTextAppearanceHeadline6：16sp、sans-serif-medium（500）、headline_xs行距倍率1.05。摘要由TextAppearance.COUI.Preference.Summary继承couiTextAppearanceArticleBody和couiTextAppearance：13sp、sans-serif（400）、body_s行距倍率1.1。Main.row已由17sp/400改为该实际组合，摘要保持13sp/400并补行距。
 
-二级栏TextAppearance.COUI.Toolbar.SecondTitle继承couiTextHeadlineS；后者显式textFontWeight=550。因此二级标题保留18并使用550。已验收的首页32大标题未改，浮层文字不在本次改动范围。依据为本机Settings styles.xml与dimens.xml的继承链，不来自截图猜测。
+二级栏TextAppearance.COUI.Toolbar.SecondTitle继承couiTextHeadlineS；后者显式textFontWeight=550。因此二级标题保留18并使用550。已确认的首页32大标题未改，浮层文字不在本次改动范围。依据为本机Settings styles.xml与dimens.xml的继承链，不来自截图猜测。
 
 ## 有限范围的设置页边界回弹
 
@@ -50,7 +50,7 @@ Main使用系统OnBackAnimationCallback接收手势进度，不拦截屏幕边�
 
 触摸起点命中SeekBar时不被父页拦截；横向意图锁定排除，多指关闭本轮边界效果。抬手物理回弹，CANCEL归位，Detach/失去窗口焦点/隐藏/禁用动画立即清除位移与帧回调。惯性进入边界时只产生一次回弹，不改真实滚动范围或保存配置。
 
-validation/settings-scroll/run.ps1运行生产纯Java物理与事件方向门控：51项通过，覆盖60/90/120Hz等时位移和速度、掉帧一致性、能量衰减、两端对称、反向拖动回到原生滚动、有限归零、滑条/横向/多指/取消门控。全生产Java编译通过。测试不模拟Android真实事件分发，触摸竞争与上下边界需根代理实机检查。
+validation/settings-scroll/run.ps1运行生产纯Java物理与事件方向门控：51项通过，覆盖60/90/120Hz等时位移和速度、掉帧一致性、能量衰减、两端对称、反向拖动回到原生滚动、有限归零、滑条/横向/多指/取消门控。全生产Java编译通过。测试不模拟 Android 事件分发，触摸竞争和上下边界仍需设备检查。
 
 ## 页面重建与滑条取消修正
 
@@ -58,7 +58,7 @@ validation/settings-scroll/run.ps1运行生产纯Java物理与事件方向门控
 
 Main的三类滑条均检查ColorSlider.isTouchCancelled，涵盖真实CANCEL以及禁用、Detach产生的内部取消；后者不经过Main的OnTouchListener。取消仅恢复最近保存的值，不提交草稿；几何滑条取消也不再render，避免拆除旧页时重入。持续时间滑条在每次成功保存后更新其恢复点。正常UP仍只保存一次。图标通过附着范围内的主题监听保留主文字色或强调色角色；普通按钮使用sp，两个Canvas预览的文字使用scaledDensity。
 
-上述修正后全生产Java编译通过。本代理未执行这些修正的设备触摸或截图验证；ColorSlider事件路径专项验证由控件代理负责，最终真机检查由根代理负责。
+修正后生产 Java 编译通过。ColorSlider 的事件路径和设备触摸分别测试，结果不计入这里的几何检查。
 
 ## 触控区域提交保持页面实例
 
@@ -66,4 +66,4 @@ geometrySlider的正常提交此前会整页render，再异步恢复ScrollView�
 
 HandleSettings的生产进度换算新增6项实际验证，覆盖尺寸扩大至底边、连续位置调整保留高度、宽度独立、全高位置归中、草稿/展示不写配置，以及左右一次写入同步。配置验证总计117项通过，并完成全生产Java编译；这些不是Android触摸分发或录屏无闪测试。本轮未构建APK或操作设备。
 
-按最新用户要求，长滑的持续时间在两种快捷操作模式均显示，范围仍为0..1000ms并从DOWN计时。快捷操作只区分满足距离和时间后立即执行或等UP执行。此处有意不同于原版关闭快捷操作时隐藏持续时间的行为；旧long_immediate仍代表有效时间为0，用户调整时间后清除该兼容标志。切换此开关不再重建页面。
+长滑的持续时间在两种快捷操作模式均显示，范围仍为0..1000ms并从DOWN计时。快捷操作只区分满足距离和时间后立即执行或等UP执行。此处有意不同于原版关闭快捷操作时隐藏持续时间的行为；旧long_immediate仍代表有效时间为0，用户调整时间后清除该兼容标志。切换此开关不再重建页面。

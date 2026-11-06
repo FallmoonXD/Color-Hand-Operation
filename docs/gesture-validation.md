@@ -60,7 +60,7 @@ The OHO per-handle long switch is backed by `SGPGestureChooserActivity.onChecked
 
 The independent engine follows this with `<handleId>_long_enabled` (default `true`) for all six handles. At DOWN, `EdgeHandleView` uses an unreachable long-distance threshold when disabled. This suppresses both long classification and held timers without rewriting any saved long action. Re-enabling the setting restores those existing mappings. The additional 16 recognizer assertions exercise this disabled-threshold mode using the production recognizer.
 
-Validation after both changes: `validation/gesture/run.ps1` passed 68 + 51 assertions, and `gradlew.bat :app:assembleDebug --offline --console=plain` completed successfully, including resource compilation and APK packaging. This agent did not install or inspect the new APK on a phone.
+Validation after both changes: `validation/gesture/run.ps1` passed 68 + 51 assertions, and `gradlew.bat :app:assembleDebug --offline --console=plain` completed successfully, including resource compilation and APK packaging. This check did not include installation or on-device inspection.
 
 ## Per-handle visible color
 
@@ -68,7 +68,7 @@ The reference stores each handle's ARGB color separately in `n6/h.java::f4892c`.
 
 `AppPrefs.handleColor()` supplies the stored color to settings; `visibleHandleColor()` supplies its effective ARGB to `EdgeHandleView`. These keys are validated and persisted as signed 32-bit integers through configuration import/export. The color is used only by the narrow touch-handle paint, never by `GestureWaveView`; the opaque black curve and original arrow color are unchanged. The configuration harness adds 16 assertions for untouched defaults, fallback, alpha composition, all six independent integer roundtrips, signed ARGB endpoints, and rejection of fractional, out-of-range, string, or boolean values without mutation.
 
-Final verification after the settings integration: the configuration harness completed with **111 passed**, including these 16 color cases; all production Java sources compiled against API 35, and `:app:assembleDebug` succeeded. The run also exposed an inconsistent secondary launcher-column check in `ConfigArchive`; the settings owner corrected it before the successful full rerun. No device operation was performed by this agent.
+Final verification after the settings integration: the configuration harness completed with **111 passed**, including these 16 color cases; all production Java sources compiled against API 35, and `:app:assembleDebug` succeeded. The run also exposed an inconsistent secondary launcher-column check in `ConfigArchive`; it was corrected before the successful full rerun. This was a host-side test.
 
 ## Additional portable OHO controls
 

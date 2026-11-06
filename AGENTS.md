@@ -8,4 +8,4 @@
 - Build with JDK 21 and the checked-in Gradle wrapper. Run checks relevant to the change; keep offline simulation and actual device evidence distinct.
 - Never publish device serials, private configuration, screenshots containing personal data, signing keys, local.properties or build caches. Existing ignores are intentional.
 - Do not assume another ColorOS firmware shares proprietary service/transaction interfaces. Fail closed on unknown write capabilities and document unverified models.
-- Before device mutations, retain only the values needed to restore the test. Respect the user's current instructions about screen wake/sleep; end unattended verification with the phone asleep.
+- Before device mutations, retain only the values needed to restore the test. For work involving the connected phone, enable temporary keep-awake at the start and maintain the unlocked screen while device UI work remains: the user may not be nearby to unlock it again. Once screen-dependent work is finished, disable temporary keep-awake, restore the original timeout, and put the phone to sleep. Follow any newer user instruction about screen wake/sleep.

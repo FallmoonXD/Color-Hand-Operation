@@ -18,7 +18,7 @@
 - 108dp 画布，识别图形位于中央安全范围；圆形及圆角由系统图标遮罩处理，前景没有固化方形底板。
 - `roundIcon` 同步提供自适应层；通知使用透明背景的独立单色小图标，替换旧系统快退图标。
 - [可编辑 SVG](../design/color-hand-operation.svg)、[遮罩与缩小预览](../design/icon-mask-preview.png)、[资源生成脚本](../tools/build_brand_icon.py)。脚本中的预览只需 Pillow；构建 APK 不需要执行脚本或安装 Pillow。
-- 预览中的主题配色用于展示 monochrome 的形态；未更改用户的系统图标配色设置，也没有将预览配色冒充当前系统效果。
+- 主题配色仅用于预览 monochrome 的形态，未修改系统图标配色。
 
 ## 验证结果
 
@@ -29,4 +29,4 @@
 - 升级前后逐项比较 `edgeflow`、`edgeflow_launcher`、`edgeflow_shortcuts`、`replica_widgets` 四份偏好，完全一致。
 - 手机上安装的 APK SHA-256 与构建产物一致。结构化结果保存在本地 `verification/branding-validation.json`，实机截图为 `verification/brand-*.png`。
 
-本次主要验证品牌资源、长标题布局及升级保留数据；没有把此前完整功能回归声称为本轮重新执行。
+本次检查了图标和名称、长标题布局及升级后的数据保留；没有重跑完整功能回归。

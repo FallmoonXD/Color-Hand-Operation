@@ -1,6 +1,6 @@
 # Gesture settings controls
 
-This change is limited to MainActivity slider, angle and vibration presentation. Gesture recognition and haptic runtime changes are implemented by GestureAngles/GestureHaptics and EdgeHandleView separately. No device validation is claimed here.
+This change is limited to MainActivity slider, angle and vibration presentation. Gesture recognition and haptic runtime changes are implemented by GestureAngles/GestureHaptics and EdgeHandleView separately. The checks below run on the host.
 
 ## OHO source evidence
 
@@ -40,4 +40,4 @@ Default feedback follows system haptics. Explicit legacy amplitudes remain intac
 - `validation/config/run.ps1` with the existing Gradle-transformed mockable Android jar: complete production Java compilation succeeded; 184 configuration/geometry/preview assertions passed.
 - Runtime classpath: test stubs, JSON jar, production classes, then the transformed Android jar. The stock SDK stub jar is unsuitable for the harness runtime.
 
-Pending root-agent device checks: final spacing and large font layout, live slider updates and cancellation, eight independent angle boundaries, system/custom haptic switching, and real feedback timing. These are not established by a JVM compilation or the display arithmetic tests.
+Pending device checks: final spacing and large font layout, live slider updates and cancellation, eight independent angle boundaries, system/custom haptic switching, and real feedback timing. These are not established by a JVM compilation or the display arithmetic tests.

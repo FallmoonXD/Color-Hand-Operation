@@ -1,6 +1,6 @@
 # ColorOS 设置主题与编辑器核对
 
-本轮只读对照已安装版本的 Settings APK 解包资源、定向反编译类和本地 Oplus framework 源码；未加载外部 APK 的 Java 类。设备主题切换与恢复由主验证流程单独记录。
+依据 Settings APK 资源、相关反编译类和 Oplus framework 整理。代码采用独立实现，主题切换的设备结果见相应版本测试记录。
 
 ## 颜色、字体与材质
 
@@ -11,9 +11,9 @@
 - 正文字体继续来自 `Typeface.DEFAULT` 派生字体；不把 `font_variation_settings=550` 误写成所有文字固定 `'wght' 550`。Settings `COUIChangeTextUtil:39-47` 使用 DEFAULT/medium；framework `OplusFontUtils.replaceTypefaceWithVariation:383-390` 会为未手动固定 axis 的系统字体应用当前用户字体变化。该 setting 还包含状态位（`FontVariationUtils:113-122`），不是单独的字重数字。
 - 材质许可同时受 Settings 的 `coui_blur_enable && !is_immersive_theme`、系统模糊/描边开关和省电影响；原 `COUIMaterialStateManager` 的开关读取默认值为 0。硬件/供应商私有渲染管线完整等价性不在这次独立控件实现的声明范围内。
 
-## 本轮发现及修复
+## 发现及修复
 
-- 动作选择器原先在统一弹窗显示后强制全宽，覆盖最大宽限制；Main 由页面代理修复为只调整高度，并使用共享滚动容器。
+- 动作选择器原先在统一弹窗显示后强制全宽，覆盖最大宽限制；Main 改为只调整高度，并使用共享滚动容器。
 - 自定义弹窗内容原先被递归强制成 400 字重和主文本色。现在保留调用方原有主/次/强调色角色与字重，主题改变时按相同角色更新；复选/单选控件仍保留其自身状态颜色。自定义标题亦加入刷新，输入内容、选择范围和错误文字不会因为换色被重建。
 - 快速工具编辑器跨 Activity 的进入/退出不再依赖默认窗口动画。独立资源复现 Settings `coui_open/close_slide_*` 的 350ms、100% 前页移动、30% 后页移动、后页 1↔0.5 透明度和四条源曲线；API34+ 使用 `overrideActivityTransition`，API33 使用 `overridePendingTransition`。系统负责 transition scale，应用不再次乘倍。
 - Java 扫描未发现生产设置页仍直接创建默认 Switch、SeekBar、RadioButton、CheckBox、PopupMenu 或默认列表行布局。AlertDialog 仅保留 API/lifecycle 容器，实际内容由 ColorDialogBuilder 绘制；系统权限页、文件选择器和系统文本编辑服务仍归系统管理。

@@ -5,6 +5,7 @@
 *.jar binary
 *.zip binary
 *.apk binary
+*.clip binary
 # Retain byte-for-byte OEM/derived resources referenced by provenance hashes.
 *.xml -text
 *.agsl -text

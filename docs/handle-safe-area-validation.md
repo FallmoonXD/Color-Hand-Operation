@@ -56,4 +56,4 @@ Public SDK APIs cannot query the real insets of an arbitrary rotation that has n
 - Existing `validation/gesture/run.ps1`: **339 assertions** across gesture state, direction, long-duration boundaries, input timers/cancel and handle identities.
 - All production Java sources compiled against API 35. Total: **2152 assertions**. The config harness uses the documented Gradle mockable Android jar, because the ordinary SDK stub jar intentionally throws at runtime.
 
-This agent performed only read-only ADB state/resource queries, with no screen control, screenshot, device preference write or deployment. Installed migration, exact WindowManager rectangles, actual rotation and IME behavior are verified separately by the root agent.
+ADB checks here read system state and resources. Migration after installation, WindowManager rectangles, rotation and IME behavior require separate device tests.

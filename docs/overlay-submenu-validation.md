@@ -1,6 +1,6 @@
 # 快速启动与键盘快捷方式子菜单
 
-本轮修改仅涉及 `QuickLauncherOverlay`、`KeyboardShortcutsOverlay`、5 个 Settings 图标归档和针对性验证；主浮层已验收的材质参数、手势与持久化格式保持原样。共享 ColorDialogBuilder/ColorPopupMenu 由对应负责者升级。
+修改 `QuickLauncherOverlay`、`KeyboardShortcutsOverlay` 和 5 个 Settings 图标，沿用原面板材质、手势和配置格式。共享菜单实现见 `ColorDialogBuilder` / `ColorPopupMenu`。
 
 ## 快速启动
 
@@ -29,4 +29,4 @@
 2. `validation/overlay-editors/run.ps1`：22 项通过，直接执行生产选择提交函数、触摸序列门槛和键盘校验；覆盖未确认的草稿、旧入口保留、文件夹目标隔离、组合键/数量边界、子窗退出前后触摸、零动画关闭和 CANCEL。
 3. 5 个归档 Settings vector 的路径、尺寸、变换、alpha 和非颜色属性逐项一致，AAPT2 编译通过。来源与 SHA-256 见 `overlay-submenu-icon-sources.md`。
 
-验证脚本不模拟 Android WindowManager、真实 IME 或媒体播放。媒体是否继续播放、具体底部面板与菜单位置、退场后的焦点由根代理统一在一加上实测；本子任务没有操作手机或自行部署 APK。
+验证脚本不模拟 Android WindowManager、真实 IME 或媒体播放。媒体播放、面板位置和退出后的焦点需要在一加上测试，此处记录离线结果。

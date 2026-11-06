@@ -1,4 +1,4 @@
-# 0.3.15 白灰图标与公开准备验收
+# 0.3.15 白灰图标与公开准备测试
 
 2026-11-06，OnePlus PKR110、ColorOS 17、Android 17、Root，versionCode 18。
 
@@ -31,6 +31,6 @@ MD3 只有机身、填充屏幕、整只手三档深浅。原生 Android 绘制�
 
 ## 公开命名整理
 
-按用户要求，版本名统一为 `0.3.15`，APK 名为 `ColorHandOperation-0.3.15.apk`，Release 标题为 `Color Hand Operation 0.3.15`。versionCode 仍为 18。
+版本名统一为 `0.3.15`，APK 名为 `ColorHandOperation-0.3.15.apk`，Release 标题为 `Color Hand Operation 0.3.15`。versionCode 仍为 18。
 
 重建后的 APK SHA-256 为 `0078fdcd479075477179cd04c5a3cd54279e2f0d85e6b919959f5a75b631b9f4`。与上文已实机验证的 APK 逐项比较，只有 `AndroidManifest.xml` 不同，DEX、资源和其他条目字节一致；AAPT 确认包名及版本代码保持不变。本次没有重新安装或重复实机功能测试。

@@ -1,6 +1,6 @@
 # 0.3.12 共享选择面板与表单
 
-此文记录 `ColorDialogBuilder`、`GlassDialogBuilder` 和服务菜单焦点 API 的源码改动与离线检查。实际安装、键盘位置及视频播放结果由本轮设备验证记录补充；这里不将 JVM 模型当作 Android 窗口实测。
+记录 `ColorDialogBuilder`、`GlassDialogBuilder` 和服务菜单的实现与离线测试。设备上的键盘位置、焦点和视频播放结果见 [0.3.12 实机记录](coloros-menu-validation.md)。
 
 ## 兼容接口与呈现方式
 
@@ -13,7 +13,7 @@ Builder 继续返回真实 `AlertDialog` 子类。现有 `create()` / `show()`�
 - 底部按钮按实际文字宽度选择横排或纵排，按钮高度随内容增长，避免三个长按钮或大字号被强制裁成 48dp。
 - 纯表单使用共享设置滚动容器。直属含 ListView/ScrollView 的纵向表单保留搜索/状态区域，列表改为弹性高度；原高度用于计算期望高度。异步加载、错误文字和列表可见性变化会触发重测。
 
-配色、字体、输入框、按钮和分隔线跟随 `ColorOsTheme`。首屏显式初始化颜色，订阅仅负责后续变化。玻璃面板继续使用原 `ColorOsSurface`，没有调整已验收的运行时浮层材质参数，也没有修改 retained `ColorActionSheet` / `ColorPageMotion` 流程。
+配色、字体、输入框、按钮和分隔线跟随 `ColorOsTheme`。首屏显式初始化颜色，订阅仅负责后续变化。玻璃面板继续使用原 `ColorOsSurface`，没有调整已确认的运行时浮层材质参数，也没有修改 retained `ColorActionSheet` / `ColorPageMotion` 流程。
 
 ## 关闭顺序和验证表单
 
@@ -42,7 +42,7 @@ builder.setDestructiveButton(DialogInterface.BUTTON_NEGATIVE, "放弃", listener
 
 面板保留系统 `SOFT_INPUT_ADJUST_RESIZE`。系统负责把浮动窗口放到键盘上方；共享几何仅限制内容高度，底部外边距固定 8dp，不把 IME 高度再次加到窗口 y 上。
 
-设备检查曾发现：键盘顶为 y=1606 时，WidgetProviderPicker 的 Dialog 仍请求 2123px 高，380dp ListView 及 footer 没有收缩（`verification/ui-unification-widget-ime-window.txt`）。源码修正不再只依赖浮窗 root 收到的 IME inset：`ColorWindowSpace` 以 WindowMetrics 的完整 task bounds 和可见 system bars / cutout / IME 计算空间，再以 `getWindowVisibleDisplayFrame` 限幅。坐标保留 task origin，支持分屏和旋转；不会与浮窗自身较小的 root bounds 相交。当前修正的实际键盘几何仍由根代理重新验证，不能把下面离线断言当作设备成功。
+设备检查曾发现：键盘顶为 y=1606 时，WidgetProviderPicker 的 Dialog 仍请求 2123px 高，380dp ListView 及 footer 没有收缩（`verification/ui-unification-widget-ime-window.txt`）。源码修正不再只依赖浮窗 root 收到的 IME inset：`ColorWindowSpace` 以 WindowMetrics 的完整 task bounds 和可见 system bars / cutout / IME 计算空间，再以 `getWindowVisibleDisplayFrame` 限幅。坐标保留 task origin，支持分屏和旋转；不会与浮窗自身较小的 root bounds 相交。修正后的键盘位置需要设备测试；下面的离线断言只检查几何计算。
 
 `bodyHeight` 不再对正在显示的弹性 ListView 或其父容器执行天然高度 measure / forceLayout：它按保存的期望列表高度、普通搜索字段的实际高度、padding 和 margins 计算期望值。窗口更新尺寸后由框架的正常 traversal 完成最终受限测量与 layout。早期修复曾在全局布局后手工 forceLayout + root.measure；缺少对应框架 layout 时，父容器会保持布局请求标志，后续 adapter 更新或行内错误的 requestLayout 可能无法继续上送。该路径已移除，未用无条件 requestLayout 或轮询替代。底部按钮显式居中，行内错误采用动态主题 error 色。按钮的横排/竖排判定也不再对活 Button 做 UNSPECIFIED 测量：使用 `Layout.getDesiredWidth` 对当前 TextPaint 和转换后的实际文字求期望宽度，再计入 compound padding / minimum width。这避免全局布局后按钮保留狭窄的内部文字 layout，导致外框宽度正常而取消文字偏左；实际行高和居中由框架布局完成。
 

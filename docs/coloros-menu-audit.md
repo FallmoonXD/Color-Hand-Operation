@@ -1,6 +1,6 @@
 # ColorOS 设置、弹窗与子菜单源码审计
 
-审计日期：2026-11-06。范围为 `app/src/main/java`、Manifest 与界面资源；检查当前可达入口及保留的旧配置兼容入口。本文只记录源码事实，**不代表这些入口全部经过设备验证**。设备结果应另行补充。
+2026-11-06。根据 `app/src/main/java`、manifest 和资源整理页面、菜单及旧配置入口。这里列代码路径，设备结果见[0.3.12 测试记录](coloros-menu-validation.md)。
 
 ## 判定口径
 
@@ -9,7 +9,7 @@
 - **残留**：确有代码差异或遗漏，下面给出具体位置与影响，不能据此宣称设备上必然出现某种像素问题。
 - **外部界面**：由系统、输入法、目标应用或 AppWidget provider 绘制，本项目只负责发起入口。
 
-源码位置以方法名为主，行号仅作本轮定位辅助；本轮审计不修改生产文件。
+源码位置以方法名为主，行号对应记录时的版本。
 
 ## MainActivity 全部页面路由
 
@@ -114,7 +114,7 @@ Manifest 的自有 Activity 为 MainActivity、ToolsSettingsActivity、ToolsActi
 
 ## 发现、源码修复与剩余边界
 
-### 本轮发现后已在源码确认修复
+### 发现后已在源码确认修复
 
 1. `MainActivity.angleSettings()` 镜像按钮最初只有 `ColorOsTheme.watch`，首帧未设置背景。当前已有 `mirrorStyle.run()` 后订阅。
 2. `TaskSwitcherOverlay.limit()` 最初在 sheet 退出期间立即清任务列表。当前已使用 `ColorDialogBuilder.dismissThen` 后写入和 `load()`。
@@ -124,17 +124,17 @@ Manifest 的自有 Activity 为 MainActivity、ToolsSettingsActivity、ToolsActi
 6. `QuickLauncherOverlay.text()` 主玻璃页当前已为字体添加首帧设置与 live watch。
 7. `WidgetProviderPicker` 原来用 ListView 的 GONE/VISIBLE 切换 loading/empty，改变面板自然高度。当前列表保持可见，状态用等高、不可点占位行；列表数据在按压期间改变会取消旧按压，点击还核对条目身份。
 
-这些是源码结论，未在本文代写设备验证结果。
+对应设备结果见下方测试链接。
 
 ### 保留的固件适配边界
 
 | 位置 | 确认差异 | 建议 / 边界 |
 |---|---|---|
-| `SystemIcons.raw()` 最后一级 fallback | 未收录或固件不存在的名称统一回退为设置图标 | 需逐动作补资源才可称所有图标语义完全一致；不能因统一样式就声称资源全部等价 |
+| `SystemIcons.raw()` 最后一级 fallback | 未收录或固件不存在的名称统一回退为设置图标 | 未收录的动作仍需补齐图标 |
 
 本轮静态检查未再定位到可达的默认 AOSP 菜单或选择控件入口。此结论不替代大字体、IME、窗口切换和不同固件上的实际检查。
 
-`ToolsPanel.label()` 中仍有旧固定蓝色辅助方法，但当前全文件只有定义、没有调用；不将不可达辅助方法写成实际 UI 漏洞。
+`ToolsPanel.label()` 中仍有旧固定蓝色辅助方法，但当前全文件只有定义、没有调用；当前不影响界面。
 
 ### 外部界面，不属于自有菜单遗漏
 
@@ -146,4 +146,4 @@ Manifest 的自有 Activity 为 MainActivity、ToolsSettingsActivity、ToolsActi
 
 ## 设备验证栏
 
-实际执行路径、发现并修正的问题、键盘和深色/放大字体检查见 [本轮实机验收](coloros-menu-validation.md)。此表仍按源码入口清单使用，不把未触发的每个外部应用或每种窗口尺寸都算作实测通过。
+实际执行路径、发现并修正的问题、键盘和深色/放大字体检查见 [实机测试](coloros-menu-validation.md)。此表仍按源码入口清单使用，不把未触发的每个外部应用或每种窗口尺寸都算作实测通过。

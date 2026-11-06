@@ -1,6 +1,6 @@
 # Weather, Wallet and OPPO Health icon asset audit
 
-2026-11-06, read from the connected OnePlus PKR110. This task used package resolution, `pm path`, APK pull and local resource decoding only. It did not wake the screen, open an app, change a setting or modify the project's current icon.
+2026-11-06. Source: launcher resources from the installed OnePlus PKR110 packages, located with `pm path`, pulled over ADB and decoded locally.
 
 ## Actual manifest resources
 
@@ -36,4 +36,4 @@ All three original bitmaps were opened for inspection.
 
 The originating authoring software or physical rendering pipeline cannot be inferred from these images alone. The evidence supports using a pre-rendered volumetric foreground if the goal is to approach these particular assets. The previous few flat vector paths with linear gradients did not represent changing thickness, curved normals or localized occlusion, so increasing their transparency could not supply the missing volume.
 
-The root agent selected a handless direction after viewing these references: an open icy-blue frame with thickness plus a floating coral inward curve, over a light neutral adaptive background. No final design or raster replacement was made as part of this reference collection.
+These references led to an early handless icon experiment: an icy-blue frame and coral inward curve on a light background. That design is historical; the current icon is documented in [user-layered-icon-validation.md](user-layered-icon-validation.md).

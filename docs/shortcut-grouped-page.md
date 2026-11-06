@@ -38,4 +38,4 @@ Settings `coui_line_arrow_collapsed.xml` 是当前箭头来源，优先通过 `S
 
 全部生产 Java 编译成功。`validation/shortcut-catalog/run.ps1` 的 **44 项断言**覆盖：空集合不产生应用、多个 publisher 分组、停用项/已选摘要、同 ID 跨 publisher、300 应用完整保留、跨用户拒绝、旧 package-scoped 兼容、错误词标签、重复/残缺协议、字段/图标/资源类型及 helper user 参数校验。
 
-本文件记录源码与 JVM 验证，不把 Android 17 实际全用户 Binder 查询、展开动画或选中后的导航宣称为已实机通过；这些由根代理的设备回归另外记录。
+这里记录实现和 JVM 测试。Android 17 的跨用户 Binder 查询、展开动画及选择后的导航另做设备测试。

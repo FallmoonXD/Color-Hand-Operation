@@ -29,7 +29,7 @@ The generator checks contour intersections at a 1080×1080 sampling grid before 
 - Seven generated Android XML resources and two SVG files parse successfully.
 - Monochrome and notification each contain exactly one opaque even-odd white path, with identical geometry. Both adaptive launcher entries reference the monochrome drawable.
 - `icon-mask-preview.png`, `color-hand-operation.png` and `notification-icon-preview.png` were opened and visually inspected. The comparison board retains actual 72 px and 44 px samples. Circular masking keeps the thumb and palm root visible; only the cuff intentionally extends through the mask edge.
-- No complete APK build or phone operation was performed by this asset task. Android-side rendering and launcher tinting remain for the root agent's installed-resource probe.
+- These checks cover the artwork only. APK installation, Android rendering and launcher tinting were still pending.
 
 Current artifacts: [specification](../design/color-hand-operation-icon.json), [normal SVG](../design/color-hand-operation.svg), [monochrome SVG](../design/color-hand-operation-monochrome.svg), [mask/small-size preview](../design/icon-mask-preview.png), [notification preview](../design/notification-icon-preview.png).
 

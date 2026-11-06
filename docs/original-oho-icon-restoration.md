@@ -8,7 +8,7 @@ The user-supplied `analysis/One Hand Operation +_9.3.13.0.apk` declares `com.sam
 
 The original viewport is 432×432. The teal background is `#22BDC5`; the foreground contains the white phone, blue screen, pale hand, three gesture dots and blue cuff. Its clip is the central `(72,72)-(360,360)` area. All original paths, colors, clipping and alpha values are preserved.
 
-The original manifest's `roundIcon` references an older pair of 108px PNGs. This app deliberately uses the primary original vectors for both adaptive entries, maintaining the same artwork at arbitrary sizes and supplying the original monochrome resource in either launcher mask. This difference was approved by the root agent.
+The original manifest's `roundIcon` references an older pair of 108px PNGs. This app deliberately uses the primary original vectors for both adaptive entries, maintaining the same artwork at arbitrary sizes and supplying the original monochrome resource in either launcher mask.
 
 ## Reproducible source
 
@@ -32,4 +32,4 @@ The original monochrome intentionally has seven paths with alpha values `0.3, 0.
 - All native XML and generated SVG files parse. The active resources no longer reference the generated PNG.
 - The rounded/circular, themed and actual 72/44px [comparison preview](../design/icon-mask-preview.png) was opened for inspection. [Notification preview](../design/notification-icon-preview.png) uses the same adapted geometry.
 
-These are resource checks; no device operation or full APK build was performed by this task. Android installed-resource rendering and deployment belong to the root agent. The artwork remains Samsung's supplied OHO+ resource, not newly authored art or an official Samsung version of this app.
+These are resource checks. APK builds and installed-resource rendering were tested separately. The artwork remains Samsung's supplied OHO+ resource, not newly authored art or an official Samsung version of this app.

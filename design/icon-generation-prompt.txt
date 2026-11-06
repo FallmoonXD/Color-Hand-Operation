@@ -1,4 +1,4 @@
-Historical 0.3.6 asset record, no longer the active icon. The current icon is generated from the original OHO vectors by tools/build_brand_icon.py; see color-hand-operation-icon.json.
+Historical 0.3.6 asset record, no longer the active icon. The current color icon comes from the layered Clip Studio design in design/user-layered/; see color-hand-operation-icon.json and docs/user-layered-icon-validation.md.
 
 Mode: built-in image_gen tool (transparent_background=true). No CLI/API fallback.
 Date: 2026-11-06

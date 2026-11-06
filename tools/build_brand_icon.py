@@ -1,5 +1,5 @@
-"""CHO frosted icon: original flat OHO geometry and one diffuse foreground.
-Previews read the generated native XML, including its gradients and clipping.
+"""Build the active CHO design, including the user's layered color artwork.
+The earlier native-vector design builder remains available for its recorded mode.
 """
 from pathlib import Path
 import copy, hashlib, json, xml.etree.ElementTree as ET
@@ -89,6 +89,9 @@ def notification_symbol(original):
  return root
 def main():
  spec=json.loads((ART/'color-hand-operation-icon.json').read_text(encoding='utf-8'))
+ if spec['mode']=='user-layered-overlay-17':
+  from build_layered_icon import main as build_layered
+  build_layered();return
  if spec['mode']!='oho-coloros-neutral-glass-17':raise ValueError('Unexpected active design mode')
  originals=source_vectors(spec);bg=background();fg=foreground(originals['foreground']);mono=monochrome(originals['foreground']);resources=[]
  for role,tree in [('background',bg),('foreground',fg),('monochrome',mono)]:resources.append(write_xml(f'drawable/app_icon_{role}.xml',tree))

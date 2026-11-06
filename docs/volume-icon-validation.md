@@ -2,11 +2,11 @@
 
 Historical proposal, superseded by the [original OHO+ restoration](original-oho-icon-restoration.md) at the user's request. Its source illustration and existing release archives are retained; it is no longer referenced by active app resources.
 
-2026-11-06. This replaces the earlier hand/phone vector illustration after the user explicitly requested removing the hand and approaching the volume and layered material of Weather, Wallet and OPPO Health. App versioning, full APK installation and device rendering are handled separately by the root agent.
+2026-11-06. This replaces the earlier hand/phone vector illustration after the user explicitly requested removing the hand and approaching the volume and layered material of Weather, Wallet and OPPO Health. Versioning, APK installation and device rendering were handled separately.
 
 ## Source and packaging
 
-The foreground is a project illustration generated with the built-in OpenAI imagegen tool, selected by the root agent. It is not an extracted ColorOS asset or a native procedural glass shader. The source is `design/color-hand-operation-volume-foreground.png`, 1254×1254 RGBA. Its open icy-blue frame has thickness and curved reflections; the coral ribbon passes in front of the left frame and behind the right frame. There is no hand or filled screen.
+The foreground is a project illustration generated with the built-in OpenAI imagegen tool. It is not an extracted ColorOS asset or a native procedural glass shader. The source is `design/color-hand-operation-volume-foreground.png`, 1254×1254 RGBA. Its open icy-blue frame has thickness and curved reflections; the coral ribbon passes in front of the left frame and behind the right frame. There is no hand or filled screen.
 
 `tools/build_brand_icon.py` copies the source byte-for-byte to `app/src/main/res/drawable-nodpi/app_icon_volume_foreground.png`. It does not paint, crop, re-encode or recolor that source. The SHA-256 of both files is `c13c03bf723db6c94ab875c161dbc0171ede7da186f2e753b5a5e5d2fe0ac169`. The source's alpha-greater-than-32 bounds are `(228,191)-(968,1065)`.
 

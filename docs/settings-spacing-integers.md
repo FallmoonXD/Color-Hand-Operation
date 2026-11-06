@@ -16,6 +16,6 @@ SettingsDisplay performs integer formatting only. Stored floats, slider steps, d
 
 - `validation/settings-display/run.ps1`: 22 assertions passed, including integer labels across all 1001 width slider positions, percentage units, distinct 50–300% speed endpoints and legacy haptic display values.
 - `validation/config/run.ps1` with the Gradle-transformed mockable Android jar: production Java compilation and 184 configuration/geometry/preview assertions passed.
-- No ADB/device operation, screenshot or final visual validation was performed by this agent. Root handles real layout, large-font and touch validation.
+- These are host-side checks. Final layout, large-font behavior and touch handling require device testing.
 
 This edit does not change angleSettings, Service geometry, preview bounds or the shared ColorSlider implementation.
