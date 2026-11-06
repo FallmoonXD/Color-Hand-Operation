@@ -1,0 +1,34 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.INTERNET"/>
+ <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+ <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+ <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+ <uses-permission android:name="android.permission.VIBRATE"/>
+ <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+ <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+ <uses-permission android:name="android.permission.CAMERA"/>
+ <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+ <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
+ <uses-permission android:name="android.permission.NFC"/>
+ <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+ <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+ <uses-feature android:name="android.hardware.camera" android:required="false"/>
+ <application android:label="@string/app_name" android:theme="@style/AppTheme" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="false" android:supportsRtl="true">
+  <activity android:name=".MainActivity" android:exported="true" android:enableOnBackInvokedCallback="true">
+   <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+  </activity>
+  <activity android:name="replica.ToolsSettingsActivity" android:exported="false"/>
+  <activity android:name="replica.ToolsActivity" android:exported="false" android:taskAffinity="" android:excludeFromRecents="true" android:noHistory="true" android:theme="@style/ReplicaGlass"/>
+  <activity android:name="replica.WidgetActivity" android:exported="false" android:taskAffinity="" android:excludeFromRecents="true" android:launchMode="singleTop" android:configChanges="keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize" android:theme="@style/ReplicaGlass"/>
+  <service android:name=".GestureService" android:exported="true" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:foregroundServiceType="specialUse" android:stopWithTask="false">
+   <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
+   <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility_service"/>
+   <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User enabled edge gestures and accessibility actions"/>
+  </service>
+  <receiver android:name=".BootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
+  <provider android:name="replica.BlurBridgeProvider" android:authorities="dev.edgeflow.material" android:exported="true"/>
+  <provider android:name="replica.ServiceBlurBridgeProvider" android:authorities="dev.edgeflow.material.service" android:exported="true" android:process=":service"/>
+ </application>
+</manifest>

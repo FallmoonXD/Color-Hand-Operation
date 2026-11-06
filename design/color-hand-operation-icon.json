@@ -1,0 +1,71 @@
+{
+  "mode": "oho-coloros-neutral-glass-17",
+  "viewport": 432,
+  "adaptive_view_box": [
+    72,
+    72,
+    288,
+    288
+  ],
+  "source": {
+    "apk": "One Hand Operation +_9.3.13.0.apk",
+    "package": "com.samsung.android.sidegesturepad",
+    "launcher_activity": "com.samsung.android.sidegesturepad.settings.SGPSettingsActivity",
+    "manifest_icon": "@mipmap/ic_launcher",
+    "manifest_round_icon": "@mipmap/ic_launcher_round",
+    "primary_adaptive": "mipmap-anydpi/ic_launcher.xml",
+    "round_icon_note": "Both adaptive entries share the diffuse foreground and the independently occlusion-clipped tonal monochrome.",
+    "origin": "Samsung OHO+ 9.3.13.0 source geometry retained for phone, screen, hand and cuff. Material and gesture indicator adapted for CHO; not an official Samsung or OPPO app.",
+    "source_files": {
+      "background": {
+        "file": "oho-original-9.3.13.0/oho__bg.xml",
+        "sha256": "6ad39b83d76124a27ecd2ef9926a47ec226f2831913ea3a32211c2e46d650dd0",
+        "apk_resource": "drawable/oho__bg.xml"
+      },
+      "foreground": {
+        "file": "oho-original-9.3.13.0/oho__fg.xml",
+        "sha256": "2985aaeb463e313833fb87f84b3a352947fba48a982b6f67acebe1aab5b1c1df",
+        "apk_resource": "drawable/oho__fg.xml"
+      },
+      "monochrome": {
+        "file": "oho-original-9.3.13.0/oho__mono.xml",
+        "sha256": "9359918d190131197d0f940ecdec6d4b6bc1631acff0a00d401ed36ef1323369",
+        "apk_resource": "drawable/oho__mono.xml"
+      }
+    }
+  },
+  "design": {
+    "concept": "Neutral white and gray phone/screen/continuous hand. Original OHO phone and hand silhouette, no separate cuff or palm structure. Thin restrained glass edges reference OPPO Video, Music and Theme Store launcher art.",
+    "material": "One composite alpha .94, diffuse neutral white/gray fills, thin inward contour highlights. No newly drawn hand structure, no sleeve split or local palm shading.",
+    "background_reference": "analysis/coloros17-settings/resources/res/drawable/about_device_top_video_last_frame_17.webp",
+    "reference_pixel_samples": {
+      "ink": "#1F1C4A",
+      "indigo": "#262561",
+      "violet": "#554BA7",
+      "lavender": "#C292DE",
+      "coral": "#EF7C75",
+      "orange": "#F54E17",
+      "gold_rim": "#F0AD14"
+    },
+    "sampling_note": "Colors sampled from the installed Settings bitmap; not original shader stop values.",
+    "monochrome": "Three disjoint regions: phone .64, filled screen .34, whole visible hand and arm 1. Rear/front hand union is one shape; no cuff or palm split.",
+    "reference_apps": [
+      "OPPO Video default launcher icon",
+      "Music default launcher icon",
+      "Theme Store default launcher icon"
+    ]
+  },
+  "notification": {
+    "source": "independent opaque symbol",
+    "scale": 1.5,
+    "pivot": [
+      216,
+      216
+    ],
+    "translate": [
+      -23.3,
+      -45.8
+    ],
+    "note": "Compact opaque phone-and-hand symbol retained for status-bar legibility; separate from tonal launcher monochrome."
+  }
+}

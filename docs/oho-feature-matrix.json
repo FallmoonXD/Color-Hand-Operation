@@ -1,0 +1,778 @@
+{
+  "reference_version": "OHO+ 9.3.13.0",
+  "target": "Independent Android source project, rooted OnePlus ColorOS17",
+  "status_semantics": "Source implementation is not verified parity. UI placeholders and Settings alternatives are not completed equivalent features.",
+  "actions": [
+    {
+      "oho_id": "none",
+      "standalone_id": "none",
+      "status": "implemented",
+      "note": "No assigned gesture action.",
+      "source": "analysis/oho-9.3.13/resources/res/values/arrays.xml:gesture_action_type_arr_values; dispatch r5/f.java"
+    },
+    {
+      "oho_id": "key_back",
+      "standalone_id": "back",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_home",
+      "standalone_id": "home",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_recent",
+      "standalone_id": "recents",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_menu",
+      "standalone_id": "menu",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "launch_memory",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "OHO Memory entry appears in the official action array and dispatch. Its device-specific integration is not adapted; no unrelated app substituted.",
+      "source": "analysis/oho-9.3.13/resources/res/values/arrays.xml:gesture_action_type_arr_values; dispatch r5/f.java"
+    },
+    {
+      "oho_id": "key_search",
+      "standalone_id": "search",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_volumeup",
+      "standalone_id": "volume_up",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_volumedn",
+      "standalone_id": "volume_down",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_volume_mute",
+      "standalone_id": "volume_mute",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_media_playpause",
+      "standalone_id": "media_play_pause",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_media_prevsong",
+      "standalone_id": "media_previous",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_media_nextsong",
+      "standalone_id": "media_next",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_application",
+      "standalone_id": "app_launcher",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "Searchable launcher/app drawer equivalence still requires parity work.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_alttab",
+      "standalone_id": "previous_app",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "Root app-switch double key; real app-switch order needs device verification.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_forward",
+      "standalone_id": "browser_forward",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_notipanel",
+      "standalone_id": "notifications",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_quickpanel",
+      "standalone_id": "quick_settings",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "key_power",
+      "standalone_id": "screen_off",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "kill_app",
+      "standalone_id": "close_app",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "toggle_flash",
+      "standalone_id": "flashlight",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "run_split_view",
+      "standalone_id": "split_screen",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "Android accessibility global action; unavailable layouts report feedback.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "run_popup_view",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "min_popup_view",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Minimize an existing Samsung popup window; requires a separately verified ColorOS floating-window adapter, not generic recents dispatch.",
+      "source": "analysis/oho-9.3.13/resources/res/values/arrays.xml:gesture_action_type_arr_values; dispatch r5/f.java"
+    },
+    {
+      "oho_id": "run_assist",
+      "standalone_id": "assistant",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "run_searcle",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "run_finder",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "toggle_bluelight",
+      "standalone_id": "eye_comfort_settings",
+      "status": "settings_alternative_only",
+      "note": "Explicit settings entry only; native ColorOS comfort-tone toggle not yet verified.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "toggle_privacydisplay",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "screen_capture",
+      "standalone_id": "screenshot",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "smart_select",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "smartcapture_rect",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "smartcapture_oval",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "smartcapture_gif",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "smartcapture_pin",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "screen_recorder",
+      "standalone_id": "screen_record",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "show_edge",
+      "standalone_id": "sidebar",
+      "status": "coloros_adapter_device_verified",
+      "note": "ColorOS SideBarProvider OVOICE_OPEN_FLOATBAR_ACTION directly opens the native sidebar. Root agent confirmed complete sidebar UI on OnePlus. No concurrent input swipe injection.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "samsung_wallet",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "screen_timeout",
+      "standalone_id": "screen_timeout",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "toggle_navibar",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "toggle_taskbar",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "move_screen_down",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "reduce_screen",
+      "standalone_id": "one_hand",
+      "status": "coloros_adapter_device_verified",
+      "note": "Root agent verified the OplusStatusBarManager one-handed-mode adapter on OnePlus; this is the native ColorOS mode, not the Samsung API.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "global_action",
+      "standalone_id": "power_menu",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_rotation",
+      "standalone_id": "rotation",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "user_rotation",
+      "standalone_id": "rotate_right",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "user_rotation2",
+      "standalone_id": "rotate_left",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_gametools",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "color_inversion",
+      "standalone_id": "color_inversion",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "launch_modes",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "launch_shortcut",
+      "standalone_id": "launcher_shortcut:1:<user>:<base64url-package>:<base64url-id>",
+      "status": "source_implemented_partial_device_verification",
+      "note": "Real LauncherApps dynamic/pinned/manifest shortcut picker for the current Android user, including MATCH_PINNED_BY_ANY_LAUNCHER. Stable publisher/shortcut/user identity; system startShortcut dispatch checks enabled/existence and returned success. Old Intent URI entries remain a distinct legacy format. No legacy CREATE_SHORTCUT configuration flow or work-profile picker yet.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Picker selected real Settings WLAN shortcut; gesture resumed com.oplus.wirelesssettings SettingsActivity. Alipay query returned four dynamic entries; Alipay More settings did not retain a foreground page and is not counted as start verification."
+    },
+    {
+      "oho_id": "launch_app",
+      "standalone_id": "app:<component>",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "launch_popup",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_bluetooth",
+      "standalone_id": "bluetooth",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_wifi",
+      "standalone_id": "wifi",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_hotspot",
+      "standalone_id": "hotspot_settings",
+      "status": "settings_alternative_only",
+      "note": "Explicit settings entry only; native hotspot toggle not yet implemented.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_soundmode",
+      "standalone_id": "sound_mode",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_nightmode",
+      "standalone_id": "dark_mode",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_mobiledata",
+      "standalone_id": "mobile_data",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_airplane",
+      "standalone_id": "airplane",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_nfc",
+      "standalone_id": "nfc",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "quick_dnd",
+      "standalone_id": "dnd",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "manual_routine",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "Samsung/OEM-specific system integration; requires a separately verified ColorOS equivalent, must not silently map to unrelated action.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "screen_magnifier",
+      "standalone_id": "screen_magnifier",
+      "status": "source_implemented_partial_device_verification",
+      "note": "OHO source n5/a.w uses IWindowManager.changeDisplayScale with MagnificationSpec; y5/j combines 2x full-display magnification and a small gesture-control window, not a screenshot lens. Independent overlay uses Android Accessibility MagnificationController with relative pan/scale/exit controls. Legacy system_magnification toggle remains compatible.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Root verified fullscreen magnification and controls: pad pan, scale2.5, close. Legacy toggle also verified2x then reset. Full system/window lifecycle regression remains separate."
+    },
+    {
+      "oho_id": "screen_free_move",
+      "standalone_id": "screen_free_move",
+      "status": "source_implemented_partial_device_verification",
+      "note": "Independent temporary snapshot and inverse-offset tap mapping; verifies original application/window identity before injecting. Accessibility capture respects secure-window restrictions. Uses 0.94 window alpha on the target ColorOS build.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Translated screenshot mapped release to the original left-gesture settings row. Foreground package/window identity checked, screenshot released; verification/extension-validation.json."
+    },
+    {
+      "oho_id": "widget_popup",
+      "standalone_id": "widgets",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "task_switcher",
+      "standalone_id": "task_switcher",
+      "status": "partial_source_and_device_verified",
+      "note": "Real task ID list and exact restoration, configurable limit and existing system thumbnail previews. In-memory images only; no force capture or protected-buffer readback. Five bridge previews, visible preview rows and outside-dismiss window cleanup were verified.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Five genuine existing task previews returned; panel visibly displayed system previews and closed its window on outside tap. Exact Settings task restoration was verified separately."
+    },
+    {
+      "oho_id": "group_control_panel",
+      "standalone_id": "quick_tools",
+      "status": "implemented_adapter_needs_device_verification",
+      "note": "",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    },
+    {
+      "oho_id": "touch_assist",
+      "standalone_id": "virtual_touchpad",
+      "status": "partial_source_and_device_verified",
+      "note": "Relative pointer, tap/double-tap/hold, two-finger scrolling, speed0.5..3.0(default1.7); single click device verified, expanded settings pending regression.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Root agent verified one actual pointer click launched the targeted WidgetActivity. Multi-tap, scrolling and long-press coverage remain pending."
+    },
+    {
+      "oho_id": "show_softkey",
+      "standalone_id": "navigation_panel",
+      "status": "partial_source_and_device_verified",
+      "note": "Draggable horizontal/vertical navigation overlay; ordered1..5 unique actions and button size40..76dp. Home and direction persistence spot-verified, new customization pending device regression.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Root agent verified Home and persistence of horizontal/vertical arrangement."
+    },
+    {
+      "oho_id": "context_menu",
+      "standalone_id": "keyboard_shortcuts",
+      "status": "source_implemented_partial_device_verification",
+      "note": "Per-app named 1-4-key combinations, add/edit/delete/reorder and JSON persistence. Delayed injection is canceled when panel ownership or foreground app changes. Execution against target apps still needs verification.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Root agent entered EDGEFLOW_TEST into Android Settings search, invoked CTRL+A through the per-app panel, then typed READY. The field became READY rather than appending, proving combination dispatch. Other target apps/keys still need coverage."
+    },
+    {
+      "oho_id": "fast_action",
+      "standalone_id": "quick_launcher",
+      "status": "source_implemented_partial_device_verification",
+      "note": "Version 2 layout, legacy favorites migration, apps/actions/real system shortcuts, named folders, fixed three rows, 3-5 columns, add/remove/order, installed/publisher icons, hover-release selection and optional first recent page. Shortcut identities are portable; icon cache is rebuildable and excluded from export.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml",
+      "verification": "Root agent verified folder creation, adding Back, moving Back into a folder and opening the folder."
+    },
+    {
+      "oho_id": "handle_hide",
+      "standalone_id": null,
+      "status": "not_implemented",
+      "note": "OHO configurable temporary handle-hiding action. This is a generic OHO interaction gap, not a Samsung-only capability; settings enable/disable is not equivalent.",
+      "source": "analysis/oho-9.3.13/jadx/sources/n6/y.java:N or resources/res/values/strings.xml"
+    }
+  ],
+  "features": [
+    {
+      "id": "gestures.left_right",
+      "requirement": "Independent left and right handles, straight/up/down × short/long = twelve profile slots",
+      "evidence": "gesture_action_*; reference/prefs.xml:handler_config",
+      "status": "source_implemented_needs_device_regression",
+      "verification": "52 host gesture assertions pass, including all 12 mirrored mappings, quick-action combinations, cancellation, release and timer state."
+    },
+    {
+      "id": "gestures.long_hold",
+      "requirement": "Radial long distance plus timer from DOWN for while-held quick action; long-classified release dispatches immediately; no duplicate short action",
+      "evidence": "w5/b.a hypot; b6/a release~727,longtimer~778; long_swipe_time ×50ms",
+      "status": "source_implemented_needs_device_regression"
+    },
+    {
+      "id": "gestures.quick_action",
+      "requirement": "Separate short/long quick action settings",
+      "evidence": "a6/q.java quick_action_short/long; MyGtsCellProvider.java defaults0/1",
+      "status": "source_implemented_needs_device_regression",
+      "note": "Independent quick_short=false and quick_long=true defaults; immediate short firing suppresses any long action in that same gesture. Legacy long_immediate controls zero-delay long dispatch only."
+    },
+    {
+      "id": "gestures.angles",
+      "requirement": "Configurable short/long angle boundaries, not fixed45-degree classification",
+      "evidence": "gesture_setting_angle; short_gesture_angle_1..4",
+      "status": "source_implemented_needs_device_regression",
+      "note": "Independent short/long upper and lower inner (5-70 degrees) and outer (75-85 degrees) boundaries now drive recognition and dispatch. Existing symmetric direction_angle_degrees and 80-degree outer fallback remain until each new boundary is configured. Separate short/long valid regions and disabled-long behavior have JVM regression coverage; see docs/oho-haptics-angles.md.",
+      "remaining": "Native graphical editor now uses independent draggable boundaries with float precision, fixed direction guides, integer display and mirrored viewing. Near-vertical motion remains non-actionable rather than adding original vertical-scroll actions; Android touch/rendering regression tracked separately."
+    },
+    {
+      "id": "gestures.haptics",
+      "requirement": "Independent quick feedback timing, system feedback and custom vibration level",
+      "evidence": "settings_use_quick_vibration; use_custom_haptic; handler_vibration",
+      "status": "source_implemented_needs_device_regression",
+      "note": "Quick vibration defaults on and latches the first short threshold; disabling it retains action-time feedback. Separate custom mode defaults to system GESTURE_END feedback; custom duration 0-30ms follows the capable-device OHO implementation, with 0 silent. Stored legacy 1-255 amplitudes remain active until edited. Legacy master-off is represented as visible custom level zero. JVM timing/migration tests passed; physical ColorOS effect is not claimed identical to Samsung."
+    },
+    {
+      "id": "handles.geometry",
+      "requirement": "Touch width, visible size, location, opacity, both edges",
+      "evidence": "handler_sensitivity/size/position/transparency",
+      "status": "source_implemented_needs_device_regression",
+      "remaining": "Six independent handles (three per edge), widths/positions and 36 action slots implemented. New segment activation awaits device regression; cover-display profile absent."
+    },
+    {
+      "id": "handles.context",
+      "requirement": "Hide on lock/home/notification panel; keyboard fit; landscape settings; app exceptions",
+      "evidence": "settings_adjust_position; settings_hide_app; reference/prefs.xml",
+      "status": "source_implemented_needs_device_regression",
+      "note": "App exclusions, hide on IME/landscape, resolved HOME component and actual focused SystemUI notification window are implemented. Full context-transition regression is pending."
+    },
+    {
+      "id": "handles.additional",
+      "requirement": "Additional handles and cover-display configuration",
+      "evidence": "reference/prefs.xml handle_data_extra2; handler_cover_*",
+      "status": "source_implemented_needs_device_regression",
+      "remaining": "Primary/extra/extra2 each support both edges, independent mappings and geometry; extra segments default disabled/none. Higher added segment wins overlap. Cover-display profile absent.",
+      "verification": "Gesture agent reports 51 handle-configuration JVM assertions; runtime device acceptance pending."
+    },
+    {
+      "id": "wave",
+      "requirement": "Fixed approved OHO curved line, follow finger and rebound; retain ColorOS colors/material elsewhere",
+      "evidence": "current-profile.json; SGPSwipeAnimationView.java",
+      "status": "source_implemented_needs_device_regression"
+    },
+    {
+      "id": "tools.layout",
+      "requirement": "Twelve customizable tools, ordering, immediate command blue vs true toggle state",
+      "evidence": "settings/quicktools/e.java limit12; reference/prefs.xml:user_task_group",
+      "status": "migrated_source_needs_device_verification"
+    },
+    {
+      "id": "tools.sliders",
+      "requirement": "Brightness live raw range and auto mode; media volume; previous/play/next; volume repeat",
+      "evidence": "reference/interaction; visual-test/native/replica/ToolsPanel.java",
+      "status": "partial_device_verified",
+      "verification": {
+        "auto_brightness_roundtrip": true,
+        "manual_brightness_raw": 2728,
+        "tool_volume_hold_delta": 5,
+        "floating_volume_hold_delta": 6,
+        "outside_dismissal": true,
+        "evidence": "standalone/verification/controls-validation.json"
+      },
+      "remaining": "Playback transport/route-state coverage and broader device/provider combinations remain separate tests."
+    },
+    {
+      "id": "tools.no_pause",
+      "requirement": "Opening quick tools must retain foreground playback and input focus",
+      "evidence": "test15/check.py; ToolsOverlay accessibility nonfocusable",
+      "status": "focus_preservation_device_verified_playback_regression_pending",
+      "verification": "controls-validation.json confirms the foreground resumed Activity is retained while tools open. This is not a direct playback-state measurement in Bilibili or every media application."
+    },
+    {
+      "id": "widgets.pages",
+      "requirement": "Add/delete pages, swipe horizontal, continuous wrap, popup-size settings",
+      "evidence": "widget_menu_*; widget_popup_page_scroll_*",
+      "status": "migrated_source_needs_device_verification"
+    },
+    {
+      "id": "widgets.providers",
+      "requirement": "Real AppWidgetHost bind/configure/update lifecycle, resize and layout persist, provider touch forwarding",
+      "evidence": "SGPWidgetChooserActivity.java; WidgetActivity.java",
+      "status": "migrated_source_needs_device_verification"
+    },
+    {
+      "id": "widgets.uid_migration",
+      "requirement": "Existing widget host IDs cannot simply be copied across package UID; bind fresh provider instances",
+      "evidence": "Android AppWidgetHost ownership boundary",
+      "status": "device_rebinding_verified_for_one_provider",
+      "verification": "Root agent rebound Alipay into new host ID 21 and observed it render. Old host ID 17 was left untouched; other providers still need per-provider checks."
+    },
+    {
+      "id": "quick_launcher",
+      "requirement": "Pages/folders/actions/apps, configurable rows/columns, optional recent page, hover then release launch",
+      "evidence": "fast_action_* strings; MyGtsCellProvider.java fast_action fields",
+      "status": "source_implemented_partial_device_verification",
+      "remaining": "Fixed three rows, 3-5 columns. Dynamic/pinned/manifest shortcut query validated; picker/start regression, legacy CREATE_SHORTCUT setup and work-profile selection remain.",
+      "verification": "Root agent verified folder creation, adding Back, moving Back into a folder and opening the folder."
+    },
+    {
+      "id": "task_switcher",
+      "requirement": "Custom task popup, configurable item limit and Samsung multiwindow actions",
+      "evidence": "SGPTaskSwicherConfigActivity.java; task_switcher_max_count",
+      "status": "partial_source_and_device_verified",
+      "remaining": "System preview query returned five actual tasks; panel preview rendering/lifecycle regression pending. Samsung multiwindow controls absent.",
+      "verification": "Root agent verified five real recent tasks and exact Settings task restoration. Task limit5/10/20/30; previews are source-implemented with protected/theme snapshot exclusion, cancellation and Bitmap/HardwareBuffer release. Read-only SDK37 TaskPreviewBridge returned five145x320 PNG previews (8–46KB), metadata recorded without image files."
+    },
+    {
+      "id": "virtual_touchpad",
+      "requirement": "Pointer speed and one-hand target interaction via gestures",
+      "evidence": "s_touch_assist; speed_controller",
+      "status": "partial_source_and_device_verified",
+      "remaining": "Pointer speed 0.5..3.0 configurable, default 1.7; refreshed on pad DOWN. New speed setting and full pointer interaction device regression pending.",
+      "verification": "Root agent verified one actual pointer click launched the targeted WidgetActivity. Multi-tap, scrolling and long-press coverage remain pending."
+    },
+    {
+      "id": "floating_nav",
+      "requirement": "Configurable floating back/home/recent buttons",
+      "evidence": "reference/prefs.xml:floating_softkey_config",
+      "status": "partial_source_and_device_verified",
+      "remaining": "Ordered 1..5 unique configurable actions, size40..76dp/default58, horizontal/vertical arrangement and drag implemented. New arbitrary configuration runtime regression pending.",
+      "verification": "Root agent verified Home and persistence of horizontal/vertical arrangement."
+    },
+    {
+      "id": "keyboard_shortcuts",
+      "requirement": "App-specific key combinations, names, close-on-click preference",
+      "evidence": "settings_context_menu_*",
+      "status": "source_implemented_partial_device_verification",
+      "verification": "Root agent entered EDGEFLOW_TEST into Android Settings search, invoked CTRL+A through the per-app panel, then typed READY. The field became READY rather than appending, proving combination dispatch. Other target apps/keys still need coverage."
+    },
+    {
+      "id": "samsung.exclusive",
+      "requirement": "Wallet/Modes/Routines/S Pen/AI select/Game Booster/privacy display require real capabilities or explicit unavailability",
+      "evidence": "s_samsung_wallet/s_launch_modes/s_manual_routine/...",
+      "status": "not_implemented"
+    },
+    {
+      "id": "data",
+      "requirement": "Standalone versioned settings, stable action IDs, export/import and migrations; original app remains reference",
+      "evidence": "independent project requirement",
+      "status": "source_implemented_host_tested_needs_device_regression",
+      "verification": "ConfigArchive and WidgetMigration have 32 host assertions reported by UI migration agent. Archive import/export is not yet claimed fully device verified."
+    },
+    {
+      "id": "lifecycle",
+      "requirement": "Accessibility connection, foreground keepalive, reboot, task swipe, rotation, process death, root denial",
+      "evidence": "independent reliability requirement",
+      "status": "partial_device_verified",
+      "verification": {
+        "task_card_removal": {
+          "before_pid": 31788,
+          "after_pid": 31788,
+          "tools_after_removal": true,
+          "evidence": "standalone/verification/core-validation.json"
+        },
+        "process_death": {
+          "method": "kill -9",
+          "before_pid": 21973,
+          "after_pid": 24369,
+          "automatic_recovery": true,
+          "tools_after_recovery": true,
+          "evidence": "standalone/verification/controls-validation.json"
+        },
+        "configuration": "Package-specific ColorOS auto-start authorization for dev.edgeflow, read back false -> true, plus explicit self-start and START_STICKY. No global policy or accessibility enabled-services rewrite."
+      },
+      "remaining": "Actual device reboot, application force-stop, broad rotation/context transitions and long-idle regression are not claimed validated. User-disabled accessibility is not re-enabled."
+    },
+    {
+      "id": "materials",
+      "requirement": "Installed ColorOS icon resources, hardware buffer native blur, shared optics/animations, isolated fallbacks",
+      "evidence": "visual-test current-profile.json; coloros17-material/manifest.json",
+      "status": "native_binding_device_verified_full_visual_regression_pending",
+      "verification": "Root agent observed native material BOUND in the new standalone application. Broad background and animation comparison is still separate acceptance."
+    }
+  ],
+  "reference_profile": {
+    "left": {
+      "short": [
+        "recents",
+        "volume_up",
+        "volume_down"
+      ],
+      "long": [
+        "one_hand",
+        "widgets",
+        "quick_tools"
+      ]
+    },
+    "right": {
+      "short": [
+        "back",
+        "volume_up",
+        "volume_down"
+      ],
+      "long": [
+        "sidebar",
+        "widgets",
+        "quick_tools"
+      ]
+    },
+    "order": "straight, diagonal up, diagonal down"
+  },
+  "required_acceptance": [
+    "All twelve configured gestures dispatch once to correct action from both edges.",
+    "New trigger coordinates control popup placement, never previous gesture.",
+    "Gesture trajectory and rebound measured against reference frames.",
+    "No automatic brightness raw-range regression.",
+    "No playback pause when tools open.",
+    "All widgets have current UID bindings and update in correct dimensions.",
+    "Cold restart, task swipe, screen rotation and long idle preserve functionality.",
+    "Explicit matrix gaps resolved before calling full OHO parity complete."
+  ],
+  "implementation_registry_count": 60,
+  "portable_configuration": "LauncherLayout.validatePreferences and KeyboardShortcutsOverlay.validatePreferences validate raw preference JSON before transactional import; version 2 rejects broken folder references, duplicate entries and unknown actions.",
+  "command_result_verification": "Nine host assertions cover zero-exit errors, security rejection, unknown command, missing shell command, valid task acknowledgement and the native sidebar null response.",
+  "system_shortcuts": {
+    "identity_version": 1,
+    "query_flags": 1035,
+    "transport": "Own APK helper drops Root UID0 to system UID1000 and calls ILauncherApps as android; no launcher impersonation, default-home modification, pin mutation, or serialized-Intent substitution. SDK37 leading IBinder startShortcut variant and older 7-argument variant supported.",
+    "persistence": "edgeflow_launcher layout_v2 entries and shortcut_labels JSON; icons in cacheDir/shortcut-icons are rebuildable, excluded from export.",
+    "picker": "Embedded secondary settings page with actual publisher groups, selected summaries and expandable shortcut rows. One own-helper list-all query for the current user replaces per-app Root processes; disabled entries remain visible but unselectable. Existing window show APIs reuse the same grouped list. 44 catalog/protocol host assertions passed; this new grouped flow awaits separate device regression. See docs/shortcut-grouped-page.md.",
+    "verification": "14 host identity assertions; actual four-item SDK37 Alipay dynamic query with publisher icons. End-to-end start pending."
+  },
+  "task_preview": {
+    "source": "SDK37 ITaskSnapshotManager.getTaskSnapshot(taskId,latestCaptureTime,resolution), low-resolution existing cache. Older IActivityTaskManager getTaskSnapshot fallback uses takeSnapshotIfNeeded=false.",
+    "privacy": "Does not call takeTaskSnapshot or secure capture. Rejects protected buffers and non-real theme placeholders. App does not persist screenshots; Bitmap and HardwareBuffer resources released, process/result cancelled when panel closes or refreshes.",
+    "status": "source_compiles_bridge_device_verified_ui_pending",
+    "verification": "verification/task-preview-validation.json: five recent tasks returned145x320 preview images, metadata only persisted. No phone UI automation/capture was run for this read-only probe."
+  },
+  "reference_action_count": 73,
+  "reference_action_inventory_source": "analysis/oho-9.3.13/resources/res/values/arrays.xml:gesture_action_type_arr_values; dispatch r5/f.java",
+  "inventory_correction": "Final cross-check uses the exact 73-item gesture_action_type_arr_values. s_key_media_* are label resource names, not IDs; close_all is a panel resource rather than a gesture action, and hide_handle is correctly handle_hide. Includes none, launch_memory and min_popup_view."
+}

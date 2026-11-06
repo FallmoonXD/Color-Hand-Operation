@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android" android:shareInterpolator="false" android:zAdjustment="normal">
+    <translate android:duration="350" android:interpolator="@interpolator/color_settings_open_out" android:fromXDelta="0%" android:toXDelta="-30%" android:fillBefore="false" android:fillAfter="true" android:fillEnabled="true" />
+    <alpha android:duration="350" android:interpolator="@interpolator/color_settings_ease" android:fromAlpha="1" android:toAlpha="0.5" android:fillBefore="false" android:fillAfter="true" android:fillEnabled="true" />
+</set>

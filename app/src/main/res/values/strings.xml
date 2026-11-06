@@ -1,0 +1,6 @@
+<resources>
+ <string name="app_name">Color Hand Operation</string>
+ <string name="service_description">识别屏幕两侧手势，执行返回、最近任务和单手操作。应用不上传屏幕内容。</string>
+ <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#188DFF</item><item name="android:windowLightStatusBar">true</item><item name="android:windowActionModeOverlay">true</item></style>
+<style name="AppThemeDark" parent="android:style/Theme.Material.NoActionBar"><item name="android:colorAccent">#188DFF</item><item name="android:fontFamily">sans</item></style>
+</resources>

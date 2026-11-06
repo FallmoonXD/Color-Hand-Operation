@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.webp binary
+*.jar binary
+*.zip binary
+*.apk binary
+# Retain byte-for-byte OEM/derived resources referenced by provenance hashes.
+*.xml -text
+*.agsl -text

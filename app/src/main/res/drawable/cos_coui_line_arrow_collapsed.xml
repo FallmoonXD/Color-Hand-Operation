@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ColorOS 17 Settings: coui_line_arrow_collapsed; original geometry, runtime theme tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp" android:height="24dp"
+    android:viewportWidth="16" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M8.595,13.743C8.751,13.901 8.829,13.981 8.921,14.003C8.973,14.016 9.027,14.016 9.079,14.003C9.171,13.981 9.249,13.901 9.405,13.743L15.035,8L16,8.975L9.795,15.202C9.489,15.509 9.336,15.663 9.154,15.707C9.053,15.731 8.947,15.731 8.846,15.707C8.664,15.663 8.511,15.509 8.205,15.202L2,8.975L2.966,8L8.595,13.743Z" />
+</vector>

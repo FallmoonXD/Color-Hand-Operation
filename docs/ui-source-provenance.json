@@ -1,0 +1,210 @@
+{
+  "ui_sources": "analysis/visual-test/native/replica authored Java, accepted test36 revision",
+  "assets": [
+    {
+      "file": "src\\main\\assets\\coloros-live-optics.agsl",
+      "sha256": "c21b0b04a569c1a20962bce4de0e936dbe4b69f8bcff9a1de4f7487078d5bbbb"
+    },
+    {
+      "file": "src\\main\\assets\\coloros-native-live.agsl",
+      "sha256": "38f0ed1781645de6a5465ad863ecdad456ea81b1f3e4306174bb9cb8b0e51629"
+    },
+    {
+      "file": "src\\main\\assets\\coloros-qs-material.agsl",
+      "sha256": "a14d301df481a49dff120e1f810c336688bc5e13f11a3c550da02be85dc5a717"
+    }
+  ],
+  "vectors": [
+    {
+      "file": "src\\main\\res\\drawable\\cos_darkmode_off_status_bar.xml",
+      "sha256": "bb90a29dc8eac131bce07fddf1d2aac67b7b84f3267c5f9099e599ba4b4e9022"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_darkmode_on_status_bar.xml",
+      "sha256": "ead24a0b2dfa4930d903f3b641a8514685022b6b95e01727a3ae472e35e4a14e"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_clock_black_24dp.xml",
+      "sha256": "a6351ab5501ab637ac1a2c5c5eb209d0193a9f43487b64780c48e787920e4d15"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_close_white.xml",
+      "sha256": "26ccc70491888c71434c3e699ea60e460f2c7066bb04946a46bfdeec8c228695"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_expand_less_rounded.xml",
+      "sha256": "bf5b01a3d3d162e00ee7c0163dc4dcb8c73a23e1f584f2568ac24f4e59f3e366"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_expand_more_rounded.xml",
+      "sha256": "de0f315ec78a9e270f74061b993aa168bb0709ce0771204925d2e348ff609027"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_oplus_media_panel_action_next.xml",
+      "sha256": "2756b9c43d49a8a4540f04368403f812b3dac14951cc313874ff3ef60f7ae1df"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_oplus_media_panel_action_play.xml",
+      "sha256": "1edcd3097ba4ffb67b349c478fa0a18857a0c6b6c33002031f15afb6e92986cc"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_oplus_media_panel_action_pre.xml",
+      "sha256": "1c653daf260f6d19cd57c7916d0b95aef20e968285979d39323f4446d25e7f7e"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_menu_drawable_notification_center.xml",
+      "sha256": "415fcd7b52e5af898e96c90ba5a1a449fa8678e676134300d8e1998c5ccfe934"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_airplane_active.xml",
+      "sha256": "147807b855452a0c06a8b4aec65ad3e7d6a3d87aa0dd0b20609a698d59ee014d"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_airplane_inactive.xml",
+      "sha256": "6033df667109add9f167ad7ebb7a5574e00cec0f8706e05fcf239decfa4627af"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_back_arrow.xml",
+      "sha256": "ae97d56bd7f59046eeb83398d7b7a25bf308df26aa8f91eb774a315a7f1c4125"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_battery_active.xml",
+      "sha256": "75a10907984d481214c5b51558592873e505113fd138f1814dfdc77b0ca01536"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_battery_inactive.xml",
+      "sha256": "e451d5169a3e49be54647757de7efd86cb3ff01138fd17576548f1be4b251e46"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_bluetooth_active.xml",
+      "sha256": "644a9ce43359e857e638f4ab42d9182be45ee6539a1cb3e99b3789ec7aea1d73"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_bluetooth_inactive.xml",
+      "sha256": "e2e57f6931bfa764879fbc53ea5c2be6ba5f92143b99aa3dcacceca32aae701c"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_brightness_icon_auto.xml",
+      "sha256": "99b33e93e44241dd16cad9632311622225bb625f294675dece1b658b776d5ef9"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_data_active.xml",
+      "sha256": "70a8713a5bfe02a2c5a52a4c5d16302af21d14e5dca387d59e82bfa9a1bbc3d3"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_data_inactive.xml",
+      "sha256": "47c88bcfd14ef93ba869a0b780a4dc8c437ba500de6e20a021606c54a8aebd19"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_dnd_active.xml",
+      "sha256": "2b62bc1852ba828f820375b46c2db1a061485593582c8b8eb5b93fad53331e93"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_dnd_inactive.xml",
+      "sha256": "5a16678e142da6e8e90be7f78320d7d6bed5c7a55c8883bd16061423810400b1"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_flashlight_active.xml",
+      "sha256": "9cb5fda15631435b925261c84ff7c1787c9fffe4961871901db1f32a212d19f0"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_flashlight_inactive.xml",
+      "sha256": "beee19538a0e10587b682a2ce52dd58ea1c88d0808843c85162bd913bb334820"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_footer_settings_icon_no_theme.xml",
+      "sha256": "7f62cda0e2ad05b00bba471ffab55ee0c4c8ac7b226575b03e597f32d512c6f1"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_icon_volume_media.xml",
+      "sha256": "512acc301cdb2b6bf2b5070bdd9bffd704dc807e5fcce73dd2d36aaf07a45587"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_location_active.xml",
+      "sha256": "478bed70c9c211704b24e836983f2945a7732b42d68b5237834898fec1877596"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_location_inactive.xml",
+      "sha256": "5d090d5ab90234e5ea14a5ac8b36ca373da21915b9a40bc0effdb3572e381858"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_lock_inactive.xml",
+      "sha256": "7de0d575fede6fa157cffe690eb3ebfd074b903ea6a057c93568cd14c4aedf0c"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_mute_active.xml",
+      "sha256": "8638694258510d96bc612e60b4f8dc2235f92a3141a2b5686140137bb2bc6d05"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_mute_inactive.xml",
+      "sha256": "ffe5c7c78c335a871504f7c6f47d82001f7bf1550913a1c301a443b2da0321dd"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_nfc_active.xml",
+      "sha256": "361187ec8a38edb8607369052052ea12f3470d16ae5fe186cb91c5da25f63b10"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_nfc_inactive.xml",
+      "sha256": "e4ec8d8c0ff44fd3f36a70e08707c3f475c9c69110963beecda635b96a1254ec"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_rotation_active.xml",
+      "sha256": "2947711802ebf310a32e4b449701905dc6aeee152832b3c14bdbbceee9f4a203"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_rotation_inactive.xml",
+      "sha256": "d302e585984bc144be7ae86786badbe46bcb95eabc30c62c527a055663076a11"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_screenrecord_full_record.xml",
+      "sha256": "e989e047de1d844ad942907764905ffdc85aa739a5070bc1ebc92c643cddc8cf"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_screenshot_inactive.xml",
+      "sha256": "7bfe0d1d5399a35bddea2d19c0cc78f0a5fc3b8c467d4eadb60f643ea9bf56f1"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_vibrate_on.xml",
+      "sha256": "6003bed6a72e2ba30b617a19ccae738890dd103b4fe7d20964ad7dbb3967a9d2"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_wifi_active.xml",
+      "sha256": "14392461bb428a6a100d5cc9baf2ac491d2cceba993fa593e435d0ebb574ac36"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_status_bar_qs_wifi_inactive.xml",
+      "sha256": "4fd3a76886a85755f7a9b2d59c80a537d58a9ecae5317304129f159584643b78"
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_ic_arrow_forward.xml",
+      "sha256": "6ceb88a717deabfd9e38eadd9adc754c04a9430cb25535c630d8287e6ecd1754",
+      "source": "ColorOS 17 com.android.settings drawable/ic_arrow_forward",
+      "usage": "Installed resource is preferred; exact vector geometry fallback, tint supplied by ColorOsTheme."
+    },
+    {
+      "file": "src\\main\\res\\drawable\\cos_coui_line_arrow_collapsed.xml",
+      "sha256": "1bc4540b7c28b2b9ce29b9a521c87612ad837bb883b82202e25d5fc89ca5f120",
+      "source": "ColorOS 17 com.android.settings drawable/coui_line_arrow_collapsed",
+      "usage": "Installed resource is preferred; exact vector geometry fallback, tint supplied by ColorOsTheme."
+    }
+  ],
+  "dependency": "HiddenApiBypass 6.2; narrow exemptions only; app/libs/README.txt",
+  "exclusions": [
+    "gulugulu APK/classes/Smali",
+    "WaveViewport and original gesture dispatcher hooks",
+    "Compose reflection palette patch",
+    "obsolete screenshot-capture path"
+  ],
+  "oho_gesture_arrow": {
+    "file": "src/main/res/drawable/oho_gesture_arrow.xml",
+    "sha256": "7b4a51e9e62f69243676d29d78665b921a12c815e9b3938df2a91df8748f4588",
+    "source": "User-provided One Hand Operation +_9.3.13.0.apk / res/drawable/ic_arrow_forward.xml",
+    "usage": "curve_style six-direction arrow geometry; opaque #FFE6E6E6 tint; no action text or replacement icons"
+  },
+  "coloros_settings_overflow": {
+    "file": "src/main/res/drawable/cos_settings_more.xml",
+    "sha256": "b0145fa1566b6a100c4b2dbb68cc9f78f63d7770744bd4485dfd92259101cdd9",
+    "source": "Current ColorOS Settings / res/drawable/coui_toolbar_menu_icon_more_normal.xml",
+    "adaptation": "Same native 24dp path; resolved with ColorOsTheme text tint instead of a foreign theme attribute."
+  }
+}

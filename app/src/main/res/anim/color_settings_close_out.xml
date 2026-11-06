@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android" android:shareInterpolator="false" android:zAdjustment="top">
+    <translate android:duration="350" android:interpolator="@interpolator/color_settings_close_out" android:fromXDelta="0%" android:toXDelta="100%" android:fillBefore="false" android:fillAfter="true" android:fillEnabled="true" />
+</set>

@@ -1,0 +1,15 @@
+Historical 0.3.6 asset record, no longer the active icon. The current icon is generated from the original OHO vectors by tools/build_brand_icon.py; see color-hand-operation-icon.json.
+
+Mode: built-in image_gen tool (transparent_background=true). No CLI/API fallback.
+Date: 2026-11-06
+Final selected asset: design/color-hand-operation-volume-foreground.png
+
+Reference images (material and lighting only):
+1. analysis/coloros17-icon-audit/apps-2026-11-06/weather-res/res/drawable-xxxhdpi/ic_launcher_weather.webp
+2. analysis/coloros17-icon-audit/apps-2026-11-06/wallet-res/res/drawable-xxhdpi/icon_wallet_launcher.webp
+3. analysis/coloros17-icon-audit/apps-2026-11-06/health-res/res/mipmap-xxhdpi/lib_base_ic_launcher.webp
+
+Final prompt, verbatim:
+Use case: stylized-concept. Asset: final Android adaptive launcher icon FOREGROUND for Color Hand Operation. Create one polished original icon, no text. The three supplied local images are MATERIAL AND LIGHTING REFERENCES only: ColorOS weather, wallet and health. Match their beautifully rounded substantial forms, vibrant but controlled color, subtle reflected light, soft occlusion and depth. Do not reproduce cloud, wallet or heart subjects. Main subject: a small upright rounded rectangular phone FRAME made of thick ice-blue optical glass, with an open transparent center, no screen plane. A short curved inward-swipe ribbon runs in front of and partly through this frame: warm coral-orange satin glass, one softly rounded enlarged head on the left, tapered tail to the upper right, conveying an edge swipe. Two main shapes only. The frame is almost front-facing with a restrained 8-degree three-quarter angle revealing thickness along the right and lower edges. Thick rounded chamfered edges, blue-cyan refraction at the rim, luminous subtle diffusion inside glass thickness, believable small contact shadows at overlap. Rich physical volume like the reference objects, not outlined vector art, not a flat gradient plate. Clear readable silhouette at 48px. Composition: centered, complete object including soft shadow fits the central 60 percent of a square canvas, generous transparent padding on all sides, no clipping. Real transparent RGBA background: no icon tile, no white rectangle, no checkerboard, no floor or scene. Exclude hands, fingers, people, skin, letters, logos, watermark, extra accessories, sparkles, neon glow, dark outlines. Light from upper left. Clean carefully art-directed OEM-quality 3D render, not a product photo. Generate the transparent foreground only.
+
+Packaging: the chosen RGBA file is copied unchanged; Android adds a 6% foreground inset and a separate light gradient background. MD3/notification paths are independently constructed opaque geometry. The normal SVG and comparison previews package the selected image; they are not another generated variant.

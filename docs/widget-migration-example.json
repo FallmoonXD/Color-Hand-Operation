@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "pages": 1,
+  "page": 0,
+  "height": 330,
+  "loop": false,
+  "items": [
+    {
+      "sourceId": 123,
+      "component": "example.provider/.ExampleAppWidgetProvider",
+      "page": 0,
+      "x": 0,
+      "y": 0,
+      "w": 4,
+      "h": 2,
+      "color": 0,
+      "options": {
+        "appWidgetMinWidth": 300,
+        "appWidgetMinHeight": 160,
+        "appWidgetMaxWidth": 300,
+        "appWidgetMaxHeight": 160
+      }
+    }
+  ]
+}
