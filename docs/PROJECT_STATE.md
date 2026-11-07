@@ -50,7 +50,7 @@ ADB 只有一台已授权设备时自动选择，多台设备必须设置 `EDGEF
 
 ## 原生 UI 资料
 
-各页面、菜单、工具和跨应用浮层的渲染选择与验证顺序见 [ColorOS 17 渲染方案](coloros17-rendering-plan.md)，其中包含普通应用 UID 的同窗口 Oplus 背景模糊实验。
+下一版界面结构的审阅稿见[逐页、逐组件 COUI 选型](coui-ui-audit.md)，覆盖全部设置路由、非路由编辑态、菜单、服务窗口和系统接手的界面。本轮交付选型，应用代码仍对应上面的当前外观。[ColorOS 17 渲染方案](coloros17-rendering-plan.md)保留现有实现、普通应用 UID 的同窗口背景模糊实验与实机结果。
 
 [ColorOS 17 调查笔记](coloros17-native-ui-research.md)整理了页面路由、控件、主题和渲染路径。完整本地资料在工程外 `analysis/coloros17-native-ui-20261106/`，包含全部 483 个系统包和 27 个厂商相关包。
 

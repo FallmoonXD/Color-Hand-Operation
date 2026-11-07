@@ -2,7 +2,7 @@
 
 使用和安装先看[仓库首页](../README.md)、[功能说明](feature-status.md)和[兼容说明](compatibility.md)。这里放实现细节和测试记录，方便查问题、接着改代码。
 
-修改界面前可以先查 [ColorOS 17 渲染方案](coloros17-rendering-plan.md)。里面按页面和窗口列出了当前实现、候选材质和实机验收方法。
+修改界面前先查[逐页、逐组件 COUI 选型](coui-ui-audit.md)，其中列出了每个入口的目标结构、COUI 参照和渲染方式。查现有绘制路径与实机证据，可看[ColorOS 17 渲染方案](coloros17-rendering-plan.md)。
 
 ## 从哪里看代码
 
