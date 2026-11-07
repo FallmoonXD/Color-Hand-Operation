@@ -29,7 +29,7 @@
 
 | 页面／入口 | 选定的风格与组件 | 结构决定、原因和必须保留的行为 |
 | --- | --- | --- |
-| `home` 总览 | Settings 功能首页；可收起品牌大标题、COUI 总开关卡、条件提示、成对触钮列表、分组跳转行。实色页面，更多按钮用同窗口效果 | **重排。** 顺序为启用状态与服务状态、触钮组、面板与工具目录、手势与高级设置。缺服务时只显示一个可操作提示；总开关和实际服务连接分别表达。把通用说明收在首次使用提示。添加放在组尾，移除放在组管理入口；到 1 对／3 对边界时说明可用操作 |
+| `home` 总览 | Settings 功能首页，固定品牌标题、总开关卡、触钮说明、成对触钮列表和分组跳转行。更多按钮用同窗口效果 | **重排。** 顺序为启用状态与服务状态、触钮组、面板与工具目录、手势与高级设置。缺服务时只显示一个可操作提示；总开关和实际服务连接分别表达。总开关下方保留灰色说明。添加放在组尾，移除放在组管理入口；到 1 对／3 对边界时说明可用操作 |
 | 拟增「面板与工具」目录 | 单一首页跳转行进入实色 Settings 目录，每个工具为 `COUIJumpPreference` 式行，显示名称与一句用途 | 一组放快速工具、小组件、快速启动、任务切换器；另一组放触控板、导航键、键盘快捷方式。与动作齿轮复用同一设置目的地；从目录返回首页，从齿轮返回原动作和位置。这样即使配置了三对触钮，首页也只增加一行 |
 | 首页联动几何区 | 分组跳转行「触钮范围」进入几何编辑；编辑页使用实色滑条卡和真实边缘预览 | **从总览移出。** 当前仅一对且已对齐时，首页直接出现宽度、大小、位置、颜色，改变对齐方式又会移动这些控件。目标让“范围”有固定入口；侧边详情也能进入同一组配置，不复制存储。保留左右联动、实时预览、取消恢复和原有配置 |
 | `left`、`right` 主触钮 | 每侧独立详情；短滑三行、长滑总开关及三行、外观／范围组。动作行用 `COUIJumpPreference` 式标题＋当前动作＋方向图标 | **重组。** 直滑、上斜、下斜按物理边显示，当前动作写在副标题。长滑关闭时收起三行；对齐是独立开关。宽度、大小、位置、颜色在同一编辑入口；任何几何联动明确标出“同时修改左右侧” |
@@ -113,7 +113,7 @@
 | 部件 | COUI 选型与绘制 | 适用位置与判定细节 |
 | --- | --- | --- |
 | 页面底、系统栏、滚动容器 | `COUIPreferenceWithAppbarFragment` 式设置骨架；主题底色、系统栏 inset、原生滚动与边界回弹 | 首页、设置、搜索、编辑页统一处理状态栏、导航栏、挖孔、手势区和 IME。大屏可限制内容列宽；对话层以实际窗口可用空间排版 |
-| 品牌大标题、二级标题、工具栏 | 首页字标和更多按钮位于状态栏下方的首行，二级标题固定。滚动内容经过标题和搜索框时，页面底色渐变叠在原生模糊上 | 首页 `Color` 用官网字标，整行提供一个可朗读标题。列表回弹时标题停在展开位置。返回、更多、保存各有命中区。RTL 镜像布局，英文字标保持正常阅读方向 |
+| 品牌标题、二级标题、工具栏 | 首页和二级页使用相同的 52dp 工具栏和 18sp 标题样式。短页静止时保留底色渐变，上滑时根据内容移动距离显示原生模糊 | 首页 `Color` 用官网字标，整行提供一个可朗读标题。返回和更多按钮的圆形外观为 40dp、点击区为 48dp。RTL 镜像布局，英文字标保持正常阅读方向 |
 | 分组标题、卡片、分隔、正文、说明、页脚 | `COUIPreferenceCategory`、卡片列表的首／中／末圆角、语义文字色、轻分隔 | 同组设置共享一张实色卡；说明不模拟可点行。服务异常提示与数值副标题采用不同层级，系统强调色只表达选择、焦点或重要操作 |
 | 触钮行的组色圆点、范围预览、用户自选色 | 组色圆点和边缘范围用同组识别色；用户配置的颜色另用带棋盘格的色样。均为局部绘制 | 圆点指出当前行对应哪里的预览，同时给出左右和第几组的文字。色样打开编辑器。组标识、开关状态和实际触钮颜色是三个不同概念 |
 | 开关、跳转、同一行的两个动作 | `COUISwitchPreference`、`COUIJumpPreference`、`COUISwitchWithDividerPreference` | 单一开关整行切换。首页触钮行同时能进详情、启停触钮，正文与开关分区；开关有 checked 状态，详情另有焦点。不得因点开关而进入详情 |
@@ -156,7 +156,7 @@
 
 | 归属 | 需要一起检查的实现 | 对应的选型边界 |
 | --- | --- | --- |
-| 设置框架、标题、页面返回 | `MainActivity`、`ColorSettingsScaffold`、`ColorSettingsScrollView`、`ColorTitleMotion`、`ColorPageMotion`、`ColorScrollPhysics`、`ToolbarEdge`、`SettingsSurface` | 页面骨架、滚动、品牌标题、导航返回、局部按钮效果各自有绘制与输入职责 |
+| 设置框架、标题、页面返回 | `MainActivity`、`ColorSettingsScaffold`、`ColorSettingsScrollView`、`ColorHeaderFade`、`ColorPageMotion`、`ColorScrollSpring`、`ToolbarEdge`、`SettingsSurface` | 页面骨架、滚动、品牌标题、导航返回、局部按钮效果各自有绘制与输入职责 |
 | 基础控件、选择与色彩 | `ColorSwitch`、`ColorSlider`、`ColorThumbMaterial`、`ColorRadioButton`、`ColorCheckBox`、`ColorChoiceDrawable`、`ColorPaletteSheet`、`ColorPalettePicker`、`GalleryPaletteColors`、`AngleEditorView` | 开关／选择标记、滑条拇指、色环和带虚拟节点的扇区适用不同绘制路径 |
 | 菜单、选择层、列表、表单 | `ColorActionSheet`、`ColorPopupMenu`、`ColorDialogBuilder`、`GlassDialogBuilder`、`ShortcutPicker`、`ColorAppPickerPage`、`WidgetProviderPicker` | 明确列表是单选、多选还是执行命令；明确宿主是页面、独立窗口还是服务；保留锚点、草稿和 IME |
 | 面板内容与窗口 | `PanelOverlayDialog`、`ToolsActivity`、`ToolsSettingsActivity`、`ToolsOverlay`、`ToolsPanel`、`ToolsBackdrop`、`BrightnessControl`、`GlassSeekBar`、`VolumeOverlay`、`RepeatPress` | 主窗口、按钮局部光学、滑条、连续按压和系统音量反馈分别检查 |

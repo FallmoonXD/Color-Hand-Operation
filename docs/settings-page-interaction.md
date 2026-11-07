@@ -6,7 +6,7 @@
 
 OHO 首页、触钮页、动作选择及高级/手势设置层级保持。MainActivity 统一使用 ColorOsTheme 的动态颜色/字体接口，以及 ColorSwitch、ColorSlider、ColorRadioButton、ColorCheckBox 和 ColorDialogBuilder。更多菜单也使用同一弹窗控件，不保留默认 PopupMenu。
 
-ColorSettingsScaffold 负责52dp栏、首页32sp大标题、二级18sp中等字重标题、圆形返回按钮、边缘到边缘系统insets和系统ScrollView越界滚动。Main订阅动态主题，只在可见时重建当前页并恢复滚动位置；销毁时注销主题和服务状态订阅。服务连接提示由包内SERVICE_STATE广播刷新，没有状态轮询。
+ColorSettingsScaffold 负责 52dp 工具栏、首页和二级页的 18sp 标题、圆形返回和更多按钮，以及系统栏避让。长列表和短页面的越界拖动共用 COUI 回弹。Main订阅动态主题，只在可见时重建当前页并恢复滚动位置；销毁时注销主题和服务状态订阅。服务连接提示由包内SERVICE_STATE广播刷新，没有状态轮询。
 
 尺寸依据本机Settings资源：toolbar_min_height=52dp，TextAppearance.COUI.Toolbar.SecondTitle=18dp/medium，homepage_header_title_text_size=32dp。卡片保留20dp，因为drawable/card_list_item_full_bg.xml明确在各state使用dimen_20；不能误以旧coui_preference_card_radius=12dp代表当前整卡圆角。
 

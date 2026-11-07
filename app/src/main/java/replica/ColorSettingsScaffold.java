@@ -4,11 +4,13 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Rect;
+import android.text.SpannableString;
+import android.text.style.ReplacementSpan;
 import android.graphics.drawable.Drawable;
-import android.text.TextPaint;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowInsets;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -23,19 +25,18 @@ public final class ColorSettingsScaffold {
     public final LinearLayout page, bar, content;
     public final ScrollView scroll;
     private final Activity activity;
-    private final TextView title, largeTitle;
-    private final boolean home;
+    private final TextView title;
     private final ColorAppBarMask mask;
     private View searchHeader, emptyResults;
     private ListView resultList;
     private int statusInset;
-    private View trailing,homeMore,backIcon;
-    private SettingsSurface toolbarSurface;
-    private CollapsingTitle movingTitle;
+    private View trailing;
+    private ImageView backIcon,moreIcon;
+    private SettingsSurface backSurface,moreSurface;
 
     public ColorSettingsScaffold(Activity activity, String label, boolean home, Runnable onBack) {
-        this.activity=activity;this.home=home;
-        root=new FrameLayout(activity);page=new LinearLayout(activity);page.setOrientation(LinearLayout.VERTICAL);
+        this.activity=activity;
+        root=new FrameLayout(activity);page=new PageBody();page.setOrientation(LinearLayout.VERTICAL);
         root.addView(page,new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v,insets)->{applyInsets(insets);return insets;});
         // A new page is attached to an already laid-out host. Seed padding before its
@@ -43,7 +44,6 @@ public final class ColorSettingsScaffold {
         root.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){
             private android.view.ViewTreeObserver observer;
             private final android.view.ViewTreeObserver.OnPreDrawListener beforeDraw=()->{
-                if(movingTitle!=null)movingTitle.updateGeometry();
                 updateHeader();return true;
             };
             public void onViewAttachedToWindow(View view){observer=view.getViewTreeObserver();observer.addOnPreDrawListener(beforeDraw);WindowInsets current=view.getRootWindowInsets();if(current==null)current=activity.getWindow().getDecorView().getRootWindowInsets();applyInsets(current);view.requestApplyInsets();}
@@ -53,35 +53,18 @@ public final class ColorSettingsScaffold {
         bar=new LinearLayout(activity){@Override public boolean onTouchEvent(android.view.MotionEvent event){return true;}};
         bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(12),0,dp(12),0);
         root.addView(bar,new FrameLayout.LayoutParams(-1,dp(52)));
-        if(!home) {
-            FrameLayout target=new FrameLayout(activity);
-            ImageView back=new ImageView(activity);
-            backIcon=back;
-            back.setImageDrawable(SystemIcons.raw(activity,"status_bar_qs_back_arrow"));
-            back.setColorFilter(ColorOsTheme.text(activity));
-            back.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            back.setPadding(dp(10),dp(10),dp(10),dp(10));
-            back.setDuplicateParentStateEnabled(true);
-            toolbarSurface=new SettingsSurface(back,SettingsSurface.Kind.TOOLBAR,20,null);
-            target.addView(back,new FrameLayout.LayoutParams(dp(40),dp(40),Gravity.CENTER));
-            target.setFocusable(true);
-            target.setContentDescription("返回");
-            target.setOnClickListener(v->onBack.run());
-            bar.addView(target,new LinearLayout.LayoutParams(dp(48),dp(48)));
-        }
-        title=titleLabel(label,18,550);title.setPadding(dp(home?8:6),0,dp(8),0);bar.addView(title,new LinearLayout.LayoutParams(0,-1,1));
-        scroll=new ColorSettingsScrollView(activity);scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setVerticalScrollBarEnabled(false);page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        scroll.setPadding(0,home?0:dp(52),0,0);
-        LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);scroll.addView(body,new ScrollView.LayoutParams(-1,-2));
-        largeTitle=titleLabel(label,32,600);
+        if(!home)bar.addView(toolbarButton(false,"返回",v->onBack.run()),new LinearLayout.LayoutParams(dp(48),dp(48)));
+        title=titleLabel(label,18,550);title.setPadding(dp(home?8:6),0,dp(8),0);title.setAccessibilityHeading(true);
         if(home){
-            largeTitle.setMinHeight(dp(64));largeTitle.setPaddingRelative(dp(24),dp(8),dp(24),0);
-            body.addView(largeTitle,new LinearLayout.LayoutParams(-1,-2));
-            title.setVisibility(View.INVISIBLE);title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            largeTitle.setVisibility(View.INVISIBLE);largeTitle.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            SpannableString brand=new SpannableString(label);
+            if(label.startsWith("Color"))brand.setSpan(new ColorWord(),0,5,SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE);
+            title.setText(brand);title.setContentDescription(label);
         }
-        content=new LinearLayout(activity);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(16),dp(home?2:12),dp(16),dp(32));body.addView(content,new LinearLayout.LayoutParams(-1,-2));
-        if(home){movingTitle=new CollapsingTitle(label);root.addView(movingTitle,new FrameLayout.LayoutParams(-1,-1));}
+        bar.addView(title,new LinearLayout.LayoutParams(0,-1,1));
+        scroll=new ColorSettingsScrollView(activity);scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setVerticalScrollBarEnabled(false);page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        scroll.setPadding(0,dp(52),0,0);
+        LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);scroll.addView(body,new ScrollView.LayoutParams(-1,-2));
+        content=new LinearLayout(activity);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(16),dp(12),dp(16),dp(32));body.addView(content,new LinearLayout.LayoutParams(-1,-2));
         applyInsets(activity.getWindow().getDecorView().getRootWindowInsets());
         refreshColors();
     }
@@ -107,6 +90,63 @@ public final class ColorSettingsScaffold {
         setSearchHeader(field,lp);
         return field.input;
     }
+    /** ScrollView leaves a clickable child in charge when its content fits. Own only vertical
+     * drags in that case; normal ViewGroup interception cancels the child's pending click. */
+    private final class PageBody extends LinearLayout {
+        final ColorScrollSpring edge=new ColorScrollSpring(this,this::applyPull);
+        final ColorScrollPhysics.Gate gate=new ColorScrollPhysics.Gate();
+        final int slop=ViewConfiguration.get(getContext()).getScaledTouchSlop();
+        boolean shortContact,dragging;
+        float startX,startY,lastY;
+        long lastMove;
+        double velocity;
+        PageBody(){super(activity);}
+        private void applyPull(){for(int i=0;i<getChildCount();i++)getChildAt(i).setTranslationY(edge.position());}
+        private boolean fits(){
+            View target=resultList!=null&&resultList.getVisibility()==VISIBLE?resultList:scroll;
+            return !target.canScrollVertically(-1)&&!target.canScrollVertically(1);
+        }
+        private boolean takeDrag(MotionEvent event){
+            if(!dragging&&shortContact&&gate.allowed()&&event.getActionMasked()==MotionEvent.ACTION_MOVE){
+                dragging=true;lastY=startY+Math.copySign(slop,event.getRawY()-startY);
+            }
+            return dragging;
+        }
+        @Override public boolean dispatchTouchEvent(MotionEvent event){
+            int action=event.getActionMasked();
+            if(action==MotionEvent.ACTION_DOWN){
+                dragging=edge.running()||edge.position()!=0;edge.stop();
+                shortContact=dragging||fits();startX=event.getRawX();startY=lastY=event.getRawY();
+                velocity=0;lastMove=event.getEventTime();gate.begin(false,event.getPointerCount());
+            }else if(shortContact&&action==MotionEvent.ACTION_POINTER_DOWN){
+                gate.block();edge.reset();
+            }else if(shortContact&&action==MotionEvent.ACTION_MOVE&&event.getPointerCount()==1){
+                gate.move(event.getRawX()-startX,event.getRawY()-startY,slop);
+            }
+            boolean handled=super.dispatchTouchEvent(event);
+            if(dragging&&gate.allowed()&&action==MotionEvent.ACTION_MOVE&&edge.enabled()){
+                float y=event.getRawY(),old=edge.position();
+                edge.dragBy(lastY-y);
+                velocity=(edge.position()-old)*1000/Math.max(1,event.getEventTime()-lastMove);
+                lastY=y;lastMove=event.getEventTime();
+            }
+            if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL){
+                if(dragging)edge.release(action==MotionEvent.ACTION_UP&&event.getEventTime()-lastMove<80?velocity:0);
+                dragging=shortContact=false;gate.end();
+            }
+            return handled;
+        }
+        @Override public boolean onInterceptTouchEvent(MotionEvent event){return takeDrag(event);}
+        @Override public boolean onTouchEvent(MotionEvent event){
+            if(shortContact){takeDrag(event);return true;}
+            return super.onTouchEvent(event);
+        }
+        @Override public void onWindowFocusChanged(boolean focused){
+            super.onWindowFocusChanged(focused);if(!focused)cancelPull();
+        }
+        @Override protected void onDetachedFromWindow(){cancelPull();super.onDetachedFromWindow();}
+        private void cancelPull(){dragging=shortContact=false;gate.end();edge.reset();}
+    }
     private void updateHeader(){
         int bottom=statusInset+dp(52);
         if(searchHeader!=null){
@@ -117,26 +157,18 @@ public final class ColorSettingsScaffold {
             if(resultList.getPaddingTop()!=bottom)resultList.setPadding(0,bottom,0,0);
             LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)emptyResults.getLayoutParams();
             if(lp.topMargin!=bottom){lp.topMargin=bottom;emptyResults.setLayoutParams(lp);}
-        }else{
-            // The home body's first row already provides the title and its trailing button.
-            int start=home?statusInset:bottom;
-            if(scroll.getPaddingTop()!=start)scroll.setPadding(0,start,0,0);
-        }
+        }else if(scroll.getPaddingTop()!=bottom)scroll.setPadding(0,bottom,0,0);
         int offset=scroll.getScrollY();
         if(resultList!=null){
             View first=resultList.getChildAt(0);
             offset=!resultList.isShown()||first==null?0:resultList.getFirstVisiblePosition()>0?dp(30):resultList.getPaddingTop()-first.getTop();
         }
-        int extra;
-        if(home){
-            if(homeMore!=null)bottom=Math.max(bottom,Math.round(homeMore.getY())+homeMore.getHeight());
-            extra=dp(14);
-        }else extra=dp(searchHeader==null?24:8);
+        int extra=dp(searchHeader==null?24:8);
         int height=bottom+extra;
         // Only the overlay bounds follow the moving title. Avoid remeasuring the list on scroll.
         if(mask.getWidth()>0&&mask.getHeight()!=height)
             mask.layout(mask.getLeft(),mask.getTop(),mask.getRight(),mask.getTop()+height);
-        mask.setFraction(ColorTitleMotion.progress(offset,dp(30)));
+        mask.setTravel(offset,((PageBody)page).edge.position(),dp(30));
     }
     private TextView label(String value,int size,int weight){TextView t=new TextView(activity);t.setText(value);t.setTextSize(size);t.setTypeface(ColorOsTheme.typeface(activity,weight));t.setTextColor(ColorOsTheme.text(activity));t.setGravity(Gravity.CENTER_VERTICAL);t.setIncludeFontPadding(false);return t;}
     private TextView titleLabel(String value,int size,int weight){TextView t=label(value,size,weight);t.setSingleLine(true);t.setHorizontallyScrolling(false);t.setAutoSizeTextTypeUniformWithConfiguration(1,size,1,android.util.TypedValue.COMPLEX_UNIT_SP);return t;}
@@ -154,71 +186,46 @@ public final class ColorSettingsScaffold {
     }
     private int dp(float v){return Math.round(v*activity.getResources().getDisplayMetrics().density);}
     public void setMore(View.OnClickListener action,String description){
-        ImageView more=new ImageView(activity);more.setImageResource(dev.edgeflow.R.drawable.cos_settings_more);more.setColorFilter(ColorOsTheme.text(activity));more.setScaleType(ImageView.ScaleType.CENTER_INSIDE);more.setPadding(dp(12),dp(12),dp(12),dp(12));more.setContentDescription(description);more.setTooltipText(description);more.setBackground(ColorDialogBuilder.touchBackground(activity,Color.TRANSPARENT,24));more.setOnClickListener(action);more.setFocusable(true);
-        if(home){
-            View slot=new View(activity);slot.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);setTrailing(slot);
-            largeTitle.setPaddingRelative(dp(24),largeTitle.getPaddingTop(),dp(72),largeTitle.getPaddingBottom());homeMore=more;
-            toolbarSurface=new SettingsSurface(more,SettingsSurface.Kind.TOOLBAR,24,null);
-            root.addView(more,new FrameLayout.LayoutParams(dp(48),dp(48)));movingTitle.updateGeometry();
-        }else setTrailing(more);
+        setTrailing(toolbarButton(true,description,action));
+    }
+    private FrameLayout toolbarButton(boolean more,String description,View.OnClickListener click){
+        FrameLayout target=new FrameLayout(activity);
+        target.setFocusable(true);target.setContentDescription(description);target.setOnClickListener(click);
+        ImageView icon=new ImageView(activity);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        if(more)icon.setImageResource(dev.edgeflow.R.drawable.cos_settings_more);
+        else icon.setImageDrawable(SystemIcons.raw(activity,"status_bar_qs_back_arrow"));
+        icon.setColorFilter(ColorOsTheme.text(activity));icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        int pad=dp(more?8:10);icon.setPadding(pad,pad,pad,pad);icon.setDuplicateParentStateEnabled(true);
+        target.addView(icon,new FrameLayout.LayoutParams(dp(40),dp(40),Gravity.CENTER));
+        SettingsSurface surface=new SettingsSurface(icon,SettingsSurface.Kind.TOOLBAR,20,null);
+        if(more){target.setTooltipText(description);moreIcon=icon;moreSurface=surface;}
+        else{backIcon=icon;backSurface=surface;}
+        return target;
     }
     public void setTrailing(View view){if(trailing!=null)bar.removeView(trailing);trailing=view;bar.addView(view,new LinearLayout.LayoutParams(Math.max(dp(48),view.getMinimumWidth()),dp(48)));}
-    public void refreshColors(){root.setBackgroundColor(ColorOsTheme.background(activity));page.setBackgroundColor(ColorOsTheme.background(activity));title.setTextColor(ColorOsTheme.text(activity));largeTitle.setTextColor(ColorOsTheme.text(activity));if(homeMore instanceof ImageView)((ImageView)homeMore).setColorFilter(ColorOsTheme.text(activity));if(backIcon instanceof ImageView)((ImageView)backIcon).setColorFilter(ColorOsTheme.text(activity));if(toolbarSurface!=null)toolbarSurface.refresh();bar.invalidate();if(movingTitle!=null)movingTitle.invalidate();}
+    public void refreshColors(){
+        int fg=ColorOsTheme.text(activity),bg=ColorOsTheme.background(activity);
+        root.setBackgroundColor(bg);page.setBackgroundColor(bg);title.setTextColor(fg);
+        if(moreIcon!=null){moreIcon.setColorFilter(fg);moreSurface.refresh();}
+        if(backIcon!=null){backIcon.setColorFilter(fg);backSurface.refresh();}
+    }
 
-    /** One title outside ScrollView clipping; placeholders keep the accepted resting geometry. */
-    private final class CollapsingTitle extends View {
-        private final TextPaint paint=new TextPaint(Paint.ANTI_ALIAS_FLAG|Paint.SUBPIXEL_TEXT_FLAG);
-        private final Drawable colorWord;
-        private final String tail;
-        private final Rect bounds=new Rect();
-        private float x,baseline,size,availableWidth;
-        private boolean ready,rtl;
-        CollapsingTitle(String text){
-            super(activity);
-            boolean brand="Color Hand Operation".equals(text);
-            int adjustment=getResources().getConfiguration().fontWeightAdjustment;
-            boolean bold=adjustment!=Integer.MAX_VALUE&&adjustment>=100;
-            colorWord=brand?activity.getDrawable(bold?dev.edgeflow.R.drawable.title_color_bold:dev.edgeflow.R.drawable.title_color).mutate():null;
-            tail=brand?text.substring("Color".length()):text;
-            setContentDescription(text);setAccessibilityHeading(true);
-            setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);setClickable(false);setFocusable(false);
+    /** Draw the website's Color glyphs on the same baseline and with the same em as the toolbar text. */
+    private final class ColorWord extends ReplacementSpan {
+        private final Drawable word;
+        ColorWord(){
+            int weight=activity.getResources().getConfiguration().fontWeightAdjustment;
+            boolean bold=weight!=Integer.MAX_VALUE&&weight>=100;
+            word=activity.getDrawable(bold?dev.edgeflow.R.drawable.title_color_bold:dev.edgeflow.R.drawable.title_color).mutate();
         }
-        private float localX(View child){float p=0;View v=child;while(v!=root){p+=v.getLeft()+v.getTranslationX();android.view.ViewParent parent=v.getParent();if(!(parent instanceof View))break;v=(View)parent;p-=v.getScrollX();}return p-getLeft();}
-        private float localY(View child){float p=0;View v=child;while(v!=root){p+=v.getTop()+v.getTranslationY();android.view.ViewParent parent=v.getParent();if(!(parent instanceof View))break;v=(View)parent;p-=v.getScrollY();}return p-getTop();}
-        void updateGeometry(){
-            if(largeTitle.getWidth()==0||title.getWidth()==0||largeTitle.getBaseline()<0||title.getBaseline()<0)return;
-            boolean nextRtl=getLayoutDirection()==LAYOUT_DIRECTION_RTL;
-            float expandedX=localX(largeTitle)+(nextRtl?largeTitle.getWidth()-largeTitle.getCompoundPaddingRight():largeTitle.getCompoundPaddingLeft());
-            float collapsedX=localX(title)+(nextRtl?title.getWidth()-title.getCompoundPaddingRight():title.getCompoundPaddingLeft());
-            // The list springs on pull-down. The app bar stays at its expanded anchor.
-            float expandedY=localY(largeTitle)+largeTitle.getBaseline()+scroll.getScrollY()-scroll.getChildAt(0).getTranslationY();
-            // Fit the whole wordmark once to the narrower endpoint. Scroll affects position only.
-            float width=Math.max(1,Math.min(largeTitle.getWidth()-largeTitle.getCompoundPaddingLeft()-largeTitle.getCompoundPaddingRight(),title.getWidth()-title.getCompoundPaddingLeft()-title.getCompoundPaddingRight()));
-            float textSize=largeTitle.getTextSize();
-            boolean metricsChanged=!ready||availableWidth!=width||size!=textSize;
-            if(metricsChanged){availableWidth=width;size=textSize;preparePaint();}
-            float centerOffset=(paint.ascent()+paint.descent())*.5f;
-            float collapsedY=localY(title)+title.getHeight()*.5f-centerOffset;
-            float p=ColorTitleMotion.progress(scroll.getScrollY(),expandedY-collapsedY);
-            float nextX=ColorTitleMotion.lerp(expandedX,collapsedX,p),nextY=ColorTitleMotion.lerp(expandedY,collapsedY,p);
-            if(metricsChanged||x!=nextX||baseline!=nextY||rtl!=nextRtl){x=nextX;baseline=nextY;rtl=nextRtl;ready=true;invalidate();}
-            if(homeMore!=null&&trailing!=null){float bx=localX(trailing)+getLeft(),by=baseline+getTop()+centerOffset-dp(24);if(homeMore.getX()!=bx||homeMore.getY()!=by){homeMore.setX(bx);homeMore.setY(by);}}
+        @Override public int getSize(Paint paint,CharSequence value,int start,int end,Paint.FontMetricsInt metrics){
+            if(metrics!=null)paint.getFontMetricsInt(metrics);
+            return Math.round(paint.getTextSize()*word.getIntrinsicWidth()/word.getIntrinsicHeight());
         }
-        private float wordWidth(){return colorWord==null?0:paint.getTextSize()*colorWord.getIntrinsicWidth()/colorWord.getIntrinsicHeight();}
-        private float textWidth(){return wordWidth()+paint.measureText(tail);}
-        private void preparePaint(){paint.set(largeTitle.getPaint());paint.setTextSize(size);paint.setTextSize(ColorTitleMotion.fittedSize(size,availableWidth,textWidth()));paint.setColor(ColorOsTheme.text(activity));paint.setTextAlign(Paint.Align.LEFT);}
-        @Override protected void onDraw(Canvas canvas){
-            super.onDraw(canvas);if(!ready)return;preparePaint();float start=rtl?x-textWidth():x;
-            if(colorWord!=null){
-                float height=paint.getTextSize(),advance=wordWidth();
-                colorWord.setTint(paint.getColor()|0xff000000);colorWord.setAlpha(paint.getAlpha());
-                colorWord.setBounds(0,0,Math.round(advance),Math.round(height));
-                // The l and r in the hero wordmark rest at y=160 in its 200-unit viewport.
-                int save=canvas.save();canvas.translate(start,baseline-.8f*height);colorWord.draw(canvas);canvas.restoreToCount(save);
-                start+=advance;
-            }
-            canvas.drawText(tail,start,baseline,paint);
+        @Override public void draw(Canvas canvas,CharSequence value,int start,int end,float x,int top,int y,int bottom,Paint paint){
+            int width=getSize(paint,value,start,end,null);
+            word.setTint(paint.getColor());word.setBounds(0,0,width,Math.round(paint.getTextSize()));
+            int save=canvas.save();canvas.translate(x,y-.8f*paint.getTextSize());word.draw(canvas);canvas.restoreToCount(save);
         }
-        @Override public void onInitializeAccessibilityNodeInfo(android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(info);info.setClassName(TextView.class.getName());if(ready){preparePaint();float width=textWidth();Paint.FontMetrics fm=paint.getFontMetrics();bounds.set((int)Math.floor(rtl?x-width:x),(int)Math.floor(baseline+fm.ascent),(int)Math.ceil(rtl?x:x+width),(int)Math.ceil(baseline+fm.descent));Rect parentBounds=new Rect(bounds);parentBounds.offset(getLeft(),getTop());info.setBoundsInParent(parentBounds);int[] location=new int[2];getLocationOnScreen(location);bounds.offset(location[0],location[1]);info.setBoundsInScreen(bounds);}}
     }
 }
