@@ -10,7 +10,7 @@ Implemented in the independent Settings-style `MainActivity`; existing material 
 | Per-handle actions | `action_<id>_<up/straight/down>_<short/long>` | Existing stable action IDs, application component, or a validated system shortcut identity |
 | Touchpad speed | `touchpad_speed` float | 1.7; range 0.5–3.0 |
 | Navigation orientation | `navigation_vertical` boolean | False |
-| Navigation button size | `navigation_button_size_dp` float | 58 dp; range 40–76 dp |
+| Navigation button touch target | `navigation_button_size_dp` float | 58 dp by default, range 40–76 dp. The glass disc sits 6 dp inside each edge of the target. |
 | Navigation order | `navigation_actions` JSON string | `["back","home","recents"]`; 1–5 unique supported actions, excluding `none` and `navigation_panel` |
 
 The main settings page exposes each additional handle separately. Navigation settings support adding, replacing, moving and removing buttons, plus preview. Touchpad settings expose speed and preview. Enabling an extra handle does not rewrite either primary handle's action map.

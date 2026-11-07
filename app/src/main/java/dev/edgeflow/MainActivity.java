@@ -651,7 +651,7 @@ public final class MainActivity extends Activity {
 
  private void touchpadSettings(){LinearLayout g=group("光标");slider(g,"移动速度","touchpad_speed",.5f,3f,1.7f,false,"×");link(g,"预览触控板","调整后下次打开生效",()->preview("virtual_touchpad"));}
  private void navigationSettings(){
-  LinearLayout g=group("边缘按钮");slider(g,"按键大小","navigation_button_size_dp",40,76,58,false,"dp");
+  LinearLayout g=group("边缘按钮");slider(g,"按键触控范围","navigation_button_size_dp",40,76,58,false,"dp");
   g=group("按键顺序");String[] actions=NavigationConfig.load(this);
   for(int i=0;i<actions.length;i++){
    final int index=i;String label=(i+1)+". "+ActionExecutor.title(actions[i]);LinearLayout r=row(g,label,null);

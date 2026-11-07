@@ -37,13 +37,21 @@ def select_device(adb,requested=None):
 A=[ADB,'-s',select_device(ADB,os.environ.get('EDGEFLOW_SERIAL'))]
 P='dev.edgeflow';B=Path(__file__).resolve().parents[1]/'verification'
 def sh(*args):return subprocess.check_output(A+['shell',shlex.join(args)]).decode('utf-8',errors='replace')
+_display_size=None
+def current_display_size():
+ match=re.search(r'\bcur=(\d+)x(\d+)',sh('dumpsys','window','displays'))
+ if not match:raise RuntimeError('WindowManager did not report the current display size')
+ return tuple(map(int,match.groups()))
 def ui():
+ global _display_size
  # The OEM occasionally kills the short-lived read-only accessibility probe (137).
  # Retry only this snapshot, never an input or a state-changing command.
  for attempt in range(3):
   try:
    data=sh('sh','-c','CLASSPATH=/data/local/tmp/edgeflow-probe.jar app_process /system/bin probe.OverlayDump')
-   return E.fromstring(data[data.index('<hierarchy>'):])
+   tree=E.fromstring(data[data.index('<hierarchy>'):])
+   _display_size=current_display_size()
+   return tree
   except subprocess.CalledProcessError as failure:
    if failure.returncode!=137 or attempt==2:raise
    time.sleep(.7)
@@ -54,7 +62,8 @@ def tap(n):
 def bounds(n):return tuple(map(int,re.findall(r'-?\d+',n.get('bounds'))))
 
 def visible(n):
- a,b,c,e=bounds(n);return n.get("visible-to-user","true")=="true" and c>a and e>b and b>=0 and e<=2780 and a>=0 and c<=1264
+ a,b,c,e=bounds(n);w,h=_display_size or current_display_size()
+ return n.get("visible-to-user","true")=="true" and 0<=a<c<=w and 0<=b<e<=h
 
 def wait_node(s,timeout=6):
  end=time.monotonic()+timeout

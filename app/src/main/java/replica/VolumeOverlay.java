@@ -69,6 +69,7 @@ public final class VolumeOverlay {
    if(dialog!=null){try{dialog.dismiss();}catch(Exception ignored){}dialog=null;}
    if(view.getParent() instanceof ViewGroup)((ViewGroup)view.getParent()).removeView(view);
    view.setBackground(new ColorOsSurface(c,22,2).attach(view));
+   PanelGeometry.reserveShadow(params,(int)Math.ceil(view.getElevation()*4));
    view.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_OUTSIDE){dismiss();return true;}return false;});
    try{manager.addView(view,params);mounted=true;view.post(this::enter);arm();}catch(Exception ignored){}
   }

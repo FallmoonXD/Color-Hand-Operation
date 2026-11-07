@@ -1,4 +1,6 @@
 uniform float u_edgeReferenceAspect;
+uniform int u_pillCount;
+uniform float4 u_pills[6];
 
     vec3 luminosity( vec3 s, vec3 d ) {
         float dLum = dot(d, vec3(0.3, 0.59, 0.11));
@@ -20,7 +22,7 @@ uniform float u_weight;
 uniform float u_commonArray[8];
 uniform int uEnableBlend;
 uniform float3x3 uMatrix;
-uniform float4 uMatrixParams;uniform float u_edgeArray[16];uniform float[16] u_shadowArray;uniform float u_opticsArray[12];const float EPS = 1e-6;
+uniform float4 uMatrixParams;uniform float u_edgeArray[16];uniform float[16] u_shadowArray;const float EPS = 1e-6;
 const float PI = 3.1415926;
 const float ANTIALIASING = 1.5; struct CommonDataRect{
      float2 halfResolution;
@@ -103,10 +105,24 @@ const float junctionPower = 1.0;vec4 getColor(CommonDataRect rectData){
     rectData.halfResolution = float2(u_commonArray[0], u_commonArray[1]);rectData.pos = coords.xy - float2(u_commonArray[2], u_commonArray[3]);
     rectData.halfSize = float2(u_commonArray[4], u_commonArray[5]);
     rectData.coner =  u_commonArray[6];
-    rectData.weight = u_commonArray[7];return rectData;}float RBox(float2 p,float2 b,float r){
-    float2 q=abs(p)-b+r;
-    return min(max(q.x,q.y),0.)+length(max(q,0.))-r;
-}float smoothAbs(float x, float k) {
+    rectData.weight = u_commonArray[7];
+    // Coordinates in the capture stay window-relative. Only the glass contour changes.
+    if (u_pillCount > 0) {
+        float2 point = float2(coords.x, u_commonArray[1]*2.0-coords.y);
+        rectData.halfSize = float2(-1.0);
+        for (int i=0; i<6; i++) {
+            float4 pill = u_pills[i];
+            float2 offset = point-pill.xy;
+            if (i<u_pillCount && all(lessThanEqual(abs(offset),pill.zw))) {
+                rectData.pos = float2(offset.x,-offset.y);
+                rectData.halfSize = pill.zw;
+                rectData.coner = min(pill.z,pill.w);
+                rectData.weight = 1.0;
+            }
+        }
+    }
+    return rectData;}
+float smoothAbs(float x, float k) {
     return sqrt(x * x + k * k);
 }
 float smoothMaxSqrt(float a, float b, float k) {
@@ -303,37 +319,18 @@ float smoothSDF_D(float2 p, float2 b, float corner, float weight){
     half4 fadeColor = half4(uFadeColor, fadeAlpha*mix_c);
     fadeColor.rgb = color.rgb+fadeColor.rgb;
     return half4(clamp(mix(color.rgb, fadeColor.rgb, fadeColor.a), 0.0,1.0),1.0);
-}half4 blendOptics(float2 coords, CommonDataRect rectData, half4 color, float d, float mix_c){
-    vec4 opticsColor = vec4(u_opticsArray[0],u_opticsArray[1],u_opticsArray[2],u_opticsArray[3]);
-    float gray = clamp((dot(float3(0.2126, 0.7152, 0.0722), color.rgb) - 0.6) * 1.6, 0.0, 1.0);
-    opticsColor[3] =  u_opticsArray[3]*(1.0 - gray)*(1.0-gray);
-    if(opticsColor[3]>0.001){
-        vec2 pos_optics = (rectData.pos - vec2(u_opticsArray[4],u_opticsArray[5])) ;
-        float opticsSdf = u_opticsArray[8];
-        vec2 halfSizeOptics = rectData.halfSize*vec2(u_opticsArray[6],u_opticsArray[7]);
-        if(all(lessThanEqual(abs(pos_optics), halfSizeOptics+u_opticsArray[8]))){
-            float conerOptics = min(rectData.coner, min(halfSizeOptics.x,halfSizeOptics.y));
-            opticsSdf = RBox(pos_optics, halfSizeOptics, conerOptics);
-            float value = smoothstep(u_opticsArray[8], 0.0, opticsSdf);
-            vec2 uv_pos = coords.xy*0.0127;
-            float n = clamp((random(uv_pos)-.5)*0.01+.5,0.,1.);
-            value = clamp(softLight(n,value),0.0,1.0);
-            opticsColor.a *= value*mix_c;
-            opticsColor.rgb = color.rgb+opticsColor.rgb;
-            color = half4(clamp(mix(color.rgb, opticsColor.rgb, opticsColor.a), 0.0,1.0),1.0);
-        }
-    }
-    return color;
-}half4 main(float2 position) {float2 matrixScale = max(float2(0.0000001), float2(uMatrixParams[0], uMatrixParams[1]));
+}
+half4 main(float2 position) {float2 matrixScale = max(float2(0.0000001), float2(uMatrixParams[0], uMatrixParams[1]));
 float2 matrixTrans = float2(uMatrixParams[2], uMatrixParams[3]);
 float2 mapCoords = (uMatrix * float3((position - matrixTrans) / matrixScale / matrixScale, 0.0)).xy;
 half4 outputCol = half4(uniBDFBitmap.eval(mapCoords).rgb, 1.0);if (uEnableBlend != 0) {outputCol.rgb=mix(outputCol.rgb,luminosity(vec3(89.0/255.0),outputCol.rgb),77.0/255.0);}half4 rawCol = outputCol;
 float2 coords = float2(position.x, u_commonArray[1]*2.0-position.y);
 CommonDataRect rectData = getCommonDataRect(coords);
+if (rectData.halfSize.x < 0.0) return half4(0.0);
 half4 inputColor = getColor(rectData);
 outputCol = mix(outputCol, half4(inputColor.rgb, 1.0), inputColor.a);float sdf = 1.0;
 float mix_c = 1.0;sdf = smoothSDF_D(rectData.pos, rectData.halfSize, rectData.coner, rectData.weight);ShapeResult shapeResult = ShapeResult(sdf, mix_c);     float shape = smoothstep(0.0, -ANTIALIASING, shapeResult.sdf)*shapeResult.mix_c;
 //     return half4((sin(shapeResult.sdf)+1.0)*0.5,shape,0.0,1.0);
      if(shape < EPS){
         return half4(0.0);
-     }outputCol = blendEdge(rectData, outputCol, rawCol, shapeResult.sdf, 1.0);outputCol = blendShadowColor(coords, rectData, outputCol, shapeResult.sdf, 1.0);outputCol = blendOptics(coords, rectData, outputCol, shapeResult.sdf, 1.0);return outputCol*shape;}
+     }outputCol = blendEdge(rectData, outputCol, rawCol, shapeResult.sdf, 1.0);outputCol = blendShadowColor(coords, rectData, outputCol, shapeResult.sdf, 1.0);return outputCol*shape;}

@@ -9,10 +9,9 @@ public final class MaterialPaletteCheck {
             float[] tint=new float[20];tint[1]=1;if(kind==3){tint[2]=tint[3]=tint[4]=dark?.12f:.84f;tint[5]=.78f;}
             float[] edge={1,1,1,1.6f*s,3*s,1.6f*s,3*s,dark?.35f:.25f,dark?.4f:.6f,.25f,.6f,.15f,.5f,0,10,.5f};
             float[] shadow={1,1,1,dark?.07f:.15f,0,0,40*s,0,36*s,1.3f,1.3f,20,.5f,6*s,20,.3f};
-            float[] optics={1,1,1,dark?.01f:.05f,0,0,.65f,.65f,60*s,0,0,0};
-            same(on.values.get("u_colorArray"),tint,"accepted tint unchanged");same(on.values.get("u_edgeArray"),edge,"accepted edge unchanged");same(on.values.get("u_shadowArray"),shadow,"accepted shadow unchanged");same(on.values.get("u_opticsArray"),optics,"accepted optics unchanged");
-            edge[7]=edge[8]=0;shadow[3]=0;optics[3]=0;
-            same(off.values.get("u_colorArray"),tint,"stroke-off preserves tint");same(off.values.get("u_edgeArray"),edge,"stroke-off only masks edge alpha");same(off.values.get("u_shadowArray"),shadow,"stroke-off only masks shadow alpha");same(off.values.get("u_opticsArray"),optics,"stroke-off only masks optics alpha");
+            same(on.values.get("u_colorArray"),tint,"accepted tint unchanged");same(on.values.get("u_edgeArray"),edge,"accepted edge unchanged");same(on.values.get("u_shadowArray"),shadow,"accepted shadow unchanged");same(on.values.get("u_opticsArray"),null,"no inset rectangle highlight");
+            edge[7]=edge[8]=0;shadow[3]=0;
+            same(off.values.get("u_colorArray"),tint,"stroke-off preserves tint");same(off.values.get("u_edgeArray"),edge,"stroke-off only masks edge alpha");same(off.values.get("u_shadowArray"),shadow,"stroke-off only masks shadow alpha");same(off.values.get("u_opticsArray"),null,"stroke-off omits inset rectangle highlight");
         }
         System.out.println("PASS "+checks+" accepted material palette assertions");
     }

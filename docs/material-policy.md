@@ -1,6 +1,8 @@
 # Live system material policy
 
-Implemented 2026-11-05 in `ColorOsSurface`, `NativeMaterial`, `OriginalMaterial` and `LightSurface`. The existing AGSL assets, capture radius, crop mapping, accepted tint/edge/shadow/optics values and native entrance parameters remain unchanged when both system material switches are enabled.
+The material lives in `ColorOsSurface`, `NativeMaterial`, `OriginalMaterial` and `LightSurface`. The November 7 update removes the bright rectangle produced by the inset highlight in all three AGSL renderers. Panel windows reserve space outside their content frame for the system shadow. On PKR110 the quick tools window required more than the default 112 px to fade to the page background.
+
+The navigation rail supplies the shader with the grip and button contours in window coordinates. Each gets its own rim. All buttons sample the same captured frame. The clickable slots are larger than the glass shapes, with room for a small shadow. The spaces between buttons remain transparent.
 
 `ColorOsTheme.materialBlur`, `materialStroke` and `dark` are the source of current policy. Theme already combines the user's material settings with power-saving/global window-blur restrictions. No private system setting is written by these classes.
 
@@ -10,7 +12,7 @@ Implemented 2026-11-05 in `ColorOsSurface`, `NativeMaterial`, `OriginalMaterial`
 | --- | --- |
 | Blur disabled | Immediately removes this native capture request, invalidates its callback generation, clears pending/displayed-frame references and unsubscribes from native clients. Window background blur is forced to zero. White-content floating panels use the system volume panel's opaque inverse fallback; Settings-style dialogs keep their matching system card. Existing Drawable/window alpha still controls entrance/exit. A pending first-frame entrance is released immediately. |
 | Blur enabled again | Re-enrolls the attached surface as a native client and obtains a fresh frame. The existing fallback/native transition remains in use. Old buffer callbacks cannot reattach a stale frame. |
-| Stroke disabled, blur enabled | Keeps capture, backdrop mixing and tint. Sets only edge-near/edge-far alpha, inner-light alpha and optics alpha to zero. Fallback reflection, rim and inner-light drawing are skipped. |
+| Stroke disabled, blur enabled | Keeps capture, backdrop mixing and tint. Sets the near/far edge and inner-shadow alphas to zero and skips the fallback reflection and rim. |
 | Stroke enabled again | Restores the same accepted values for the current light/dark palette. |
 | Night mode changed | Updates the current shader's tint and optical uniforms before its next draw, reusing the existing backdrop. It does not restart capture, reset entrance, or wait until the panel is fully visible to recolor. |
 | Host detached | Cancels entrance timeout/initial-capture retry, removes capture and pre-draw observation, clears frame references and closes the host theme subscription. Reattaching reads current policy again. |

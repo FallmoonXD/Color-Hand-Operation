@@ -48,7 +48,7 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
         if(++initialCaptureAttempts<4)NativeBlur.main.postDelayed(this,64);
     }};
     private volatile int generation;
-    private boolean active,requested,failed,blurDisabled,deliveryPosted;
+    private boolean active,requested,failed,blurDisabled,deliveryPosted,pillWindow;
     private int lastWindowBlur=-1;
     private int alpha=255,frameCount;
     private long firstFrame;
@@ -105,7 +105,11 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
         // Enabled values remain the accepted geometry/mixing, byte for byte.
         uniform("u_edgeArray",1,1,1,1.6f*s,3*s,1.6f*s,3*s,strokeAllowed?(dark?.35f:.25f):0,strokeAllowed?(dark?.4f:.6f):0,.25f,.6f,.15f,.5f,0,10,.5f);
         uniform("u_shadowArray",1,1,1,strokeAllowed?(dark?.07f:.15f):0,0,0,40*s,0,36*s,1.3f,1.3f,20,.5f,6*s,20,.3f);
-        uniform("u_opticsArray",1,1,1,strokeAllowed?(dark?.01f:.05f):0,0,0,.65f,.65f,60*s,0,0,0);
+    }
+    void setPills(int count,float[] shapes){
+        pillWindow=true;
+        if(!failed&&shader!=null)try{shader.setFloatUniform("u_pills",shapes);shader.setIntUniform("u_pillCount",count);}
+        catch(RuntimeException error){failed=true;stopNative();startEntrance("native-failed");android.util.Log.w("ReplicaNativeMaterial","Button contours unavailable",error);}
     }
     void themeChanged(){
         boolean nextDark=ColorOsTheme.dark(context),nextBlur=ColorOsTheme.materialBlur(context),nextStroke=ColorOsTheme.materialStroke(context);
@@ -265,7 +269,7 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
         setBlur(false);
     }
     private void setBlur(boolean nativeReady){
-        if(window==null)return;int desired=!blurAllowed||nativeReady||!attached?0:PanelStyle.blurRadius(context);
+        if(window==null)return;int desired=pillWindow||!blurAllowed||nativeReady||!attached?0:PanelStyle.blurRadius(context);
         if(blurAllowed&&lastWindowBlur==desired)return;
         try{window.setBackgroundBlurRadius(desired);lastWindowBlur=desired;blurDisabled=nativeReady;}catch(Exception ignored){}
     }

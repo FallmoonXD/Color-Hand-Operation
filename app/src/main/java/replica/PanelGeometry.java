@@ -5,6 +5,40 @@ public final class PanelGeometry {
  public static android.graphics.Point screen(Context c){android.graphics.Point p=new android.graphics.Point();((WindowManager)c.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRealSize(p);return p;}
  /** All positions below are physical screen coordinates, regardless of window type. */
  public static void screenCoordinates(WindowManager.LayoutParams p){p.setFitInsetsTypes(0);p.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;}
+ /** Reserve compositor pixels outside the content frame for the floating window's spot shadow. */
+ static void reserveShadow(Window window){
+  float elevation=window.getDecorView().getElevation();
+  int padding=(int)Math.ceil(4*Math.max(elevation,PanelStyle.dp(window.getContext(),16)));
+  reserveShadow(window.getAttributes(),padding);
+ }
+ static void reserveShadow(WindowManager.LayoutParams params,int padding){
+  try{
+   ShadowInsets.set(params,padding);
+  }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){
+   android.util.Log.d("ReplicaPanel","Using platform shadow insets",unavailable);
+  }
+ }
+ private static final class ShadowInsets {
+  private static final java.lang.reflect.Field insets,manual;
+  static {
+   java.lang.reflect.Field rect=null,flag=null;
+   try{
+    org.lsposed.hiddenapibypass.HiddenApiBypass.addHiddenApiExemptions("Landroid/view/WindowManager$LayoutParams;");
+    rect=WindowManager.LayoutParams.class.getField("surfaceInsets");
+    flag=WindowManager.LayoutParams.class.getField("hasManualSurfaceInsets");
+   }catch(ReflectiveOperationException|RuntimeException|LinkageError unavailable){
+    android.util.Log.d("ReplicaPanel","Manual shadow insets unavailable",unavailable);
+   }
+   insets=rect;manual=flag;
+  }
+  static void set(WindowManager.LayoutParams params,int padding)throws IllegalAccessException{
+   if(insets==null||manual==null)return;
+   android.graphics.Rect space=(android.graphics.Rect)insets.get(params);
+   if(space==null)return;
+   manual.setBoolean(params,true);
+   space.set(Math.max(space.left,padding),Math.max(space.top,padding),Math.max(space.right,padding),Math.max(space.bottom,padding));
+  }
+ }
  public static float unit(Context c){DisplayMetrics m=c.getResources().getDisplayMetrics();float dpi=m.xdpi;if(dpi<160||dpi>800)dpi=m.densityDpi;return Math.min(m.widthPixels*.67f,1.7f*dpi)/260f;}
  public static int px(Context c,float n){return Math.round(n*unit(c));}
  public static void position(Activity a,int width,int height,boolean tools,float[] gesture){
