@@ -208,16 +208,22 @@ def action_settings(title):
  open_action_chooser(handle);click_item('设置'+title,True);wait_node(title)
  assert {k:v for k,v in preferences().items() if k.startswith('action_')}==mapping,'Opening an action gear changed gesture mappings'
 
+def panel_settings(title):
+ main_home();click_item('面板与工具',True);click_item(title,True);wait_node(title)
+
+def range_settings(handle='left'):
+ open_handle(handle);click_item('触钮范围',True);wait_node('大小')
+
 PREVIEWS={'快速工具':'预览快速工具','小组件':'打开小组件面板','快速启动':'编辑快速启动','任务切换器':'预览任务切换器','虚拟触控板':'预览触控板','导航键面板':'预览导航键','键盘快捷方式':'预览键盘快捷方式'}
 SETTINGS_ALIASES={'快速工具设置':'快速工具','小组件设置':'小组件','快速启动设置':'快速启动','任务切换器设置':'任务切换器','触控板设置':'虚拟触控板','导航键设置':'导航键面板','键盘快捷方式设置':'键盘快捷方式'}
 
 def main_link(s):
  """Compatibility routing preserves callers' old settings-versus-preview intent."""
  if s in HANDLE_ALIASES:return open_handle(HANDLE_ALIASES[s])
- if s in SETTINGS_ALIASES:return action_settings(SETTINGS_ALIASES[s])
- if s in PREVIEWS:action_settings(s);click_item(PREVIEWS[s],True);return
+ if s in SETTINGS_ALIASES:return panel_settings(SETTINGS_ALIASES[s])
+ if s in PREVIEWS:panel_settings(s);click_item(PREVIEWS[s],True);return
  main_home()
- if s in ('高级设置','手势设置'):click_item(s,True);return
+ if s in ('高级设置','手势设置','面板与工具','触钮范围'):click_item(s,True);return
  if s=='应用例外':click_item('高级设置',True);click_item('应用例外',True);return
  if s in ('关于','关于 Color Hand Operation','恢复默认设置','备份与恢复','权限与后台运行'):
   click('更多选项');click('关于' if s=='关于 Color Hand Operation' else s);return

@@ -38,7 +38,12 @@ public final class KeyboardShortcutsOverlay {
   if(entries.isEmpty()){TextView empty=text("还没有快捷方式，点按“添加”创建。",15,400,true);empty.setPadding(dp(12),dp(18),dp(12),dp(18));menuRows.addView(empty);}
   for(Entry entry:entries){
    LinearLayout row=new LinearLayout(context);row.setBaselineAligned(false);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(8),dp(4),dp(8));row.setMinimumHeight(dp(72));row.setBackground(replica.ColorDialogBuilder.touchBackground(context,android.graphics.Color.TRANSPARENT,14));
-   LinearLayout labels=new LinearLayout(context);labels.setOrientation(LinearLayout.VERTICAL);labels.setPadding(0,0,dp(8),0);labels.addView(text(entry.name,16,500,false));TextView chord=text(entry.chord,13,400,true);chord.setPadding(0,dp(3),0,0);labels.addView(chord);labels.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
+   LinearLayout labels=new LinearLayout(context);labels.setOrientation(LinearLayout.VERTICAL);labels.setPadding(0,0,dp(8),0);labels.addView(text(entry.name,16,500,false));LinearLayout chord=new LinearLayout(context);chord.setGravity(Gravity.CENTER_VERTICAL);chord.setPadding(0,dp(4),0,0);
+   for(String part:entry.chord.split("\\+")){
+    TextView key=text(part,12,500,false);key.setPadding(dp(5),dp(2),dp(5),dp(2));key.setGravity(Gravity.CENTER);
+    key.setBackground(replica.PanelStyle.shape(context,replica.ColorOsTheme.card(context),6));LinearLayout.LayoutParams kp=new LinearLayout.LayoutParams(-2,-2);kp.setMarginEnd(dp(3));chord.addView(key,kp);
+   }
+   labels.addView(chord);labels.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
    ImageView gear=new ImageView(context);gear.setImageDrawable(replica.SystemIcons.raw(context,"com.android.settings:ic_edit_24dp"));Runnable gearStyle=()->{gear.setColorFilter(replica.ColorOsTheme.text(context));gear.setBackground(replica.ColorDialogBuilder.touchBackground(context,android.graphics.Color.TRANSPARENT,24));};gearStyle.run();replica.ColorOsTheme.watch(gear,gearStyle);gear.setPadding(dp(13),dp(13),dp(13),dp(13));gear.setContentDescription("编辑"+entry.name);gear.setFocusable(true);gear.setBackground(replica.ColorDialogBuilder.touchBackground(context,android.graphics.Color.TRANSPARENT,24));row.addView(gear,new LinearLayout.LayoutParams(dp(48),dp(48)));
    row.setFocusable(true);row.setContentDescription(entry.name+"，"+entry.chord);row.setOnClickListener(v->run(entry));gear.setOnClickListener(v->manage(entry,gear));row.setOnLongClickListener(v->{manage(entry,row);return true;});menuRows.addView(row,new LinearLayout.LayoutParams(-1,-2));
   }

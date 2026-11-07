@@ -6,17 +6,19 @@ from preference_trial import PreferenceTrial
 out={}
 def back():d.sh('input','keyevent','4');time.sleep(.5)
 def current():return json.loads(d.preferences().get('navigation_actions','["back","home","recents"]'))
-def switch():return next(n for n in d.ui().iter('node') if n.get('class')=='android.widget.Switch' and n.get('content-desc')=='纵向排列' and d.visible(n))
+def orientation(text):return next(n for n in d.ui().iter('node') if n.get('class')=='android.widget.RadioButton' and n.get('text')==text and d.visible(n))
 def edit_first():
  tree=d.ui();node=next(n for n in tree.iter('node') if n.get('content-desc','').startswith('编辑1. ') and d.visible(n));d.tap(node);time.sleep(.3)
 
 with PreferenceTrial({'edgeflow':{'navigation_actions','navigation_vertical'}}):
  d.action_settings('导航键面板');initial=current();d.shot('continuous-pages-navigation')
- sw=switch();identity=sw.get('node-hash');before=sw.get('checked');d.tap(sw);time.sleep(.45)
- assert switch().get('node-hash')==identity
- assert switch().get('checked')!=before
- d.tap(switch());time.sleep(.4);assert switch().get('checked')==before
- out['switch_animates_without_rebuilding_page']=True
+ original='竖排' if orientation('竖排').get('checked')=='true' else '横排'
+ other='横排' if original=='竖排' else '竖排'
+ identity=orientation(original).get('node-hash')
+ d.tap(orientation(other));time.sleep(.45)
+ assert orientation(original).get('node-hash')==identity and orientation(other).get('checked')=='true'
+ d.tap(orientation(original));time.sleep(.4);assert orientation(original).get('checked')=='true'
+ out['orientation_updates_without_rebuilding_page']=True
  edit_first();tree=d.ui();assert not any(n.get('text')=='前移' and d.visible(n) for n in tree.iter('node'));d.shot('continuous-pages-navigation-menu')
  if len(initial)>1:
   d.click_item('后移');expected=initial.copy();expected[0],expected[1]=expected[1],expected[0];assert current()==expected;out['reorder_saved']=True;edit_first()

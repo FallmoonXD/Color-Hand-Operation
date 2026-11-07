@@ -37,7 +37,7 @@ def pointer(start,end,hold,finish):
 
 with PreferenceTrial({'edgeflow':allowed}) as trial:
     before=trial.before['edgeflow'];assert before['handle_geometry_version']==2
-    d.main_home()
+    d.range_settings()
     for title in ('触摸宽度','大小','位置'):assert '.' not in current(title),title
     bar=node('触摸宽度');tree=d.ui();number=next(n for n in tree.iter('node') if n.get('content-desc')=='触摸宽度当前值')
     _,bar_y,_,bar_bottom=d.bounds(bar);_,_,_,number_bottom=d.bounds(number)
@@ -49,7 +49,8 @@ with PreferenceTrial({'edgeflow':allowed}) as trial:
     no_detail=node('触钮颜色');plain_height=d.bounds(no_detail)[3]-d.bounds(no_detail)[1]
     if plain_height<196:
         d._scroll(d.ui(),True);no_detail=node('触钮颜色');plain_height=d.bounds(no_detail)[3]-d.bounds(no_detail)[1]
-    with_detail=node('手势设置');detail_height=d.bounds(with_detail)[3]-d.bounds(with_detail)[1]
+    d.main_home();with_detail=node('手势设置');detail_height=d.bounds(with_detail)[3]-d.bounds(with_detail)[1]
+    d.range_settings()
     assert plain_height==196 and detail_height>plain_height,(plain_height,detail_height)
     result['plain_and_detail_row_heights_px']=[plain_height,detail_height]
     tap_progress('大小',600);assert current('大小')=='62%'
@@ -79,10 +80,10 @@ with PreferenceTrial({'edgeflow':allowed}) as trial:
     after=d.preferences();assert abs(after['short_angle_up_inner_degrees']-target)<1.2,(after['short_angle_up_inner_degrees'],target)
     assert {k:v for k,v in after.items() if k!='short_angle_up_inner_degrees'}=={k:v for k,v in saved.items() if k!='short_angle_up_inner_degrees'}
     result['graph_release_updates_only_dragged_boundary']=True
-    node('短滑从右侧查看');saved=d.preferences();d.click_item('短滑从右侧查看',True);time.sleep(.3)
+    d.find_item('从右侧查看');saved=d.preferences();d.click_item('从右侧查看');time.sleep(.3)
     assert d.preferences()==saved;d.shot('safe-angle-mirrored')
-    assert node('短滑从左侧查看') is not None
-    d.click_item('短滑从左侧查看',True)
+    assert d.find_item('从左侧查看') is not None
+    d.click_item('从左侧查看')
     host=node('短滑手势角度编辑器');a,b,c,e=d.bounds(host)
     saved=d.preferences();d.sh('input','swipe',str(c-40),str(b+100),str(c-40),str(b-200),'450');time.sleep(.3)
     assert d.preferences()==saved

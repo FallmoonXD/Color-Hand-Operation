@@ -1,6 +1,20 @@
 <resources>
  <string name="app_name">Color Hand Operation</string>
  <string name="service_description">识别屏幕两侧手势，执行返回、最近任务和单手操作。应用不上传屏幕内容。</string>
- <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#188DFF</item><item name="android:windowLightStatusBar">true</item><item name="android:windowActionModeOverlay">true</item></style>
-<style name="AppThemeDark" parent="android:style/Theme.Material.NoActionBar"><item name="android:colorAccent">#188DFF</item><item name="android:fontFamily">sans</item></style>
+ <color name="settings_start_background">#F0F1F2</color>
+ <bool name="settings_light_system_bars">true</bool>
+ <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+  <item name="android:fontFamily">sans</item>
+  <item name="android:colorAccent">#188DFF</item>
+  <item name="android:windowBackground">@color/settings_start_background</item>
+  <item name="android:windowSplashScreenBackground">@color/settings_start_background</item>
+  <item name="android:windowLightStatusBar">@bool/settings_light_system_bars</item>
+  <item name="android:windowActionModeOverlay">true</item>
+ </style>
+ <style name="AppThemeDark" parent="android:style/Theme.Material.NoActionBar">
+  <item name="android:colorAccent">#188DFF</item>
+  <item name="android:fontFamily">sans</item>
+  <item name="android:windowBackground">@color/settings_start_background</item>
+  <item name="android:windowSplashScreenBackground">@color/settings_start_background</item>
+ </style>
 </resources>

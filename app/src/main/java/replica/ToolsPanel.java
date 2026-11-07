@@ -74,8 +74,14 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}public void onProgressChanged(SeekBar b,int v,boolean user){if(user)setMediaVolume(v);}});
         if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){View speaker=vr.getChildAt(0);vr.removeView(speaker);vr.addView(speaker);}
         LinearLayout controls=row();LinearLayout.LayoutParams controlsParams=new LinearLayout.LayoutParams(-1,dp(36));controlsParams.topMargin=dp(10);media.addView(controls,controlsParams);
-        String[] symbols={"player_prev","player_play","player_next","ic_volume_up","ic_volume_down"};int[] keys={88,85,87,24,25};
-        for(int i=0;i<5;i++){final int key=keys[i];ImageView t=icon(symbols[i],Color.WHITE);controls.addView(t,new LinearLayout.LayoutParams(0,dp(36),1));if(key==24||key==25){t.setContentDescription(key==24?"音量增加":"音量减小");new RepeatPress(t,()->{audio.adjustStreamVolume(3,key==24?1:-1,0);refresh();});}else t.setOnClickListener(v->command("input keyevent "+key));}
+        String[] symbols={"player_prev","player_play","player_next","ic_volume_up","ic_volume_down"};
+        String[] labels={"上一首","播放／暂停","下一首","音量增加","音量减小"};int[] keys={88,85,87,24,25};
+        for(int i=0;i<keys.length;i++){
+            int key=keys[i];ImageView t=icon(symbols[i],Color.WHITE);t.setContentDescription(labels[i]);t.setTooltipText(labels[i]);
+            controls.addView(t,new LinearLayout.LayoutParams(0,dp(36),1));
+            if(key==24||key==25)new RepeatPress(t,()->{audio.adjustStreamVolume(3,key==24?1:-1,0);refresh();});
+            else t.setOnClickListener(v->command("input keyevent "+key));
+        }
         for(int r=0;r<3;r++){
             LinearLayout line=row();LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.topMargin=dp(13);panel.addView(line,lp);
             for(int col=0;col<4;col++){int at=r*4+col;FrameLayout cell=new FrameLayout(this);line.addView(cell,new LinearLayout.LayoutParams(0,-1,1));if(at>=tiles.size())continue;
@@ -118,10 +124,22 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         if(liveVolume!=null&&!liveVolume.isPressed())liveVolume.setProgress(audio.getStreamVolume(3));
         if(autoIcon!=null){boolean on=Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1;autoIcon.setSelected(on);if(!Boolean.valueOf(on).equals(autoIcon.getTag())){autoIcon.setBackground(PanelStyle.toolButton(this,on));autoIcon.setTag(on);}autoIcon.setColorFilter(Color.WHITE);}
 
-        for(ToolsConfig.Item item:tiles){ImageView tile=toolViews.get(item.key);boolean on=active(item);if(tile!=null&&!Boolean.valueOf(on).equals(tile.getTag())){tile.setBackground(PanelStyle.toolButton(this,on));tile.setTag(on);tile.setElevation(0);if(item.component()==null)tile.setImageDrawable(SystemIcons.tile(this,item.builtin(),on,audio.getRingerMode()));}}
+        for(ToolsConfig.Item item:tiles){
+            ImageView tile=toolViews.get(item.key);if(tile==null)continue;
+            Boolean state=readState(item);boolean on=Boolean.TRUE.equals(state);
+            Object tag=state==null?"command":state;
+            boolean available=ToolsConfig.available(this,item.builtin());
+            tile.setEnabled(available);tile.setAlpha(available?1f:.45f);
+            tile.setStateDescription(!available?"此设备不支持":state==null?null:on?"已开启":"已关闭");
+            if(!tag.equals(tile.getTag())){
+                tile.setBackground(PanelStyle.toolButton(this,on));tile.setTag(tag);tile.setElevation(0);
+                if(item.component()==null)tile.setImageDrawable(SystemIcons.tile(this,item.builtin(),on,audio.getRingerMode()));
+            }
+        }
         ImageView sound=toolViews.get("1");int ringer=audio.getRingerMode();if(sound!=null&&lastRinger!=ringer){sound.setImageDrawable(SystemIcons.tile(this,1,ringer!=2,ringer));lastRinger=ringer;}
     }
-    private boolean active(ToolsConfig.Item item){try{switch(item.builtin()){
+    private boolean active(ToolsConfig.Item item){return Boolean.TRUE.equals(readState(item));}
+    private Boolean readState(ToolsConfig.Item item){try{switch(item.builtin()){
         case 0:return Settings.Global.getInt(getContentResolver(),"wifi_on",0)==1;
         case 1:return audio.getRingerMode()!=AudioManager.RINGER_MODE_NORMAL;
         case 2:return Settings.Global.getInt(getContentResolver(),"bluetooth_on",0)==1;
@@ -135,8 +153,8 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         case 16:return ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).getCurrentInterruptionFilter()!=NotificationManager.INTERRUPTION_FILTER_ALL;
         case 17:android.nfc.NfcAdapter nfc=android.nfc.NfcAdapter.getDefaultAdapter(this);return nfc!=null&&nfc.isEnabled();
         case 19:return Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1;
-        default:return true; // Immediate commands and app launchers are always highlighted.
-    }}catch(Exception e){return false;}}
+        default:return null;
+    }}catch(Exception e){return null;}}
     private final CameraManager.TorchCallback torchCallback=new CameraManager.TorchCallback(){@Override public void onTorchModeChanged(String id,boolean enabled){if(id.equals(cameraId)){torch=enabled;refresh();}}};
     private void act(ToolsConfig.Item item){
         if(closed||hasChildDialogs())return;int id=item.builtin();

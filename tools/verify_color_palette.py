@@ -12,7 +12,8 @@ def set_progress(description,value):
     command=shlex.join(['app_process','/system/bin','probe.OverlayDump','set-progress',description,str(value)])
     d.sh('sh','-c','CLASSPATH=/data/local/tmp/edgeflow-probe.jar '+command);time.sleep(.25)
 def palette(home=True):
-    if home:d.main_home()
+    if home:d.range_settings('left')
+    else:d.click_item('触钮范围',True)
     d.click_item('触钮颜色',True);d.wait_node('颜色代码')
 def close():
     d.click('取消');time.sleep(.4)

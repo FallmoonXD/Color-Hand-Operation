@@ -68,7 +68,7 @@ final class WidgetProviderPicker implements AutoCloseable {
         });
         list.setOnTouchListener((view,event)->{
             int action=event.getActionMasked();
-            if(action==MotionEvent.ACTION_DOWN){gestureRowsVersion=rowsVersion;blockedTouch=loading||failed||filtered.isEmpty();}
+            if(action==MotionEvent.ACTION_DOWN){gestureRowsVersion=rowsVersion;blockedTouch=loading||(!failed&&filtered.isEmpty());}
             else if(!blockedTouch&&gestureRowsVersion!=rowsVersion){
                 // A loading/filter result must never reinterpret a press that started on another row.
                 MotionEvent cancel=MotionEvent.obtain(event);cancel.setAction(MotionEvent.ACTION_CANCEL);list.onTouchEvent(cancel);cancel.recycle();blockedTouch=true;
@@ -80,6 +80,7 @@ final class WidgetProviderPicker implements AutoCloseable {
         watcher=new TextWatcher(){public void beforeTextChanged(CharSequence s,int start,int count,int after){}public void onTextChanged(CharSequence s,int start,int before,int count){filter();}public void afterTextChanged(Editable s){}};
         search.addTextChangedListener(watcher);
         list.setOnItemClickListener((parent,v,position,id)->{
+            if(!closed&&failed&&v==status){started=false;loading=true;failed=false;filter();start();return;}
             if(closed||position<0||position>=filtered.size()||selection==null||!(v instanceof Row)||v.getTag()!=filtered.get(position))return;
             // Prevent a second selection while the containing sheet is animating away.
             Consumer<AppWidgetProviderInfo> callback=this.selection;this.selection=null;
@@ -108,8 +109,8 @@ final class WidgetProviderPicker implements AutoCloseable {
                     result.add(new Entry(info,label,appLabel,icon));
                 }
                 Collator collator=Collator.getInstance(Locale.getDefault());
-                result.sort((a,b)->{int order=collator.compare(a.app,b.app);if(order==0)order=collator.compare(a.label,b.label);return order==0?a.info.provider.flattenToString().compareTo(b.info.provider.flattenToString()):order;});
-            }catch(Exception failure){error="无法读取小组件列表，请关闭后重试";}
+                result.sort((a,b)->{int order=collator.compare(a.app,b.app);if(order==0)order=a.info.provider.getPackageName().compareTo(b.info.provider.getPackageName());if(order==0)order=collator.compare(a.label,b.label);return order==0?a.info.provider.flattenToString().compareTo(b.info.provider.flattenToString()):order;});
+            }catch(Exception failure){error="无法读取小组件列表 · 点按重试";}
             final String message=error;
             main.post(()->{
                 if(closed||token!=generation)return;
@@ -125,7 +126,7 @@ final class WidgetProviderPicker implements AutoCloseable {
         if(!loading&&!failed)for(Entry entry:entries)if(query.isEmpty()||entry.search.contains(query))filtered.add(entry);
         boolean empty=filtered.isEmpty();
         if(loading)status.setText("正在加载小组件…");
-        else if(failed)status.setText("无法读取小组件列表，请关闭后重试");
+        else if(failed)status.setText("无法读取小组件列表 · 点按重试");
         else if(entries.isEmpty())status.setText("当前没有可添加的小组件");
         else if(empty)status.setText("没有找到匹配的小组件");
         // The ListView always occupies the same natural region. Empty/loading/error content is
@@ -142,39 +143,60 @@ final class WidgetProviderPicker implements AutoCloseable {
 
     private final class Rows extends BaseAdapter {
         public int getCount(){return Math.max(1,filtered.size());}public Entry getItem(int position){return filtered.isEmpty()?null:filtered.get(position);}public long getItemId(int position){return position;}
-        public boolean areAllItemsEnabled(){return false;}public boolean isEnabled(int position){return !filtered.isEmpty()&&!closed;}
+        public boolean areAllItemsEnabled(){return false;}public boolean isEnabled(int position){return !closed&&(failed||!filtered.isEmpty());}
         public int getViewTypeCount(){return 2;}public int getItemViewType(int position){return filtered.isEmpty()?1:0;}
         public View getView(int position,View reuse,ViewGroup parent){
             if(filtered.isEmpty()){status.setLayoutParams(new AbsListView.LayoutParams(-1,list.getHeight()>0?list.getHeight():dp(380)));return status;}
-            Row row=reuse instanceof Row?(Row)reuse:new Row();row.bind(getItem(position));return row;
+            Row row=reuse instanceof Row?(Row)reuse:new Row();Entry e=getItem(position);row.bind(e,position==0||!getItem(position-1).info.provider.getPackageName().equals(e.info.provider.getPackageName()));return row;
         }
     }
 
+    private void requestPreview(Entry entry){
+        if(entry.previewRequested||entry.info.previewImage==0)return;
+        entry.previewRequested=true;int token=generation;
+        WORK.execute(()->{
+            if(closed||generation!=token)return;
+            android.graphics.Bitmap preview=null;
+            try{
+                Drawable raw=entry.info.loadPreviewImage(owner,owner.getResources().getDisplayMetrics().densityDpi);
+                if(raw!=null&&raw.getIntrinsicWidth()>0&&raw.getIntrinsicHeight()>0){
+                    float scale=Math.min((float)dp(104)/raw.getIntrinsicWidth(),(float)dp(60)/raw.getIntrinsicHeight());
+                    int w=Math.max(1,Math.round(raw.getIntrinsicWidth()*scale)),h=Math.max(1,Math.round(raw.getIntrinsicHeight()*scale));
+                    preview=android.graphics.Bitmap.createBitmap(w,h,android.graphics.Bitmap.Config.ARGB_8888);
+                    raw=raw.mutate();raw.setBounds(0,0,w,h);raw.draw(new android.graphics.Canvas(preview));
+                }
+            }catch(RuntimeException missing){preview=null;}
+            android.graphics.Bitmap result=preview;
+            main.post(()->{if(closed||generation!=token)return;entry.preview=result;if(result!=null)adapter.notifyDataSetChanged();});
+        });
+    }
     private final class Row extends LinearLayout {
         private final ImageView icon;
-        private final TextView title,detail;
+        private final TextView group,title,detail;
         Row(){
-            super(owner);setGravity(Gravity.CENTER_VERTICAL);setPadding(dp(12),dp(12),dp(12),dp(12));setMinimumHeight(dp(76));
-            icon=new ImageView(owner);icon.setScaleType(ImageView.ScaleType.FIT_CENTER);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            LinearLayout.LayoutParams iconParams=new LinearLayout.LayoutParams(dp(40),dp(40));iconParams.setMarginEnd(dp(14));addView(icon,iconParams);
-            LinearLayout labels=new LinearLayout(owner);labels.setOrientation(LinearLayout.VERTICAL);addView(labels,new LinearLayout.LayoutParams(0,-2,1));
+            super(owner);setOrientation(VERTICAL);setPadding(dp(12),dp(6),dp(12),dp(6));
+            group=new TextView(owner);group.setTextSize(13);group.setPadding(0,dp(6),0,dp(3));group.setAccessibilityHeading(true);addView(group);
+            LinearLayout body=new LinearLayout(owner);body.setGravity(Gravity.CENTER_VERTICAL);body.setMinimumHeight(dp(68));addView(body);
+            icon=new ImageView(owner);icon.setScaleType(ImageView.ScaleType.FIT_CENTER);icon.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(dp(76),dp(54));ip.setMarginEnd(dp(12));body.addView(icon,ip);
+            LinearLayout labels=new LinearLayout(owner);labels.setOrientation(VERTICAL);body.addView(labels,new LayoutParams(0,-2,1));
             title=new TextView(owner);title.setTextSize(16);title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);labels.addView(title);
-            detail=new TextView(owner);detail.setTextSize(13);detail.setMaxLines(2);detail.setEllipsize(TextUtils.TruncateAt.END);
-            LinearLayout.LayoutParams detailParams=new LinearLayout.LayoutParams(-1,-2);detailParams.topMargin=dp(3);labels.addView(detail,detailParams);
-            title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);detail.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            detail=new TextView(owner);detail.setTextSize(13);labels.addView(detail);
+            title.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);detail.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         }
-        void bind(Entry entry){
-            setTag(entry);
+        void bind(Entry entry,boolean first){
+            setTag(entry);group.setText(entry.app);group.setTextColor(ColorOsTheme.secondary(owner));group.setVisibility(first?VISIBLE:GONE);
             title.setText(entry.label);title.setTypeface(ColorOsTheme.typeface(owner,500));title.setTextColor(ColorOsTheme.text(owner));
-            detail.setText(entry.app);detail.setTypeface(ColorOsTheme.typeface(owner,400));detail.setTextColor(ColorOsTheme.secondary(owner));
-            Drawable image=entry.icon;if(image!=null&&image.getConstantState()!=null)image=image.getConstantState().newDrawable(getResources()).mutate();icon.setImageDrawable(image);
-            setBackground(ColorDialogBuilder.touchBackground(owner,android.graphics.Color.TRANSPARENT,14));
-            setContentDescription(entry.label+"，"+entry.app);
+            String size=entry.info.targetCellWidth>0&&entry.info.targetCellHeight>0?entry.info.targetCellWidth+" × "+entry.info.targetCellHeight:"";
+            detail.setText(size);detail.setVisibility(size.isEmpty()?GONE:VISIBLE);detail.setTextColor(ColorOsTheme.secondary(owner));
+            if(entry.preview!=null){icon.setPadding(0,0,0,0);icon.setImageBitmap(entry.preview);}
+            else {icon.setPadding(dp(8),dp(6),dp(8),dp(6));icon.setImageDrawable(entry.icon);requestPreview(entry);}
+            setBackground(ColorDialogBuilder.touchBackground(owner,android.graphics.Color.TRANSPARENT,14));setContentDescription(entry.label+"，"+entry.app);
         }
     }
-
     private static final class Entry {
         final AppWidgetProviderInfo info;final String label,app,search;final Drawable icon;
+        boolean previewRequested;android.graphics.Bitmap preview;
         Entry(AppWidgetProviderInfo info,String label,String app,Drawable icon){this.info=info;this.label=label;this.app=app;this.icon=icon;search=(label+"\n"+app+"\n"+info.provider.getPackageName()).toLowerCase(Locale.ROOT);}
     }
     private int dp(float value){return PanelStyle.dp(owner,value);}

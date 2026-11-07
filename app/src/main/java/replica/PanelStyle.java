@@ -20,6 +20,17 @@ public final class PanelStyle {
  public static void window(android.app.Activity a,int radius){window(a,a.getWindow(),radius);}
  public static void window(Context a,android.view.Window w,int radius){w.setBackgroundDrawable(new ColorOsSurface(a,radius,2).attach(w));w.getDecorView().setClipToOutline(true);try{w.getClass().getMethod("setBackgroundBlurRadius",int.class).invoke(w,blurRadius(a));}catch(Exception ignored){}w.setDimAmount(0);w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);}
  public static GradientDrawable shape(Context c,int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(c,radius));return d;}
+ public static void inputSurface(android.view.View view,int radius){
+  Context c=view.getContext();Runnable update=()->view.setBackground(shape(c,ColorOsTheme.dark(c)?0xff2d333b:0xff53606d,radius));
+  update.run();ColorOsTheme.watch(view,update);
+ }
+ public static void contentCard(android.view.View view,int radius,boolean clickable){
+  Context c=view.getContext();Runnable update=()->{
+   int fill=ColorOsTheme.card(c)&0xffffff|0xed000000;
+   view.setBackground(clickable?ColorDialogBuilder.touchBackground(c,fill,radius):shape(c,fill,radius));
+  };
+  update.run();ColorOsTheme.watch(view,update);
+ }
  public static Drawable button(Context c,boolean active){return new RippleDrawable(ColorStateList.valueOf(0x33808080),active?new AccentShape(c,18):new ColorOsSurface(c,18,0),shape(c,0xffffffff,18));}
  /** Quick-settings lighting is shared by tiles and the complete media capsule. */
  public static void toolsWindow(android.app.Activity a){toolsWindow(a,a.getWindow());}

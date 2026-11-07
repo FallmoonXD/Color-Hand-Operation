@@ -13,7 +13,7 @@ try:
         assert len(previews())==2,'Old Activity cleared successor preview'
     out['three_clear_top_recreations_preserve_successor_previews']=True
     d.sh('settings','put','system','font_scale','1.6');time.sleep(1)
-    d.main_home();field=open_palette();d.shot('palette-large-font')
+    d.range_settings();field=open_palette();d.shot('palette-large-font')
     confirm=d.find_item('确定');assert d.visible(confirm)
     d.tap(field);time.sleep(.8);d.shot('palette-keyboard')
     assert d.visible(d.wait_node('确定')) and d.visible(d.wait_node('取消'))

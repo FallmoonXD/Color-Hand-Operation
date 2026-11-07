@@ -244,8 +244,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   @Override protected void onStart(){
    super.onStart();Context c=getContext();Window window=getWindow();window.setWindowAnimations(0);window.setDimAmount(glass?.12f:.24f);
    if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
-   if(glass){window.setBackgroundDrawable(new ColorOsSurface(c,sheet?28:24,3).attach(window));try{window.getClass().getMethod("setBackgroundBlurRadius",int.class).invoke(window,PanelStyle.blurRadius(c));}catch(Exception ignored){}}
-   else if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
+   if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
    window.getDecorView().setClipToOutline(true);layoutWindow();refreshColors();observeOwner();
    if(sheet){window.getDecorView().setAlpha(0);root.post(entrance);}
    else if(glass){motion=new ColorMotion(window);motion.enter();}

@@ -26,6 +26,7 @@ public final class ColorSettingsScaffold {
     private final Activity activity;
     private final TextView title, largeTitle;
     private final boolean home;
+    private boolean pinnedHeader;
     private View trailing,homeMore,backIcon;
     private SettingsSurface toolbarSurface;
     private CollapsingTitle movingTitle;
@@ -71,9 +72,19 @@ public final class ColorSettingsScaffold {
     }
     /** A pinned search field occupies the row immediately below the toolbar. */
     void setSearchHeader(View search, LinearLayout.LayoutParams params) {
+        pinnedHeader=true;
         scroll.setPadding(0,0,0,0);
         page.setPadding(0,dp(52),0,0);
         page.addView(search,0,params);
+        root.requestApplyInsets();
+    }
+    /** Search stays visible while the result list scrolls. Starting a page does not open the IME. */
+    public android.widget.EditText search(String hint, String initial, java.util.function.Consumer<String> changed) {
+        SearchField field=new SearchField(activity,hint,initial,changed);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+        lp.setMargins(dp(16),dp(4),dp(16),dp(6));
+        setSearchHeader(field,lp);
+        return field.input;
     }
     private final class Toolbar extends LinearLayout {
         private final Path hole=new Path();
@@ -97,7 +108,7 @@ public final class ColorSettingsScaffold {
     }
     private TextView label(String value,int size,int weight){TextView t=new TextView(activity);t.setText(value);t.setTextSize(size);t.setTypeface(ColorOsTheme.typeface(activity,weight));t.setTextColor(ColorOsTheme.text(activity));t.setGravity(Gravity.CENTER_VERTICAL);t.setIncludeFontPadding(false);return t;}
     private TextView titleLabel(String value,int size,int weight){TextView t=label(value,size,weight);t.setSingleLine(true);t.setHorizontallyScrolling(false);t.setAutoSizeTextTypeUniformWithConfiguration(1,size,1,android.util.TypedValue.COMPLEX_UNIT_SP);return t;}
-    private void applyInsets(WindowInsets insets){if(insets==null)return;android.graphics.Insets n=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());root.setPadding(n.left,n.top,n.right,n.bottom);}
+    private void applyInsets(WindowInsets insets){if(insets==null)return;android.graphics.Insets n=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());int bottom=pinnedHeader?Math.max(n.bottom,insets.getInsets(WindowInsets.Type.ime()).bottom):n.bottom;root.setPadding(n.left,n.top,n.right,bottom);}
     private int dp(float v){return Math.round(v*activity.getResources().getDisplayMetrics().density);}
     public void setMore(View.OnClickListener action,String description){
         ImageView more=new ImageView(activity);more.setImageResource(dev.edgeflow.R.drawable.cos_settings_more);more.setColorFilter(ColorOsTheme.text(activity));more.setScaleType(ImageView.ScaleType.CENTER_INSIDE);more.setPadding(dp(12),dp(12),dp(12),dp(12));more.setContentDescription(description);more.setTooltipText(description);more.setBackground(ColorDialogBuilder.touchBackground(activity,Color.TRANSPARENT,24));more.setOnClickListener(action);more.setFocusable(true);

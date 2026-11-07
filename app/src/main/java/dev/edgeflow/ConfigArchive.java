@@ -21,9 +21,18 @@ public final class ConfigArchive {
    .put("shortcuts",shortcuts(snapshot(c.getSharedPreferences(NAMES[2],0)))).put("widgets",widgets(c));
   size(o);return o;
  }
- /** Validate all sections before mutation, with synchronous rollback of every touched store. */
- public static void restore(Context c,JSONObject o)throws Exception{
-  synchronized(AppPrefs.class){
+ static final class Import {
+  final int version;final JSONObject preferences,launcher,shortcuts;final ArrayList<replica.ToolsConfig.Item> tools;
+  Import(int version,JSONObject preferences,ArrayList<replica.ToolsConfig.Item> tools,JSONObject launcher,JSONObject shortcuts){
+   this.version=version;this.preferences=preferences;this.tools=tools;this.launcher=launcher;this.shortcuts=shortcuts;
+  }
+  String description(){
+   return "将应用 "+preferences.length()+" 项设置，并替换快速工具的 "+tools.size()+" 个布局项。"
+     +(launcher!=null?"\n快速启动布局将一并导入。":"")+(shortcuts!=null?"\n键盘快捷方式将一并导入。":"")
+     +"\n现有小组件绑定会保留。";
+  }
+ }
+ static Import prepareImport(JSONObject o)throws Exception{
    size(o);keys(o,"version","preferences","tools","launcher","shortcuts","widgets");
    int version=integer(o.get("version"),1,2,"version");
    JSONObject preferences=AppPrefs.validate(o.getJSONObject("preferences"));
@@ -36,13 +45,19 @@ public final class ConfigArchive {
    JSONObject shortcuts=o.has("shortcuts")?shortcuts(o.getJSONObject("shortcuts")):null;
    if(o.has("widgets"))o.getJSONObject("widgets"); // Informational provider map; never reuse another host's IDs.
    if(version==1&&(launcher!=null||shortcuts!=null))throw new JSONException("旧版配置不能包含新版面板字段");
+   return new Import(version,preferences,tools,launcher,shortcuts);
+ }
+ /** Validate all sections before mutation, with synchronous rollback of every touched store. */
+ public static void restore(Context c,JSONObject o)throws Exception{apply(c,prepareImport(o));}
+ static void apply(Context c,Import plan)throws Exception{
+  synchronized(AppPrefs.class){
    LinkedHashMap<String,Map<String,?>> old=new LinkedHashMap<>();
    for(String name:NAMES)old.put(name,new HashMap<>(c.getSharedPreferences(name,0).getAll()));
    ArrayList<replica.ToolsConfig.Item> oldTools=replica.ToolsConfig.load(c);
    try{
-    AppPrefs.importConfiguration(c,preferences,tools,version>=2);
-    if(launcher!=null)write(c.getSharedPreferences(NAMES[1],0),map(launcher));
-    if(shortcuts!=null)write(c.getSharedPreferences(NAMES[2],0),map(shortcuts));
+    AppPrefs.importConfiguration(c,plan.preferences,plan.tools,plan.version>=2);
+    if(plan.launcher!=null)write(c.getSharedPreferences(NAMES[1],0),map(plan.launcher));
+    if(plan.shortcuts!=null)write(c.getSharedPreferences(NAMES[2],0),map(plan.shortcuts));
    }catch(Exception failure){
     for(Map.Entry<String,Map<String,?>> e:old.entrySet())try{write(c.getSharedPreferences(e.getKey(),0),e.getValue());}catch(Exception ex){failure.addSuppressed(ex);}
     try{replica.ToolsConfig.save(c,oldTools);}catch(Exception ex){failure.addSuppressed(ex);}throw failure;

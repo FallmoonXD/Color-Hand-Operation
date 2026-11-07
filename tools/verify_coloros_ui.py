@@ -59,9 +59,9 @@ try:
         title=next(n for n in d.ui().iter('node') if n.get('text')=='左侧触钮')
         assert d.bounds(title)[1]>=140,'Secondary toolbar overlaps status bar'
         d.shot('coloros-final-left');results['secondary_insets']=True;print('PASS insets',flush=True)
-        d.main_home();pointer(d.find_item('触摸宽度',True));results['geometry_cancel']=True
+        d.range_settings();pointer(d.find_item('触摸宽度',True));results['geometry_cancel']=True
         pointer(d.find_item('触摸宽度',True),True);results['geometry_theme_interruption']=True;print('PASS geometry cancellation/theme interruption',flush=True)
-        d.open_action_chooser('right');d.shot('coloros-final-action-chooser');d.click('取消')
+        d.open_action_chooser('right');d.wait_node('搜索操作');d.shot('coloros-final-action-chooser');d.sh('input','keyevent','4');d.wait_node('短距离滑动')
         results['action_chooser_open_close']=True
         d.action_settings('快速工具');d.click_item('编辑按钮',True)
         d.wait_node('已添加 12 / 12');d.shot('coloros-final-tools-editor')

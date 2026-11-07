@@ -67,6 +67,20 @@ public final class ShortcutPicker {
  public static final class Session {
   private final Context context,themed;private final Callback callback;private final Activity owner;private final boolean overlay,embedded;private final String selected;
   private final LinearLayout content;private final ScrollView scroll;
+  private List<AppGroup> loadedGroups;
+  private String query="";
+  private final Map<String,Boolean> openGroups=new HashMap<>();
+  private Runnable firstResults;
+  public android.os.Bundle expandedGroups(){
+   android.os.Bundle result=new android.os.Bundle();openGroups.forEach(result::putBoolean);return result;
+  }
+  public void restoreGroups(android.os.Bundle state,Runnable afterLayout){
+   for(String key:state.keySet())openGroups.put(key,state.getBoolean(key));firstResults=afterLayout;
+  }
+  public void search(String value){
+   query=value.trim().toLowerCase(Locale.ROOT);
+   if(loadedGroups!=null&&alive())render(loadedGroups);
+  }
   private replica.ColorActionSheet sheet;private AlertDialog dialog;private volatile Process process;private Future<?> work;
   private final HashMap<View,android.animation.ValueAnimator> expansions=new HashMap<>();
   private volatile boolean closed;private volatile int generation;private boolean started,selecting,selectionCancelled;
@@ -90,12 +104,15 @@ public final class ShortcutPicker {
   private boolean showWindow(){
    if(embedded)return alive();if(!alive()){close();return false;}if(sheet!=null||dialog!=null)return true;
    try{
+    LinearLayout picker=new LinearLayout(themed);picker.setOrientation(LinearLayout.VERTICAL);picker.setFocusableInTouchMode(true);
+    picker.addView(new replica.SearchField(themed,"搜索应用或快捷方式","",this::search),new LinearLayout.LayoutParams(-1,-2));
+    picker.addView(scroll,new LinearLayout.LayoutParams(-1,-2));
     if(owner!=null){
-     replica.ColorActionSheet next=new replica.ColorActionSheet(owner).setTitle("应用快捷方式").setView(scroll).setNegativeButton("取消",null);
+     replica.ColorActionSheet next=new replica.ColorActionSheet(owner).setTitle("应用快捷方式").setView(picker).setNegativeButton("取消",null);
      sheet=next;next.setOnDismissListener(()->{if(sheet==next){sheet=null;finishClose();}});next.show();
     }else{
-     AlertDialog next=(overlay?new replica.GlassDialogBuilder(themed):new replica.ColorDialogBuilder(context)).setTitle("应用快捷方式").setView(scroll).setNegativeButton("取消",null).create();
-     dialog=next;if(overlay){next.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);next.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);}
+     AlertDialog next=(overlay?new replica.GlassDialogBuilder(themed):new replica.ColorDialogBuilder(context)).setTitle("应用快捷方式").setView(picker).setNegativeButton("取消",null).create();
+     dialog=next;if(overlay){next.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);next.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);}
      next.setOnDismissListener(d->{if(dialog==next){dialog=null;finishClose();}});next.show();
     }
     return alive();
@@ -113,7 +130,7 @@ public final class ShortcutPicker {
   private void touch(View row){watchNow(row,()->row.setBackground(replica.ColorDialogBuilder.touchBackground(context,Color.TRANSPARENT,16)));}
   private void stopWork(){Future<?> task=work;work=null;if(task!=null)task.cancel(true);Process p=process;process=null;if(p!=null)p.destroyForcibly();}
   private void load(){
-   if(!alive()||selecting)return;int token=++generation;stopWork();feedback("正在读取应用快捷方式…",false,false);
+   if(!alive()||selecting)return;loadedGroups=null;int token=++generation;stopWork();feedback("正在读取应用快捷方式…",false,false);
    final int user=android.os.Process.myUid()/100000;
    work=WORK.submit(()->{
     ArrayList<AppGroup> groups=new ArrayList<>();String error=null;Process running=null;
@@ -144,15 +161,30 @@ public final class ShortcutPicker {
    }finally{if(reader.isAlive()){try{running.getInputStream().close();}catch(IOException ignored){}reader.interrupt();}}
   }
   private void render(List<AppGroup> groups){
-   content.removeAllViews();
+   loadedGroups=groups;
+   for(android.animation.ValueAnimator anim:expansions.values()){anim.removeAllListeners();anim.removeAllUpdateListeners();anim.cancel();}
+   expansions.clear();content.removeAllViews();
    if(groups.isEmpty()){feedback("当前没有应用向系统提供快捷方式。打开应用或创建桌面快捷方式后，可重新读取。",false,true);return;}
    if(!selected.isEmpty()){
     boolean found=false;for(AppGroup group:groups)if(group.data.selected(selected)!=null){found=true;break;}
     if(!found){TextView unavailable=text("已选快捷方式暂不可用，请重新选择。",14,1,400);unavailable.setPadding(dp(16),dp(8),dp(16),dp(14));content.addView(unavailable);}
    }
-   for(AppGroup group:groups)addGroup(group);refresh();
+   int matched=0;
+   for(AppGroup group:groups){
+    boolean publisher=query.isEmpty()||group.title.toLowerCase(Locale.ROOT).contains(query)||group.data.packageName.toLowerCase(Locale.ROOT).contains(query);
+    List<ShortcutCatalog.Entry> items=group.data.entries;
+    if(!publisher){
+     ArrayList<ShortcutCatalog.Entry> found=new ArrayList<>();
+     for(ShortcutCatalog.Entry item:items)if(item.label.toLowerCase(Locale.ROOT).contains(query))found.add(item);
+     if(found.isEmpty())continue;items=found;
+    }
+    addGroup(group,items);matched++;
+   }
+   if(matched==0)content.addView(text("没有匹配的快捷方式",15,1,400));
+   refresh();
+   if(firstResults!=null){Runnable after=firstResults;firstResults=null;content.post(()->{if(alive())after.run();});}
   }
-  private void addGroup(AppGroup group){
+  private void addGroup(AppGroup group,List<ShortcutCatalog.Entry> items){
    LinearLayout card=new LinearLayout(context);card.setOrientation(LinearLayout.VERTICAL);card.setClipToOutline(true);
    watchNow(card,()->{GradientDrawable background=new GradientDrawable();background.setColor(replica.ColorOsTheme.card(context));background.setCornerRadius(dp(20));card.setBackground(background);});
    LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);cardParams.bottomMargin=dp(12);content.addView(card,cardParams);
@@ -163,9 +195,10 @@ public final class ShortcutPicker {
    TextView subtitle=text(summary,13,selectedEntry==null?1:2,400);subtitle.setPadding(0,dp(4),0,0);labels.addView(subtitle);header.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
    Chevron arrow=new Chevron(context);arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);header.addView(arrow,new LinearLayout.LayoutParams(dp(44),dp(44)));card.addView(header);
    LinearLayout children=new LinearLayout(context);children.setOrientation(LinearLayout.VERTICAL);children.setPadding(dp(12),0,dp(12),dp(8));card.addView(children);
-   final boolean[] expanded={selectedEntry!=null},populated={false},animate={false};
+   final boolean[] expanded={!query.isEmpty()||openGroups.getOrDefault(group.data.packageName,selectedEntry!=null)},populated={false},animate={false};
    Runnable bind=()->{
-    if(expanded[0]&&!populated[0]){for(ShortcutCatalog.Entry item:group.data.entries)itemRow(children,item);populated[0]=true;}
+    if(query.isEmpty())openGroups.put(group.data.packageName,expanded[0]);
+    if(expanded[0]&&!populated[0]){for(ShortcutCatalog.Entry item:items)itemRow(children,item);populated[0]=true;}
     expansion(children,arrow,expanded[0],animate[0]);animate[0]=false;
     header.setContentDescription((expanded[0]?"收起":"展开")+group.title);header.setStateDescription(summary);
    };

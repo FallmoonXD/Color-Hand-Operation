@@ -1,6 +1,6 @@
 package replica;
 import android.app.*;import android.content.Context;import android.content.ContextWrapper;import android.view.WindowManager;
-/** Give component/page pickers the same translucent rounded material as their host. */
+/** A child dialog uses its own window material and only takes keyboard focus for text input. */
 public final class GlassDialogBuilder extends ColorDialogBuilder {
  private final boolean overlay;
  public GlassDialogBuilder(Context c){super(c,true);overlay=overlayContext(c);}
