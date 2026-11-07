@@ -50,8 +50,34 @@ public final class ConfigArchiveHarness {
   ConfigArchive.restore(restored, new JSONObject(ConfigArchive.export(old).toString()));
   check(saved.equals(restored.prefs("edgeflow_shortcuts").getString("app:com.example",null)), "legacy shortcut name roundtrips in full without preventing backup");
  }
+ static void appMappings()throws Exception{
+  Memory c=seeded("app-mapping");SharedPreferences p=c.prefs("edgeflow");
+  String slot="action_left_straight_short",key=GestureMapping.scoped("com.sample.reader",slot);
+  p.edit().putString(slot,"back").apply();
+  check(GestureMapping.resolve(p,"com.sample.reader","left","straight",false).equals("back"),"missing override inherits global action");
+  ActionTarget.select(p,key,"none");
+  check(GestureMapping.resolve(p,"com.sample.reader","left","straight",false).equals("none")&&GestureMapping.resolve(p,"com.other.app","left","straight",false).equals("back"),"explicit none is scoped to one package and slot");
+  ActionTarget.configure(p,key,false,"app:com.example/com.example.Reader",false);
+  ActionTarget.select(p,key,"folder:folder-1");
+  Memory target=seeded("app-mapping-restored");ConfigArchive.restore(target,ConfigArchive.export(c));
+  SharedPreferences restored=target.prefs("edgeflow");
+  check(restored.getString(key,"").equals("folder:folder-1")&&ActionTarget.get(restored,key,false).startsWith("app:"),"archive preserves a scoped folder and configured external target");
+  GestureMapping.inherit(restored,key);
+  check(!restored.contains(key)&&!restored.contains(ActionTarget.key(key,false))&&GestureMapping.resolve(restored,"com.sample.reader","left","straight",false).equals("back"),"inherit removes only that scoped slot and its remembered target");
+  String importedFolder="folder:旧版/常用";
+  check(importedFolder.equals(AppPrefs.validate(new JSONObject().put(key,importedFolder)).getString(key)),"opaque folder IDs from an existing layout remain assignable");
+  boolean rejected=false;try{AppPrefs.validate(new JSONObject().put(key,"folder:"));}catch(JSONException invalid){rejected=true;}
+  check(rejected,"malformed folder target rejected before import");
+  check(!GestureMapping.isKey("app_override/com.sample.reader/action_left_bad_long")&&!GestureMapping.isKey("app_override//"+slot),"invalid package and direction rejected");
+  JSONArray tasks=new JSONArray().put(new JSONObject().put("taskId",9).put("component","com.test.reader/.First"))
+   .put(new JSONObject().put("taskId",7).put("component","com.test.reader/.Second"))
+   .put(new JSONObject().put("taskId",3).put("component","com.test.map/.Main"));
+  java.util.List<String> strip=RecentTasksBridge.launcherEntries(tasks,6);
+  check(strip.size()==2&&strip.get(0).startsWith("recent:9:")&&strip.get(1).startsWith("recent:3:")&&tasks.length()==3,
+   "recent applications deduplicate in task order and preserve the full task list");
+ }
  public static void main(String[] args)throws Exception{
-  dir=Files.createTempDirectory("edgeflow-config-test-");AppWidgetProviderInfo provider=new AppWidgetProviderInfo();provider.provider=new ComponentName("com.example.widget","com.example.widget.Provider");AppWidgetManager.INSTANCE.providers.put(93,provider);
+  dir=Files.createTempDirectory("edgeflow-config-test-");AppWidgetProviderInfo provider=new AppWidgetProviderInfo();provider.provider=new ComponentName("com.example.widget","com.example.widget.Provider");AppWidgetManager.INSTANCE.providers.put(93,provider);appMappings();
   legacyOpacityAndShortcutNames();
   Memory v1=seeded("v1");Map<String,?> launcherBefore=v1.prefs("edgeflow_launcher").getAll(),shortcutsBefore=v1.prefs("edgeflow_shortcuts").getAll();ConfigArchive.restore(v1,archive(1));check(!AppPrefs.get(v1).getBoolean("enabled",true)&&AppPrefs.get(v1).getFloat("trigger_dp",0)==45.5f,"v1 imports typed preferences");check(launcherBefore.equals(v1.prefs("edgeflow_launcher").getAll())&&shortcutsBefore.equals(v1.prefs("edgeflow_shortcuts").getAll()),"v1 preserves newer panel settings");check(new File(v1.files,"tools-layout-v1.json").isFile()&&replica.ToolsConfig.load(v1).size()==2,"tools use actual tools-layout-v1.json path");
   Memory v2=seeded("v2");Map<String,?> widgetsBefore=v2.prefs("replica_widgets").getAll();ConfigArchive.restore(v2,archive(2));JSONObject exported=ConfigArchive.export(v2);check(v2.prefs("edgeflow_launcher").getInt("columns",0)==5&&v2.prefs("edgeflow_launcher").getInt("recent_limit",0)==20,"v2 restores launcher and task switcher settings");check(v2.prefs("edgeflow_shortcuts").contains("app:com.example")&&!v2.prefs("edgeflow_shortcuts").contains("app:com.old"),"v2 replaces shortcuts namespace");JSONObject widget=exported.getJSONObject("widgets").getJSONArray("items").getJSONObject(0);check(widget.getString("component").equals("com.example.widget/com.example.widget.Provider")&&widget.getInt("sourceId")==93&&!widget.has("id"),"widget export maps provider and excludes live ID field");check(exported.getJSONObject("widgets").getInt("height")==400&&exported.getJSONObject("widgets").getInt("pages")==2,"widget export reads replica_widgets/layout_v3 and height_v4");

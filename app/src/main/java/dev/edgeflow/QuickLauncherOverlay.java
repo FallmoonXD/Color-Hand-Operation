@@ -15,13 +15,22 @@ public final class QuickLauncherOverlay {
  private final Dialog dialog;private final LinearLayout root;private final float[] anchor;
  private final ArrayList<View> hitViews=new ArrayList<>();private final ArrayList<String> hitKeys=new ArrayList<>(),recent=new ArrayList<>();private final ArrayList<AlertDialog> children=new ArrayList<>();private replica.ColorMotion motion;
  private ShortcutPicker.Session shortcutPicker;private replica.ColorPopupMenu popup;private int pickerGeneration;private long childDismissedAt;
- private int page,folderParentPage,columns,hovered=-1;private String folderId=null,recentError=null;private boolean editing,hoverMoved,recentLoading;private volatile boolean closed;private volatile Process query;
- private QuickLauncherOverlay(AccessibilityService s,float[] a){service=s;anchor=a.clone();prefs=s.getSharedPreferences("edgeflow_launcher",Context.MODE_PRIVATE);columns=Math.max(2,Math.min(5,prefs.getInt("columns",4)));layout=LauncherLayout.load(prefs);page=prefs.getInt("page",0);
+ private final String directFolder;private int page,folderParentPage,columns,hovered=-1;private String folderId=null,recentError=null;private boolean editing,hoverMoved,recentLoading;private volatile boolean closed;private RecentTaskList.Request recentRequest;private boolean recentLoaded;
+ private QuickLauncherOverlay(AccessibilityService s,float[] a,LauncherLayout layout,String folder){service=s;anchor=a.clone();prefs=s.getSharedPreferences("edgeflow_launcher",Context.MODE_PRIVATE);columns=Math.max(2,Math.min(5,prefs.getInt("columns",4)));this.layout=layout;directFolder=folder;page=prefs.getInt("page",0);
+  if(folder!=null){folderParentPage=page;folderId=folder;page=0;}
   int theme=s.getResources().getIdentifier(replica.PanelStyle.dark(s)?"ReplicaGlassDark":"ReplicaGlass","style",s.getPackageName());context=new ContextThemeWrapper(s,theme);
   dialog=new Dialog(context){public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){if(children.isEmpty()&&shortcutPicker==null&&popup==null)QuickLauncherOverlay.this.dismiss();return true;}return super.onTouchEvent(e);}};
-  root=new LinearLayout(context){float sx,sy;boolean swiping;final ParentTouchGate parentTouch=new ParentTouchGate();public boolean dispatchTouchEvent(MotionEvent e){return parentTouch.consume(e.getActionMasked(),e.getDownTime(),childDismissedAt,hasChildUi())||super.dispatchTouchEvent(e);}public boolean onInterceptTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){sx=e.getX();sy=e.getY();swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_MOVE&&Math.abs(e.getX()-sx)>dp(35)&&Math.abs(e.getX()-sx)>Math.abs(e.getY()-sy)*1.5f){swiping=true;return true;}return false;}public boolean onTouchEvent(MotionEvent e){if(swiping){if(e.getActionMasked()==MotionEvent.ACTION_UP){turn(e.getX()<sx?1:-1);swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)swiping=false;return true;}return super.onTouchEvent(e);}};root.setOrientation(1);root.setPadding(dp(12),dp(8),dp(12),dp(10));dialog.setContentView(root);dialog.setOnDismissListener(d->cleanup());Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);w.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 快速启动");replica.PanelStyle.window(context,w,24);render();dialog.show();position();motion=new replica.ColorMotion(w);motion.enter();if(layout.recent)loadRecent();
+  root=new LinearLayout(context){float sx,sy;boolean swiping;final ParentTouchGate parentTouch=new ParentTouchGate();public boolean dispatchTouchEvent(MotionEvent e){return parentTouch.consume(e.getActionMasked(),e.getDownTime(),childDismissedAt,hasChildUi())||super.dispatchTouchEvent(e);}public boolean onInterceptTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){sx=e.getX();sy=e.getY();swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_MOVE&&Math.abs(e.getX()-sx)>dp(35)&&Math.abs(e.getX()-sx)>Math.abs(e.getY()-sy)*1.5f){swiping=true;return true;}return false;}public boolean onTouchEvent(MotionEvent e){if(swiping){if(e.getActionMasked()==MotionEvent.ACTION_UP){turn(e.getX()<sx?1:-1);swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)swiping=false;return true;}return super.onTouchEvent(e);}};root.setOrientation(1);root.setPadding(dp(12),dp(8),dp(12),dp(10));dialog.setContentView(root);dialog.setOnDismissListener(d->cleanup());Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);w.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 快速启动");replica.PanelStyle.window(context,w,24);render();dialog.show();position();motion=new replica.ColorMotion(w);motion.enter();if(isRecent())loadRecent(false);
  }
- public static void show(AccessibilityService s,float[] anchor){dismissAll();TaskSwitcherOverlay.dismissAll();try{current=new QuickLauncherOverlay(s,anchor);}catch(Exception e){android.util.Log.e("EdgeLauncher","show",e);Toast.makeText(s,"快速启动暂不可用",0).show();}}
+ public static void show(AccessibilityService s,float[] anchor){showFolder(s,anchor,null);}
+ static void showFolder(AccessibilityService s,float[] anchor,String folder){
+  dismissAll();TaskSwitcherOverlay.dismissAll();
+  try{
+   LauncherLayout layout=LauncherLayout.load(s.getSharedPreferences("edgeflow_launcher",0));
+   if(folder!=null&&!layout.folders.containsKey(folder)){Toast.makeText(s,"文件夹已删除",Toast.LENGTH_SHORT).show();return;}
+   current=new QuickLauncherOverlay(s,anchor,layout,folder);
+  }catch(RuntimeException failure){android.util.Log.w("EdgeLauncher","Cannot show launcher",failure);Toast.makeText(s,"快速启动暂不可用",Toast.LENGTH_SHORT).show();}
+ }
  public static void openEditor(AccessibilityService service,float[] anchor){
   ActionExecutor.execute(service,"quick_launcher",anchor);
   QuickLauncherOverlay panel=current;
@@ -53,10 +62,13 @@ public final class QuickLauncherOverlay {
   if(visible.isEmpty()){
    boolean recentPage=isRecent();String message=recentPage?(recentLoading?"正在读取最近任务…":recentError!=null?recentError:"暂无最近应用，点此刷新"):folderId!=null?"文件夹为空":"暂无常用入口";
    TextView empty=text(message,14);replica.PanelStyle.contentCard(empty,16,recentPage&&!recentLoading);
-   if(recentPage&&!recentLoading)empty.setOnClickListener(v->loadRecent());
+   if(recentPage&&!recentLoading)empty.setOnClickListener(v->loadRecent(true));
    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(96));lp.topMargin=dp(6);root.addView(empty,lp);
   }
-  else for(int row=0;row<3;row++){LinearLayout line=new LinearLayout(context);LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(-1,launcherRowHeight());rowParams.topMargin=dp(3);root.addView(line,rowParams);for(int col=0;col<columns;col++){int at=start+row*columns+col;if(at>=visible.size()){line.addView(new View(context),new LinearLayout.LayoutParams(0,-1,1));continue;}String key=visible.get(at);LinearLayout tile=new LinearLayout(context);tile.setOrientation(1);tile.setGravity(Gravity.CENTER);tile.setPadding(dp(3),dp(3),dp(3),dp(3));tile.setBackground(tileBackground(false));tile.setContentDescription(label(key));tile.addView(iconView(key),new LinearLayout.LayoutParams(dp(42),0,1));TextView name=text(label(key),11);name.setSingleLine();name.setEllipsize(android.text.TextUtils.TruncateAt.END);tile.addView(name,new LinearLayout.LayoutParams(-1,dp(23)));LinearLayout.LayoutParams tileParams=new LinearLayout.LayoutParams(0,-1,1);tileParams.setMargins(dp(2),0,dp(2),0);line.addView(tile,tileParams);tile.setOnClickListener(v->{if(closed||hasChildUi())return;if(editing)manage(key,v);else activate(key);});tile.setOnLongClickListener(v->{if(!closed&&!hasChildUi())manage(key,v);return true;});hitViews.add(tile);hitKeys.add(key);}}
+  else for(int row=0;row<(isRecent()||directPage()?(Math.min(capacity(),visible.size()-start)+columns-1)/columns:3);row++){
+   LinearLayout line=new LinearLayout(context);
+   if(directPage())line.setLayoutDirection(anchor[0]<replica.PanelGeometry.screen(context).x/2f?View.LAYOUT_DIRECTION_LTR:View.LAYOUT_DIRECTION_RTL);LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(-1,launcherRowHeight());rowParams.topMargin=dp(3);root.addView(line,rowParams);for(int col=0;col<columns;col++){int at=start+row*columns+col;if(at>=visible.size()){line.addView(new View(context),new LinearLayout.LayoutParams(0,-1,1));continue;}String key=visible.get(at);LinearLayout tile=new LinearLayout(context);tile.setLayoutDirection(context.getResources().getConfiguration().getLayoutDirection());tile.setOrientation(1);tile.setGravity(Gravity.CENTER);tile.setPadding(dp(3),dp(3),dp(3),dp(3));tile.setBackground(tileBackground(false));tile.setContentDescription(label(key));tile.addView(iconView(key),new LinearLayout.LayoutParams(dp(42),0,1));TextView name=text(label(key),11);name.setSingleLine();name.setEllipsize(android.text.TextUtils.TruncateAt.END);tile.addView(name,new LinearLayout.LayoutParams(-1,dp(23)));LinearLayout.LayoutParams tileParams=new LinearLayout.LayoutParams(0,-1,1);tileParams.setMargins(dp(2),0,dp(2),0);line.addView(tile,tileParams);tile.setOnClickListener(v->{if(closed||hasChildUi())return;if(editing)manage(key,v);else activate(key);});tile.setOnLongClickListener(v->{if(!closed&&!hasChildUi())manage(key,v);return true;});hitViews.add(tile);hitKeys.add(key);}}
+  if(isRecent())root.addView(button("全部任务",()->ActionExecutor.execute(service,"task_switcher",anchor)),new LinearLayout.LayoutParams(-1,dp(44)));
   if(pages()>1){
    LinearLayout footer=new LinearLayout(context);footer.setGravity(Gravity.CENTER);replica.PanelStyle.contentCard(footer,16,false);
    footer.addView(button("上一页",()->turn(-1)),new LinearLayout.LayoutParams(0,dp(42),1));
@@ -73,12 +85,25 @@ public final class QuickLauncherOverlay {
    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.topMargin=dp(6);root.addView(edit,lp);
   }
  }
- private void turn(int delta){if(closed||hasChildUi()||pages()<2)return;page=(page+delta+pages())%pages();if(folderId==null)prefs.edit().putInt("page",page).apply();render();position();}
+ private void turn(int delta){if(closed||hasChildUi()||pages()<2)return;page=(page+delta+pages())%pages();if(folderId==null)prefs.edit().putInt("page",page).apply();render();position();if(isRecent()&&!recentLoaded)loadRecent(false);}
  private int launcherRowHeight(){
   int available=replica.PanelGeometry.screen(context).y-replica.PanelGeometry.inset(context,"status_bar_height")-replica.PanelGeometry.inset(context,"navigation_bar_height");
-  int chrome=dp(84+(editing?46:0)+(pages()>1?42:0));return Math.max(dp(48),Math.min(dp(82),(available-chrome)/3));
+  int chrome=dp(84+(editing?46:0)+(isRecent()?44:0)+(pages()>1?42:0));return Math.max(dp(48),Math.min(dp(82),(available-chrome)/3));
  }
- private void position(){int width=Math.min(dp(320),replica.PanelGeometry.screen(context).x-dp(28));root.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));replica.PanelGeometry.position(context,dialog.getWindow(),width,root.getMeasuredHeight(),false,anchor);}
+ private boolean directPage(){return directFolder!=null&&directFolder.equals(folderId);}
+ private void position(){
+  android.graphics.Point screen=replica.PanelGeometry.screen(context);
+  int width=Math.min(dp(320),screen.x-dp(28));
+  GestureHandleConfig.Area area=null;
+  if(directPage()){
+   area=HandleDisplayArea.current(service);
+   width=Math.min(Math.min(width,area.width()),Math.max(dp(206),dp(72)*Math.min(items().size(),columns)+dp(24)));
+  }
+  root.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+  Window window=dialog.getWindow();replica.PanelGeometry.position(context,window,width,root.getMeasuredHeight(),false,anchor);
+  if(area!=null){WindowManager.LayoutParams lp=window.getAttributes();int gap=Math.min(dp(8),area.width()-width);
+   lp.x=anchor[0]<screen.x/2f?area.left+gap:area.right-width-gap;window.setAttributes(lp);}
+ }
  private replica.ColorDialogBuilder builder(String title){return new replica.GlassDialogBuilder(context).setTitle(title);}
  private void showDialog(AlertDialog d){showDialog(d,false);}
  private void showDialog(AlertDialog d,boolean keyboard){
@@ -134,7 +159,7 @@ public final class QuickLauncherOverlay {
  static void applyChoices(ArrayList<String> target,List<String> keys,boolean[] selected){for(int i=0;i<keys.size();i++){String key=keys.get(i);if(selected[i]){if(!target.contains(key))target.add(key);}else target.remove(key);}}
  private void save(){layout.save(prefs);}private void changed(){save();render();position();}
  private void options(View source){menu(source,"快速启动",new String[]{"列数："+columns,"最近应用页："+(layout.recent?"开":"关"),"新建文件夹"},-1,n->{
-  if(n==0)chooseColumns();if(n==1){layout.recent=!layout.recent;page=0;changed();if(layout.recent)loadRecent();}if(n==2)nameFolder(null);
+  if(n==0)chooseColumns();if(n==1){layout.recent=!layout.recent;page=0;changed();if(layout.recent)loadRecent(false);}if(n==2)nameFolder(null);
  });}
  private void chooseColumns(){int[] values=replica.PanelChoices.columns(columns);String[] labels=new String[values.length];int selected=0;for(int i=0;i<values.length;i++){labels[i]=values[i]+" 列";if(values[i]==columns)selected=i;}
   AlertDialog picker=builder("列数").setSingleChoiceItems(labels,selected,(d,n)->replica.ColorDialogBuilder.dismissThen(d,()->{if(closed)return;columns=values[n];prefs.edit().putInt("columns",columns).apply();render();position();})).setNegativeButton("取消",null).create();showDialog(picker);
@@ -197,9 +222,16 @@ public final class QuickLauncherOverlay {
  }
  private void activate(String key){if(closed||hasChildUi())return;if(key.startsWith("folder:")){folderParentPage=page;folderId=key.substring(7);page=0;hoverMoved=false;render();position();return;}dismiss();if(key.startsWith("recent:")){int at=key.indexOf(':',7);int task=Integer.parseInt(key.substring(7,at));ActionExecutor.root(service,command("launch "+task),"切换任务");}else if(key.startsWith("action:"))ActionExecutor.execute(service,key.substring(7),anchor);else ActionExecutor.execute(service,key,anchor);}
  private String command(String args){return "CLASSPATH="+shell(service.getApplicationInfo().sourceDir)+" app_process /system/bin dev.edgeflow.RecentTasksBridge "+args;}private static String shell(String s){return "'"+s.replace("'","'\\''")+"'";}
- private void loadRecent(){if(closed||recentLoading)return;recentLoading=true;recentError=null;render();WORK.execute(()->{if(closed)return;ArrayList<String> result=new ArrayList<>();String error=null;Process p=null;try{p=new ProcessBuilder("su","-c",command("list")).redirectErrorStream(true).start();query=p;if(closed)throw new IOException("Launcher closed");final Process proc=p;ByteArrayOutputStream out=new ByteArrayOutputStream();Thread reader=new Thread(()->{try(InputStream in=proc.getInputStream()){byte[] b=new byte[2048];int n;while((n=in.read(b))!=-1)if(out.size()<131072)out.write(b,0,Math.min(n,131072-out.size()));}catch(Exception ignored){}},"launcher-recents");reader.start();if(!p.waitFor(12,TimeUnit.SECONDS)){p.destroyForcibly();throw new IOException("最近应用读取超时，点此重试");}reader.join(500);String raw=out.toString("UTF-8");int start=raw.indexOf("EDGE_RECENTS=");if(ActionExecutor.commandFailed(p.exitValue(),raw)||start<0)throw new IOException("最近应用不可用，点此重试");JSONArray tasks=new JSONArray(raw.substring(start+13).trim());for(int i=0;i<tasks.length();i++){JSONObject o=tasks.getJSONObject(i);int task=o.optInt("taskId",-1);String component=o.optString("component");if(task>=0&&ComponentName.unflattenFromString(component)!=null)result.add("recent:"+task+":"+component);}}catch(Exception e){error=e.getMessage();if(!closed)android.util.Log.w("EdgeLauncher","recent page",e);}finally{if(query==p)query=null;if(p!=null){p.destroy();try{p.getInputStream().close();}catch(Exception ignored){}}}String message=error;MAIN.post(()->{if(closed)return;recentLoading=false;recent.clear();recent.addAll(result);recentError=message;render();position();});});}
+ private void loadRecent(boolean refresh){
+  if(closed||recentLoading)return;recentLoading=true;recentError=null;render();
+  recentRequest=RecentTaskList.read(service,refresh,(tasks,error)->{
+   if(closed)return;recentLoading=false;recentLoaded=tasks!=null;recentError=error==null?null:error+"，点此重试";recent.clear();
+   recent.addAll(RecentTasksBridge.launcherEntries(tasks,Math.min(6,capacity())));
+   if(isRecent()){render();position();}
+  });
+ }
  public static void onGestureMotion(int action,float x,float y){QuickLauncherOverlay p=current;if(p==null||p.closed||p.editing||p.shortcutPicker!=null||p.popup!=null||!p.children.isEmpty())return;if(action==MotionEvent.ACTION_CANCEL){p.dismiss();return;}if(Math.hypot(x-p.anchor[2],y-p.anchor[3])>p.dp(8))p.hoverMoved=true;if(!p.hoverMoved)return;int hit=-1;for(int i=0;i<p.hitViews.size();i++){View v=p.hitViews.get(i);int[] pos=new int[2];v.getLocationOnScreen(pos);if(x>=pos[0]&&x<pos[0]+v.getWidth()&&y>=pos[1]&&y<pos[1]+v.getHeight()){hit=i;break;}}if(hit!=p.hovered){for(int i=0;i<p.hitViews.size();i++)p.hitViews.get(i).setBackground(p.tileBackground(i==hit));p.hovered=hit;}if(action==MotionEvent.ACTION_UP&&hit>=0)p.activate(p.hitKeys.get(hit));}
- private void closeChildren(){pickerGeneration++;closePopup();if(shortcutPicker!=null){shortcutPicker.close();shortcutPicker=null;}for(AlertDialog d:new ArrayList<>(children))try{replica.ColorDialogBuilder.dismissImmediately(d);}catch(Exception ignored){}children.clear();Process p=query;if(p!=null)p.destroyForcibly();}
+ private void closeChildren(){pickerGeneration++;closePopup();if(shortcutPicker!=null){shortcutPicker.close();shortcutPicker=null;}for(AlertDialog d:new ArrayList<>(children))try{replica.ColorDialogBuilder.dismissImmediately(d);}catch(Exception ignored){}children.clear();if(recentRequest!=null){recentRequest.cancel();recentRequest=null;}}
  private void dismiss(){if(closed)return;closed=true;closeChildren();if(current==this)current=null;if(motion!=null)motion.exit(()->{try{dialog.dismiss();}catch(Exception ignored){}});else dialog.dismiss();}
  private void remove(){closed=true;closeChildren();if(current==this)current=null;if(motion!=null)motion.cancel();try{dialog.dismiss();}catch(Exception ignored){}}
  private void cleanup(){closed=true;closeChildren();if(current==this)current=null;if(motion!=null)motion.cancel();}

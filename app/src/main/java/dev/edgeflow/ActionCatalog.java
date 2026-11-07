@@ -14,7 +14,8 @@ public final class ActionCatalog {
   new Group("导航","back","home","recents","previous_app","close_app","sidebar","assistant","search","menu","browser_forward","scroll_up","scroll_down","keyboard"),
   new Group("屏幕","notifications","quick_settings","screen_off","screenshot","screen_record","one_hand","split_screen","power_menu","rotate_right","rotate_left","system_magnification","screen_magnifier","screen_free_move"),
   new Group("音量与媒体","volume_up","volume_down","volume_mute","media_previous","media_play_pause","media_next","sound_mode","dnd"),
-  new Group("系统开关与设置","flashlight","wifi","bluetooth","mobile_data","airplane","nfc","location","rotation","dark_mode","auto_brightness","screen_timeout","color_inversion","battery_saver","hotspot_settings","eye_comfort_settings","settings","accessibility_settings"),
+  new Group("系统开关","flashlight","wifi","bluetooth","mobile_data","airplane","nfc","location","rotation","dark_mode","auto_brightness","screen_timeout","color_inversion","battery_saver"),
+  new Group("打开系统页面","settings","accessibility_settings","hotspot_settings","eye_comfort_settings"),
   new Group("需要设置","quick_tools","widgets","quick_launcher","task_switcher","virtual_touchpad","navigation_panel","keyboard_shortcuts")
  };
  /** Each caller owns its arrays, so a view cannot reorder another view's catalogue. */

@@ -6,7 +6,10 @@ import org.json.JSONException;
 
 /** Keeps each external action's configuration without selecting that action. */
 final class ActionTarget {
- static boolean isKey(String key){return key.matches("target_(app|shortcut)_action_(extra2?_)?(left|right)_(up|straight|down)_(short|long)");}
+ static boolean isKey(String key){
+  for(String prefix:new String[]{"target_app_","target_shortcut_"})if(key.startsWith(prefix))return GestureMapping.isKey(key.substring(prefix.length()));
+  return false;
+ }
  static boolean matches(String value,boolean shortcut){return shortcut?ShortcutEntry.valid(value):value!=null&&value.startsWith("app:")&&ComponentName.unflattenFromString(value.substring(4))!=null;}
  static String key(String gesture,boolean shortcut){return "target_"+(shortcut?"shortcut_":"app_")+gesture;}
  static String get(SharedPreferences prefs,String gesture,boolean shortcut){String active=prefs.getString(gesture,"none");if(matches(active,shortcut))return active;String saved=prefs.getString(key(gesture,shortcut),"");return matches(saved,shortcut)?saved:"";}

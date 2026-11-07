@@ -51,6 +51,10 @@ public final class EdgeInputCheck {
         GestureService h=new GestureService();edge=edge(h,true);input(edge,0,1000,1000,5,1300);input(edge,2,1000,1100,355,1300);h.prefs.put("left_enabled",false);Handler.advance(1300);
         check(h.actions.isEmpty()&&Handler.tasks.isEmpty(),"disabling a handle blocks pending dispatch before the visibility update");
         check(!edge.onTouchEvent(new MotionEvent(0,2000,2000,5,1300)),"disabled handle refuses a new DOWN before the visibility update");
+        GestureService disabled=new GestureService();edge=edge(disabled,true);disabled.prefs.put("quick_action_short",true);
+        input(edge,0,1000,1000,5,1300);disabled.prefs.put("left_enabled",false);
+        input(edge,2,1000,1110,200,1300);input(edge,1,1000,1200,200,1300);
+        check(disabled.actions.isEmpty()&&Handler.tasks.isEmpty(),"disabling a handle during a quick short contact cancels safely");
         for(boolean quick:new boolean[]{false,true}){
             GestureService s=new GestureService();edge=edge(s,true);s.prefs.put("quick_vibration",quick);
             input(edge,0,1000,1000,5,1300);input(edge,2,1000,1050,165,1300);
@@ -65,6 +69,15 @@ public final class EdgeInputCheck {
             s=new GestureService();edge=edge(s,true);s.prefs.put("quick_vibration",quick);input(edge,0,1000,1000,5,1300);input(edge,2,1000,1100,165,1300);input(edge,3,1000,1150,165,1300);
             check(s.feedback.size()==(quick?1:0)&&s.actions.isEmpty(),"cancel never gives deferred feedback");
         }
+        GestureService trialService=new GestureService();edge=edge(trialService,true);
+        GestureTrial trial=new GestureTrial();GestureTrial.active=trial;
+        input(edge,0,1000,1000,5,1300);input(edge,2,1000,1100,355,1300);
+        Handler.advance(1300);check(trial.kind==2&&trialService.actions.isEmpty()&&trialService.feedback.isEmpty(),"held trial reports the actual long recognizer result without haptics or action");
+        input(edge,1,1000,1400,355,1300);GestureTrial.active=null;
+        check(trialService.actions.isEmpty(),"trial release cannot execute a second action");
+        edge=edge(trialService,true);GestureTrial.active=trial;input(edge,0,1000,1000,5,1300);
+        GestureTrial.active=null;input(edge,1,1000,1150,200,1300);
+        check(trialService.actions.isEmpty(),"leaving a trial mid-contact cannot turn it into a live action");
         System.out.println("PASS "+checks+" production edge input/timer assertions");
     }
 }
@@ -81,8 +94,16 @@ class Resources {static class Metrics {float density=1;}final Metrics metrics=ne
 class GestureService {
     final SharedPreferences prefs=new SharedPreferences();final Resources resources=new Resources();final ArrayList<String> actions=new ArrayList<>();final ArrayList<Boolean> feedback=new ArrayList<>();
     boolean canStartGesture(String id){return prefs.getBoolean(id+"_enabled",!GestureHandleConfig.isExtra(id));}SharedPreferences getSharedPreferences(String name,int mode){return prefs;}
-    void beginWave(boolean left,float y){}void updateWave(float inward,float vertical,int direction,String id,boolean longer){}void releaseWave(){}
-    void dispatchGesture(String id,String direction,boolean longer,float[] anchor){actions.add(direction+(longer?":long":":short"));}
+    String gesturePackage(){return "dev.test";}
+    boolean canStartGesture(String id,String pkg){return canStartGesture(id);}
+    void beginWave(boolean left,float y){}void updateWave(float inward,float vertical,int direction,String id,boolean longer,String pkg){}void releaseWave(){}
+    void dispatchGesture(String id,String direction,boolean longer,float[] anchor,String pkg){actions.add(direction+(longer?":long":":short"));}
+}
+class GestureTrial {
+    static GestureTrial active;String application="dev.test";int kind;
+    static GestureTrial current(){return active;}
+    void begin(String handle){}void cancel(){}
+    void show(String handle,GestureRecognizer gesture,int result,long now){kind=result;}
 }
 class SystemClock {static long now;static long uptimeMillis(){return now;}}
 class Handler {

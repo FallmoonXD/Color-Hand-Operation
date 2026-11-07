@@ -24,11 +24,16 @@ public final class EdgeHandleView extends View {
     private final Handler main=new Handler(Looper.getMainLooper());
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private GestureRecognizer gesture;
+    private GestureTrial trial;
+    private boolean trialContact;
+    private String application="";
+    private long decisionTime;
     private boolean hapticReady,quickVibration;
     private int pointer=-1;
     private float visibility;
     private final Runnable longCheck=new Runnable(){public void run(){
-        if(gesture!=null&&gesture.shouldFireLong(SystemClock.uptimeMillis()))dispatch(true);
+        decisionTime=SystemClock.uptimeMillis();
+        if(gesture!=null&&gesture.shouldFireLong(decisionTime))dispatch(true);
     }};
     public EdgeHandleView(GestureService service,boolean left){this(service,left?"left":"right");}
     public EdgeHandleView(GestureService service,String handleId){
@@ -41,7 +46,12 @@ public final class EdgeHandleView extends View {
     @Override protected void onSizeChanged(int w,int h,int oldw,int oldh){super.onSizeChanged(w,h,oldw,oldh);setSystemGestureExclusionRects(Collections.singletonList(new Rect(0,0,w,h)));}
     @Override protected void onDraw(Canvas canvas){if(visibility>0){float radius=getWidth()/2f;canvas.drawRoundRect(0,0,getWidth(),getHeight(),radius,radius,paint);}}
     @Override public boolean onTouchEvent(MotionEvent event){
+        int action=event.getActionMasked();
+        if(action==MotionEvent.ACTION_DOWN)trialContact=GestureTrial.current()!=null;
+        boolean testing=trialContact||GestureTrial.current()!=null;
         boolean handled=handleGestureEvent(event);
+        if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL)trialContact=false;
+        if(testing)return handled;
         QuickLauncherOverlay.onGestureMotion(event.getActionMasked(),event.getRawX(),event.getRawY());
         MagnificationOverlay.onGestureMotion(event.getActionMasked(),event.getRawX(),event.getRawY());
         ScreenMoveOverlay.onGestureMotion(event.getActionMasked(),event.getRawX(),event.getRawY());
@@ -50,7 +60,11 @@ public final class EdgeHandleView extends View {
     private boolean handleGestureEvent(MotionEvent event){
         int action=event.getActionMasked();
         if(action==MotionEvent.ACTION_DOWN){
-            if(!service.canStartGesture(handleId))return false;
+            if(gesture!=null)cancel();
+            trial=GestureTrial.current();
+            application=service.gesturePackage();
+            if(!service.canStartGesture(handleId,application)){trial=null;return false;}
+            if(trial!=null)trial.begin(handleId);
             main.removeCallbacks(longCheck);pointer=event.getPointerId(0);hapticReady=false;
             SharedPreferences p=service.getSharedPreferences("edgeflow",Context.MODE_PRIVATE);float density=getResources().getDisplayMetrics().density;
             quickVibration=GestureHaptics.quick(p.getAll());
@@ -66,15 +80,18 @@ public final class EdgeHandleView extends View {
         if(action==MotionEvent.ACTION_MOVE||action==MotionEvent.ACTION_UP){
             // Touch duration belongs to the input event, not time spent queued on
             // the UI thread. Handler timers use this same uptime clock domain.
-            long now=event.getEventTime();gesture.move(event.getRawX(),event.getRawY(),now);replica.NativeState.setGesture(gesture.anchor());
-            if(!gesture.isFired())service.updateWave(gesture.inward(),gesture.vertical(),gesture.direction(),handleId,gesture.isLongDistanceReached());
+            long now=event.getEventTime();decisionTime=now;gesture.move(event.getRawX(),event.getRawY(),now);replica.NativeState.setGesture(gesture.anchor());
+            if(!gesture.isFired())service.updateWave(gesture.inward(),gesture.vertical(),gesture.direction(),handleId,gesture.isLongDistanceReached(),trial==null?application:trial.application);
             // OHO latches its first short-threshold feedback for the whole contact.
             // Retracting and crossing again must not produce repeated vibrations.
-            if(gesture.isShortReady()&&!hapticReady){hapticReady=true;if(quickVibration)haptic(false);}
-            if(gesture.shouldFireShort())dispatch(false);
+            if(gesture.isShortReady()&&!hapticReady){hapticReady=true;if(quickVibration&&trial==null)haptic(false);}
+            if(gesture.shouldFireShort()){
+                dispatch(false);
+                if(gesture==null)return true;
+            }
             main.removeCallbacks(longCheck);long delay=gesture.pendingLongDelay(now);
             if(action==MotionEvent.ACTION_MOVE&&!gesture.isFired()&&delay>=0)main.postAtTime(longCheck,now+delay);
-            if(action==MotionEvent.ACTION_UP){boolean alreadyFired=gesture.isFired();int result=gesture.finish(now);if(result!=0)dispatch(result==2);main.removeCallbacks(longCheck);if(!alreadyFired&&result==0)service.releaseWave();pointer=-1;gesture=null;}
+            if(action==MotionEvent.ACTION_UP){boolean alreadyFired=gesture.isFired();int result=gesture.finish(now);if(result!=0)dispatch(result==2);main.removeCallbacks(longCheck);if(!alreadyFired&&result==0){if(trial!=null)trial.show(handleId,gesture,0,now);service.releaseWave();}pointer=-1;gesture=null;trial=null;}
             return true;
         }
         return true;
@@ -84,8 +101,9 @@ public final class EdgeHandleView extends View {
         if(gesture==null||gesture.isFired())return;
         if(!service.canStartGesture(handleId)){cancel();return;}
         String direction=gesture.directionName(longSwipe);float[] anchor=gesture.anchor();gesture.fired();main.removeCallbacks(longCheck);
-        if(!quickVibration||longSwipe||!hapticReady)haptic(longSwipe);service.releaseWave();
-        service.dispatchGesture(handleId,direction,longSwipe,anchor);
+        if(trial==null&&(!quickVibration||longSwipe||!hapticReady))haptic(longSwipe);service.releaseWave();
+        if(trial!=null)trial.show(handleId,gesture,longSwipe?2:1,decisionTime);
+        else if(GestureTrial.current()==null)service.dispatchGesture(handleId,direction,longSwipe,anchor,application);
     }
     private void haptic(boolean longer){
         java.util.Map<String,?> values=service.getSharedPreferences("edgeflow",Context.MODE_PRIVATE).getAll();
@@ -102,6 +120,6 @@ public final class EdgeHandleView extends View {
             if(vibrator!=null&&vibrator.hasVibrator())vibrator.vibrate(VibrationEffect.createOneShot(duration,legacy?GestureHaptics.amplitude(values):VibrationEffect.DEFAULT_AMPLITUDE));
         }catch(RuntimeException ignored){}
     }
-    public void cancel(){main.removeCallbacks(longCheck);if(gesture!=null){gesture.cancel();QuickLauncherOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);MagnificationOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);ScreenMoveOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);}gesture=null;pointer=-1;service.releaseWave();}
+    public void cancel(){main.removeCallbacks(longCheck);if(gesture!=null){gesture.cancel();if(trial!=null)trial.cancel();else{QuickLauncherOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);MagnificationOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);ScreenMoveOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);}}gesture=null;trial=null;pointer=-1;service.releaseWave();}
     @Override protected void onDetachedFromWindow(){cancel();super.onDetachedFromWindow();}
 }

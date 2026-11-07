@@ -10,5 +10,15 @@ public final class RecentTasksBridge {
   HashSet<Integer> seen=new HashSet<>();for(Object info:list){Class<?> cls=info.getClass();int task=cls.getField("taskId").getInt(info);if(task<0||!seen.add(task))continue;Intent base=(Intent)cls.getField("baseIntent").get(info);ComponentName component=base==null?null:base.getComponent();if(component==null)continue;String pkg=component.getPackageName();boolean home=pkg.equals("com.android.launcher")||pkg.equals("com.oplus.launcher");try{home=((Integer)cls.getMethod("getActivityType").invoke(info))==2;}catch(ReflectiveOperationException ignored){}if(pkg.equals("dev.edgeflow")||pkg.equals("com.android.systemui")||home)continue;out.put(new JSONObject().put("taskId",task).put("component",component.flattenToString()).put("package",pkg));}
   System.out.println("EDGE_RECENTS="+out.toString());
  }
+ /** The launcher groups by package; the task switcher keeps every task in the snapshot. */
+ static ArrayList<String> launcherEntries(JSONArray tasks,int limit){
+  ArrayList<String> entries=new ArrayList<>();HashSet<String> packages=new HashSet<>();
+  for(int i=0;tasks!=null&&i<tasks.length()&&entries.size()<limit;i++){
+   JSONObject task=tasks.optJSONObject(i);if(task==null)continue;
+   ComponentName component=ComponentName.unflattenFromString(task.optString("component"));int id=task.optInt("taskId",-1);
+   if(component!=null&&id>=0&&packages.add(component.getPackageName()))entries.add("recent:"+id+":"+component.flattenToString());
+  }
+  return entries;
+ }
  private RecentTasksBridge(){}
 }

@@ -26,7 +26,7 @@ import java.util.function.Predicate;
 
 /** The three application directories share searching, recycled rows and package loading. */
 public final class ColorAppPickerPage implements AutoCloseable {
-    public enum Mode { ADD, SINGLE, MULTIPLE }
+    public enum Mode { ADD, SINGLE, MULTIPLE, PACKAGE }
     public final ColorSettingsScaffold scaffold;
     private final Activity owner;
     private final ExecutorService worker;
@@ -80,8 +80,9 @@ public final class ColorAppPickerPage implements AutoCloseable {
                 for(ResolveInfo info:pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),0)){
                     if(Thread.currentThread().isInterrupted())return;
                     ActivityInfo a=info.activityInfo;if(a==null||a.applicationInfo==null||a.name==null)continue;
-                    boolean packages=mode==Mode.MULTIPLE;
-                    if(packages?a.packageName.equals(owner.getPackageName()):(!a.enabled||!a.exported||!a.applicationInfo.enabled))continue;
+                    boolean packages=mode==Mode.MULTIPLE||mode==Mode.PACKAGE;
+                    if(mode==Mode.MULTIPLE&&a.packageName.equals(owner.getPackageName()))continue;
+                    if(!packages&&(!a.enabled||!a.exported||!a.applicationInfo.enabled))continue;
                     String key="app:"+new ComponentName(a.packageName,a.name).flattenToString();
                     if(excluded.contains(key)||!seen.add(packages?a.packageName:key))continue;
                     String label=a.packageName;Bitmap bitmap=null;

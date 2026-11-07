@@ -2,6 +2,8 @@ package dev.edgeflow;
 import android.content.ComponentName;import android.content.SharedPreferences;import org.json.*;import java.util.*;
 /** Versioned launcher data; legacy component-only favorites are read without data loss. */
 final class LauncherLayout {
+ // Existing imported layouts accept any nonempty folder ID. It is only used as a map key.
+ static boolean isFolderAction(String action){return action!=null&&action.startsWith("folder:")&&action.length()>7;}
  static final class Folder {String name;final ArrayList<String> items=new ArrayList<>();Folder(String n){name=n;}}
  final ArrayList<String> items=new ArrayList<>();final LinkedHashMap<String,Folder> folders=new LinkedHashMap<>();boolean recent;
  static String folderName(String value){String name=value==null?"":value.trim();if(name.isEmpty())name="文件夹";if(name.length()>256)throw new IllegalArgumentException("文件夹名称最多 256 个字符，请缩短名称后重试");return name;}

@@ -34,19 +34,40 @@ public final class ActionExecutor {
  private static final ExecutorService WORK=Executors.newSingleThreadExecutor();
  private static CameraManager torchManager;private static CameraManager.TorchCallback torchCallback;private static String torchId;private static boolean torchOn,torchReady,torchPending;private static Runnable torchTimeout;
  private static final ArrayList<AlertDialog> DIALOGS=new ArrayList<>();private static int dialogGeneration,lifecycleGeneration;
- public static String title(String id){for(int i=0;i<IDS.length;i++)if(IDS[i].equals(id))return TITLES[i];if(id!=null&&id.startsWith("app:"))return "启动应用";if(id!=null&&id.startsWith(ShortcutEntry.PREFIX))return "应用快捷方式";if(id!=null&&id.startsWith("shortcut:"))return "应用快捷方式";return "未配置的动作";}
+ public static String title(String id){
+  for(int i=0;i<IDS.length;i++)if(IDS[i].equals(id))return TITLES[i];
+  if(LauncherLayout.isFolderAction(id))return "快速启动文件夹";
+  if(id!=null&&id.startsWith("app:"))return "启动应用";
+  if(id!=null&&(id.startsWith(ShortcutEntry.PREFIX)||id.startsWith("shortcut:")))return "应用快捷方式";
+  return "未配置的动作";
+ }
  public static String[] ids(){return IDS.clone();}public static String[] titles(){return TITLES.clone();}
+ public static String title(Context context,String id){
+  if(LauncherLayout.isFolderAction(id)){
+   LauncherLayout.Folder f=LauncherLayout.load(context.getSharedPreferences("edgeflow_launcher",0)).folders.get(id.substring(7));
+   return f==null?"文件夹已删除":"文件夹 · "+f.name;
+  }
+  if(ShortcutEntry.valid(id))return ShortcutPicker.label(context,id);
+  if(id!=null&&id.startsWith("app:")){
+   ComponentName component=ComponentName.unflattenFromString(id.substring(4));if(component==null)return "应用不可用";
+   try{return context.getPackageManager().getActivityInfo(component,0).loadLabel(context.getPackageManager()).toString();}
+   catch(android.content.pm.PackageManager.NameNotFoundException unavailable){return "应用不可用";}
+  }
+  return title(id);
+ }
  public static void execute(AccessibilityService c,String id,float[] anchor){
   if(c==null||id==null||id.equals("none"))return;
   float[] points=anchor==null?replica.NativeState.defaultGesture(c):anchor.clone();
   if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->execute(c,id,points));return;}
   if(id.equals("back")&&(replica.WidgetOverlay.handleBack()||replica.ToolsOverlay.handleBack()))return;
-  preparePanel(id);
+  boolean folder=LauncherLayout.isFolderAction(id);
+  preparePanel(folder?"quick_launcher":id);
   if(!id.equals("quick_launcher"))QuickLauncherOverlay.dismissAll();
   if(!id.equals("task_switcher"))TaskSwitcherOverlay.dismissAll();
   if(!id.equals("keyboard_shortcuts"))KeyboardShortcutsOverlay.dismissAll();
   dismissDialogs();
   try{
+   if(folder){QuickLauncherOverlay.showFolder(c,points,id.substring(7));return;}
    if(id.startsWith(ShortcutEntry.PREFIX)){ShortcutPicker.start(c,id);return;}
    if(id.startsWith("app:")){launchApp(c,id.substring(4));return;}
    if(id.startsWith("shortcut:")){Intent in=Intent.parseUri(id.substring(9),Intent.URI_INTENT_SCHEME);in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);start(c,in);return;}

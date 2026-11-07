@@ -7,6 +7,8 @@ New-Item -ItemType Directory -Force -Path $output | Out-Null
 $sources=@(
  (Join-Path $project 'app/src/main/java/dev/edgeflow/ActionCatalog.java'),
  (Join-Path $project 'app/src/main/java/dev/edgeflow/ActionTarget.java'),
+ (Join-Path $project 'app/src/main/java/dev/edgeflow/GestureMapping.java'),
+ (Join-Path $project 'app/src/main/java/dev/edgeflow/GestureHandleConfig.java'),
  (Join-Path $project 'app/src/main/java/dev/edgeflow/ShortcutEntry.java'),
  (Join-Path $project 'validation/config/stubs/android/content/ComponentName.java'),
  (Join-Path $PSScriptRoot 'ActionCatalogCheck.java')

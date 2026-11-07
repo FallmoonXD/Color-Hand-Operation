@@ -27,10 +27,9 @@ public final class GestureRecognizer {
     public void begin(boolean left,float x,float y,long now){this.left=left;sx=this.x=x;sy=this.y=y;running=true;fired=shortReady=longReady=longDistanceReached=false;downTime=lastEventTime=now;direction=STRAIGHT;}
     public void move(float x,float y,long now){
         if(!running||fired)return;this.x=x;this.y=y;lastEventTime=now;
-        float inward=(x-sx)*(left?1:-1),vertical=y-sy;
-        float angle=(float)Math.toDegrees(Math.atan2(vertical,Math.max(.001f,inward)));
+        float inward=(x-sx)*(left?1:-1),angle=angle();
         // A primarily vertical edge drag must not accidentally issue navigation.
-        float distance=(float)Math.hypot(inward,vertical);
+        float distance=distance();
         shortReady=inward>0&&distance>=shortDistance&&shortAngles.accepts(angle);
         boolean reached=inward>0&&distance>=longDistance&&longAngles.accepts(angle);
         shortDirection=shortAngles.direction(angle);longDirection=longAngles.direction(angle);
@@ -58,6 +57,22 @@ public final class GestureRecognizer {
     public float[] anchor(){return new float[]{sx,sy,x,y};}
     public float inward(){return Math.max(0,(x-sx)*(left?1:-1));}
     public float vertical(){return y-sy;}
+    public float distance(){return (float)Math.hypot(x-sx,y-sy);}
+    public float angle(){return (float)Math.toDegrees(Math.atan2(vertical(),Math.max(.001f,(x-sx)*(left?1:-1))));}
+    public long elapsed(long now){return Math.max(0,now-downTime);}
+    public float shortThreshold(){return shortDistance;}
+    public float longThreshold(){return longDistance;}
+    public long durationThreshold(){return immediateLong?0:longDelay;}
+    public String diagnostic(int result,long now){
+        if(result==2)return "";
+        if(distance()<shortDistance)return "未达到短滑距离";
+        if(inward()==0)return "方向朝外";
+        if(result==0&&!shortAngles.accepts(angle()))return "超出短滑角度";
+        if(result==1&&quickShort)return "短滑即时触发";
+        if(result==1&&distance()>=longDistance&&!longAngles.accepts(angle()))return "超出长滑角度";
+        if(result==1&&!quickShort&&longDistanceReached&&elapsed(now)<durationThreshold())return "未达到长滑时长";
+        return "";
+    }
     public String directionName(){return direction==UP?"up":direction==DOWN?"down":"straight";}
     public String directionName(boolean longer){int selected=longer?longDirection:shortDirection;return selected==UP?"up":selected==DOWN?"down":"straight";}
 }

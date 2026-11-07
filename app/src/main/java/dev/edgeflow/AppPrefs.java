@@ -31,10 +31,11 @@ public final class AppPrefs {
   for(Iterator<String> it=input.keys();it.hasNext();){String key=it.next();Object value=input.get(key);
    if(booleans.contains(key)||key.matches("(extra2?_)?(left|right)_long_enabled")||key.matches("(extra2?_)?handles_linked")){if(!(value instanceof Boolean))throw new JSONException(key+" 必须为布尔值");out.put(key,value);continue;}
    if(ActionTarget.isKey(key)){out.put(key,ActionTarget.validate(key,value));continue;}
-   if(key.matches("action_(extra2?_)?(left|right)_(up|straight|down)_(short|long)")){
+   if(GestureMapping.isKey(key)){
     if(!(value instanceof String))throw new JSONException(key+" 必须为动作名称");String action=(String)value;boolean known=Arrays.asList(ActionExecutor.IDS).contains(action);
     if(action.startsWith("launcher_shortcut:"))known=ShortcutEntry.valid(action);
     if(action.startsWith("app:"))known=ComponentName.unflattenFromString(action.substring(4))!=null;
+    if(action.startsWith("folder:"))known=LauncherLayout.isFolderAction(action);
     if(action.startsWith("shortcut:")){Intent.parseUri(action.substring(9),Intent.URI_INTENT_SCHEME);known=true;}
     if(!known)throw new JSONException("未知动作："+action);out.put(key,action);continue;
    }

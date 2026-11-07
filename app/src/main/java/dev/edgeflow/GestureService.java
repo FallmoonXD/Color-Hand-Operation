@@ -152,7 +152,7 @@ public final class GestureService extends AccessibilityService implements Shared
         if(e.getEventType()==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED&&e.getPackageName()!=null){
             String p=e.getPackageName().toString();if(!p.equals(getPackageName())&&!p.equals("com.android.systemui")&&!p.equals("android")){
                 boolean app=false;for(AccessibilityWindowInfo w:getWindows())if(w.getId()==e.getWindowId()&&w.getType()==AccessibilityWindowInfo.TYPE_APPLICATION&&(w.isActive()||w.isFocused())){app=true;break;}
-                if(app){visibilityPackage=p;if(!p.equals(foreground)){previousForeground=foreground;foreground=p;replica.NativeState.setForeground(p);}}
+                if(app){RecentTaskList.invalidate(this);visibilityPackage=p;if(!p.equals(foreground)){previousForeground=foreground;foreground=p;replica.NativeState.setForeground(p);}}
             }
         }
         refreshWindowState();
@@ -190,12 +190,16 @@ public final class GestureService extends AccessibilityService implements Shared
         String visible=visibilityPackage.isEmpty()?foreground:visibilityPackage;
         if(notificationsFocused&&prefs.getBoolean("hide_notifications",false))return false;
         if(prefs.getBoolean("hide_home",false)&&!homePackage.isEmpty()&&homePackage.equals(visible))return false;
-        if(prefs.getStringSet("disabled_apps",java.util.Collections.emptySet()).contains(visible))return false;
-        String excluded=prefs.getString("excluded_packages","");for(String pkg:excluded.split("[\\s,;]+"))if(!pkg.isEmpty()&&pkg.equals(visible))return false;
-        return true;
+        return !excluded(visible);
+    }
+    private boolean excluded(String visible){
+        if(prefs.getStringSet("disabled_apps",java.util.Collections.emptySet()).contains(visible))return true;
+        for(String pkg:prefs.getString("excluded_packages","").split("[\\s,;]+"))if(!pkg.isEmpty()&&pkg.equals(visible))return true;
+        return false;
     }
     private boolean handleEnabled(String id){return prefs.getBoolean(id+"_enabled",!GestureHandleConfig.isExtra(id));}
     boolean canStartGesture(String id){return handleEnabled(id)&&canStartGesture();}
+    boolean canStartGesture(String id,String pkg){return canStartGesture(id)&&!excluded(pkg);}
     private EdgeHandleView[] handleViews(){return new EdgeHandleView[]{left,right,extraLeft,extraRight,extra2Left,extra2Right};}
     private void updateVisibility(){
         boolean show=canStartGesture(),wasVisible=handlesVisible;handlesVisible=show;EdgeHandleView[] handles=handleViews();
@@ -249,17 +253,24 @@ public final class GestureService extends AccessibilityService implements Shared
         WindowManager.LayoutParams p=new WindowManager.LayoutParams(width,height,WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.TRANSLUCENT);p.gravity=Gravity.TOP|Gravity.LEFT;p.x=x;p.y=y;p.alpha=1;p.setFitInsetsTypes(0);p.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;p.windowAnimations=0;return p;
     }
     void beginWave(boolean isLeft,float y){if(wave!=null)wave.clear();wave=isLeft?leftWave:rightWave;if(wave!=null)wave.begin(isLeft,y);}
-    void updateWave(float inward,float vertical,int direction,String handleId,boolean longer){if(wave!=null){wave.setActionHint(resolveAction(handleId,direction<0?"up":direction>0?"down":"straight",longer));wave.update(inward,vertical,direction);}}
+    void updateWave(float inward,float vertical,int direction,String handleId,boolean longer,String application){
+        if(wave!=null){wave.setActionHint(GestureMapping.resolve(prefs,application,handleId,direction<0?"up":direction>0?"down":"straight",longer));wave.update(inward,vertical,direction);}
+    }
     void releaseWave(){if(wave!=null)wave.release();}
-    void dispatchGesture(String handleId,String direction,boolean longer,float[] anchor){
-        if(!canStartGesture(handleId))return;
-        String action=resolveAction(handleId,direction,longer);String key=GestureHandleConfig.actionKey(handleId,direction,longer);Log.i(TAG,"gesture="+key+" action="+action+" anchor="+java.util.Arrays.toString(anchor));
+    String gesturePackage(){
+        try{for(AccessibilityWindowInfo w:getWindows())if(w.isFocused()&&w.getType()==AccessibilityWindowInfo.TYPE_APPLICATION){
+            android.view.accessibility.AccessibilityNodeInfo root=w.getRoot();if(root==null)return "";
+            try{return root.getPackageName()==null?"":root.getPackageName().toString();}finally{root.recycle();}
+        }}catch(RuntimeException unavailable){Log.w(TAG,"Cannot resolve gesture window",unavailable);}
+        return "";
+    }
+    void dispatchGesture(String handleId,String direction,boolean longer,float[] anchor,String application){
+        if(!canStartGesture(handleId,application)||!application.equals(gesturePackage()))return;
+        String action=GestureMapping.resolve(prefs,application,handleId,direction,longer);String key=GestureHandleConfig.actionKey(handleId,direction,longer);Log.i(TAG,"gesture="+key+" action="+action+" anchor="+java.util.Arrays.toString(anchor));
         try{ActionExecutor.execute(this,action,anchor.clone());}catch(Exception e){Log.e(TAG,"Action failed: "+action,e);}
     }
-    private String resolveAction(String handleId,String direction,boolean longer){
-        return prefs.getString(GestureHandleConfig.actionKey(handleId,direction,longer),GestureHandleConfig.defaultAction(handleId,direction,longer));
-    }
     private void cancelGesture(){for(EdgeHandleView handle:handleViews())if(handle!=null)handle.cancel();if(wave!=null)wave.clear();}
+    static void enterTrial(){GestureService service=running;if(service!=null)service.cancelGesture();}
     private void removeGestureWindows(){cancelGesture();remove(left);remove(right);remove(extraLeft);remove(extraRight);remove(extra2Left);remove(extra2Right);remove(leftWave);remove(rightWave);left=right=extraLeft=extraRight=extra2Left=extra2Right=null;wave=leftWave=rightWave=null;handlesVisible=false;}
     private void removeWindows(){removeGestureWindows();removeHandlePreviews();}
     private void remove(View v){if(v!=null)try{windows.removeViewImmediate(v);}catch(IllegalArgumentException ignored){}}
@@ -269,6 +280,7 @@ public final class GestureService extends AccessibilityService implements Shared
     @Override public void onTaskRemoved(Intent rootIntent){super.onTaskRemoved(rootIntent);Log.i(TAG,"Settings task removed; accessibility binding retained");}
     private void dismissPanels(){replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();TouchpadOverlay.dismissAll();NavigationOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();}
     private void disconnect(){
+        RecentTaskList.release(this);
         connected=false;if(running==this)running=null;main.removeCallbacksAndMessages(null);pendingConfiguration=pendingWindowState=pendingGeometry=false;
         if(receiverRegistered){try{unregisterReceiver(changes);}catch(IllegalArgumentException ignored){}receiverRegistered=false;}
         removeWindows();dismissPanels();replica.WidgetOverlay.dismissAll();ActionExecutor.release(this);stopForeground(STOP_FOREGROUND_REMOVE);

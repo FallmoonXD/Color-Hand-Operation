@@ -52,6 +52,7 @@ package dev.edgeflow;
 public final class EdgeHandleView {
  private final GestureService service;private final boolean left;private final String handleId;
  private final Handler main=new Handler();private GestureRecognizer gesture;private boolean hapticReady,quickVibration;private int pointer=-1;
+ private GestureTrial trial;private boolean trialContact;private String application="";private long decisionTime;
  EdgeHandleView(GestureService service,String id){this.service=service;handleId=id;left=GestureHandleConfig.isLeft(id);}
  private Resources getResources(){return service.resources;}private void haptic(boolean longer){service.feedback.add(longer);}
 '@
