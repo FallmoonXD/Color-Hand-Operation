@@ -28,9 +28,10 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
     private final int corner;
     private final WindowManager wm;
     private final ToolbarEdge edge;
+    private final TopEdgeGradient panelTint;
     private final Consumer<Boolean> windowBlurChanged = enabled -> refresh();
     private Object rootManager;
-    private Drawable cardBackground;
+    private Drawable cardBackground, cardBase;
     private int revealAlpha = 255;
     private boolean listening, applied, failed;
 
@@ -42,6 +43,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
         wm = view.getContext().getSystemService(WindowManager.class);
         edge = kind == Kind.TOOLBAR ? new ToolbarEdge(view) : null;
         int px = PanelStyle.dp(view.getContext(), corner);
+        panelTint = kind == Kind.TOOLBAR ? null : TopEdgeGradient.panel(view.getContext(), px);
         view.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline outline) {
                 outline.setRoundRect(0, 0, v.getWidth(), v.getHeight(), px);
@@ -87,7 +89,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
         Drawable shape = kind == Kind.TOOLBAR
                 ? ColorDialogBuilder.touchBackground(view.getContext(), color, corner)
                 : PanelStyle.shape(view.getContext(), color, corner);
-        if (local()) view.setBackground(shape);
+        if (local()) view.setBackground(panelTint == null ? shape : panelTint.over(shape));
         else setCardBackground(shape);
     }
 
@@ -98,6 +100,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
 
     void refresh() {
         Context c = view.getContext();
+        if (panelTint != null) panelTint.refreshTheme();
         PowerManager power = c.getSystemService(PowerManager.class);
         boolean available = view.isAttachedToWindow() && view.isHardwareAccelerated()
                 && (power == null || !power.isPowerSaveMode());
@@ -158,9 +161,11 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
     private void setCardBackground(Drawable drawable) {
         // A window blur is composited separately. Seed even the first drawable with
         // the current reveal value before publishing it to the attached View.
-        drawable.setAlpha(revealAlpha);
-        cardBackground = drawable;
-        if (view.getBackground() != drawable) view.setBackground(drawable);
+        if (cardBase == drawable && view.getBackground() == cardBackground) return;
+        cardBase = drawable;
+        cardBackground = panelTint.over(drawable);
+        cardBackground.setAlpha(revealAlpha);
+        view.setBackground(cardBackground);
     }
 
     private static float[] rgba(int color) {
@@ -202,6 +207,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
 
     private void clear() {
         cardBackground = null;
+        cardBase = null;
         if (applied && local()) {
             try { VIEW_EFFECT.invoke(null, null, view); }
             catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) { }

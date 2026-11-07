@@ -120,9 +120,9 @@ public final class ColorSettingsScaffold {
         int extra;
         if(home){
             if(homeMore!=null)bottom=Math.max(bottom,Math.round(homeMore.getY())+homeMore.getHeight());
-            extra=movingTitle!=null&&movingTitle.pinned?dp(14):0;
+            extra=dp(14);
         }else extra=dp(searchHeader==null?24:8);
-        int height=bottom+(mask.hasGradient()?extra:0);
+        int height=bottom+extra;
         // Only the overlay bounds follow the moving title. Avoid remeasuring the list on scroll.
         if(mask.getWidth()>0&&mask.getHeight()!=height)
             mask.layout(mask.getLeft(),mask.getTop(),mask.getRight(),mask.getTop()+height);
@@ -162,7 +162,7 @@ public final class ColorSettingsScaffold {
         private final String tail;
         private final Rect bounds=new Rect();
         private float x,baseline,size,availableWidth;
-        private boolean ready,rtl,pinned;
+        private boolean ready,rtl;
         CollapsingTitle(String text){
             super(activity);
             boolean brand="Color Hand Operation".equals(text);
@@ -191,7 +191,6 @@ public final class ColorSettingsScaffold {
             float collapsedY=localY(title)+title.getHeight()*.5f-centerOffset;
             float p=ColorTitleMotion.progress(scroll.getScrollY(),expandedY-collapsedY);
             float nextX=ColorTitleMotion.lerp(expandedX,collapsedX,p),nextY=ColorTitleMotion.lerp(expandedY,collapsedY,p);
-            pinned=p>=1;
             if(metricsChanged||x!=nextX||baseline!=nextY||rtl!=nextRtl){x=nextX;baseline=nextY;rtl=nextRtl;ready=true;invalidate();}
             if(homeMore!=null&&trailing!=null){float bx=localX(trailing)+getLeft(),by=baseline+getTop()+centerOffset-dp(24);if(homeMore.getX()!=bx||homeMore.getY()!=by){homeMore.setX(bx);homeMore.setY(by);}}
         }

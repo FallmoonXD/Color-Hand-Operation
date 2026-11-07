@@ -12,8 +12,10 @@
 
 ## CHO 的实现
 
-`ColorSettingsScaffold` 在滚动内容和固定标题之间绘制一层 `ColorAppBarMask`。应用选择页读取真实列表的首行位置，动作目录读取滚动容器的偏移。固定搜索框、返回、保存和更多按钮都在遮罩上层。列表回到顶部或搜索结果清空，遮罩随即退去。内容不足一屏的页面保持静止。
+`ColorSettingsScaffold` 在滚动内容和固定标题之间绘制 `ColorAppBarMask`。首页、二级设置、搜索结果和短页面打开时都有一层淡渐变。CHO 将页首遮罩透明度设为 55%，上滑 30dp 后达到 100%，回到页首恢复到 55%。应用选择页读取列表首行位置，动作目录读取滚动容器偏移。标题、固定搜索框、返回和保存按钮画在遮罩上方。
 
-ColorOS 上使用 `OplusRenderEffect.createGradientBlurEffect` 和 `OplusViewBackgroundRenderEffect.setBackgroundRenderEffect`。其他系统缺少相关接口时使用页面底色渐变。系统关闭材质模糊或进入省电模式时，标题栏使用实色背景。
+ColorOS 上使用 `OplusRenderEffect.createGradientBlurEffect` 和 `OplusViewBackgroundRenderEffect.setBackgroundRenderEffect`。关闭模糊、开启省电或设备缺少接口时，标题仍有底色渐变。
 
-`validation/settings-title/run.ps1` 检查标题位置、窄窗口适配和滚动透明度。实机对照图在本地 `verification/title-mask/`。
+更多菜单、确认框、底部选择窗和手势面板共用 `TopEdgeGradient`。浅色主题从顶部略微压暗，深色主题从顶部略微提亮。浮层渐变最多向下延伸 88dp，按圆角裁切；快速启动和任务切换器的标题卡也沿用相同处理。渐变跟随窗口淡入，玻璃面板继续共用原有的取景。系统设置、文档选择器和小组件提供方的设置界面由对应应用绘制。
+
+`validation/settings-title/run.ps1` 检查标题位置、窄窗口适配和渐变透明度。实机对照、菜单入场测量及浅色和深色的像素检查记录在本地 `verification/unified-gradient/`。

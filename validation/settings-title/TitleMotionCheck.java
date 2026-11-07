@@ -16,9 +16,10 @@ public final class TitleMotionCheck {
         close(ColorTitleMotion.ease(.5f),.5f,.00001f,"source symmetric midpoint");
         close(ColorTitleMotion.fittedSize(32,300,299),32,0,"available space preserves brand size");
         close(ColorTitleMotion.fittedSize(32,240,300),25.6f,.00001f,"narrow window fits the entire wordmark");
-        close(ColorTitleMotion.progress(0,30),0,0,"mask hidden at rest");
-        close(ColorTitleMotion.progress(15,30),.5f,0,"half opacity after 15 dp");
-        close(ColorTitleMotion.progress(45,30),1,0,"full mask after 30 dp");
+        close(ColorTitleMotion.maskOpacity(ColorTitleMotion.progress(-10,30)),.55f,0,"overscroll keeps the resting gradient");
+        close(ColorTitleMotion.maskOpacity(ColorTitleMotion.progress(0,30)),.55f,0,"short page keeps a visible gradient");
+        close(ColorTitleMotion.maskOpacity(ColorTitleMotion.progress(15,30)),.775f,.00001f,"halfway through the opacity ramp");
+        close(ColorTitleMotion.maskOpacity(ColorTitleMotion.progress(45,30)),1,0,"full mask after 30 dp");
         boolean monotonic=true,continuous=true,reversible=true;
         float previousY=100,previousX=24;
         for(int i=0;i<=1000;i++){

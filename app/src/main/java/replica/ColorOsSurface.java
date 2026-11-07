@@ -6,14 +6,48 @@ import java.lang.ref.WeakReference;import java.util.ArrayList;import java.util.W
 public final class ColorOsSurface extends Drawable implements Drawable.Callback {
  private final OriginalMaterial optics;private final float corner;private final NativeMaterial nativeMaterial;
  private final MaterialThemeBinding theme;
- public ColorOsSurface(Context c,float radius,int style){corner=PanelStyle.dp(c,radius);optics=new OriginalMaterial(c,radius,style,true);optics.managedByParent();optics.setCallback(this);nativeMaterial=(style==2||style==3)&&android.os.Build.VERSION.SDK_INT>=33?new NativeMaterial(c,radius,style,this):null;theme=new MaterialThemeBinding(this,this::themeChanged,optics::releaseSample);}
+ private final TopEdgeGradient panelTint;
+ public ColorOsSurface(Context c,float radius,int style){
+  corner=PanelStyle.dp(c,radius);
+  optics=new OriginalMaterial(c,radius,style,true);
+  optics.managedByParent();optics.setCallback(this);
+  boolean panel=style==2||style==3;
+  nativeMaterial=panel&&android.os.Build.VERSION.SDK_INT>=33?new NativeMaterial(c,radius,style,this):null;
+  panelTint=panel?TopEdgeGradient.panel(c,corner):null;
+  theme=new MaterialThemeBinding(this,this::themeChanged,optics::releaseSample);
+ }
  public ColorOsSurface attach(View host){theme.attach(host);if(nativeMaterial!=null)nativeMaterial.attach(host,null);return this;}
  public ColorOsSurface attach(android.view.Window window){theme.attach(window.getDecorView());if(nativeMaterial!=null)nativeMaterial.attach(window.getDecorView(),window);return this;}
- private void themeChanged(){optics.refreshTheme();if(nativeMaterial!=null)nativeMaterial.themeChanged();invalidateSelf();}
- public void draw(Canvas c){theme.track();optics.themeChanged();if(nativeMaterial!=null){nativeMaterial.themeChanged();nativeMaterial.draw(c,optics);}else optics.draw(c);}
- protected void onBoundsChange(Rect b){optics.setBounds(b);if(nativeMaterial!=null)nativeMaterial.bounds(b);if(theme!=null)theme.track();}
- public void setAlpha(int a){optics.setAlpha(a);if(nativeMaterial!=null)nativeMaterial.alpha(a);invalidateSelf();}
- public void setColorFilter(ColorFilter f){optics.setColorFilter(f);if(nativeMaterial!=null)nativeMaterial.filter(f);}
+ private void themeChanged(){
+  optics.refreshTheme();
+  if(nativeMaterial!=null)nativeMaterial.themeChanged();
+  if(panelTint!=null)panelTint.refreshTheme();
+  invalidateSelf();
+ }
+ @Override public void draw(Canvas canvas){
+  theme.track();optics.themeChanged();
+  if(nativeMaterial!=null){nativeMaterial.themeChanged();nativeMaterial.draw(canvas,optics);}
+  else optics.draw(canvas);
+  if(panelTint!=null)panelTint.draw(canvas);
+ }
+ @Override protected void onBoundsChange(Rect bounds){
+  optics.setBounds(bounds);
+  if(nativeMaterial!=null)nativeMaterial.bounds(bounds);
+  if(panelTint!=null)panelTint.setBounds(bounds);
+  if(theme!=null)theme.track();
+ }
+ @Override public void setAlpha(int alpha){
+  optics.setAlpha(alpha);
+  if(nativeMaterial!=null)nativeMaterial.alpha(alpha);
+  if(panelTint!=null)panelTint.setAlpha(alpha);
+  invalidateSelf();
+ }
+ @Override public void setColorFilter(ColorFilter filter){
+  optics.setColorFilter(filter);
+  if(nativeMaterial!=null)nativeMaterial.filter(filter);
+  if(panelTint!=null)panelTint.setColorFilter(filter);
+  invalidateSelf();
+ }
  public int getOpacity(){return PixelFormat.TRANSLUCENT;}
  public void getOutline(Outline o){o.setRoundRect(getBounds(),corner);}
  public void invalidateDrawable(Drawable d){invalidateSelf();}

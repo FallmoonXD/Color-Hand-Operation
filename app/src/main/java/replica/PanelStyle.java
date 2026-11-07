@@ -25,9 +25,16 @@ public final class PanelStyle {
   update.run();ColorOsTheme.watch(view,update);
  }
  public static void contentCard(android.view.View view,int radius,boolean clickable){
+  contentCard(view,radius,clickable,false);
+ }
+ public static void headerCard(android.view.View view,int radius){
+  contentCard(view,radius,false,true);
+ }
+ private static void contentCard(android.view.View view,int radius,boolean clickable,boolean header){
   Context c=view.getContext();Runnable update=()->{
    int fill=ColorOsTheme.card(c)&0xffffff|0xed000000;
-   view.setBackground(clickable?ColorDialogBuilder.touchBackground(c,fill,radius):shape(c,fill,radius));
+   Drawable surface=clickable?ColorDialogBuilder.touchBackground(c,fill,radius):shape(c,fill,radius);
+   view.setBackground(header?TopEdgeGradient.panel(c,dp(c,radius)).over(surface):surface);
   };
   update.run();ColorOsTheme.watch(view,update);
  }

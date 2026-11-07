@@ -10,12 +10,15 @@ import java.lang.reflect.Method;
 /** The Settings app bar samples the scrolling content behind it in the same window. */
 final class ColorAppBarMask extends View {
     private static final Method CREATE_GRADIENT = gradientMethod();
+    private final TopEdgeGradient tint;
     private boolean material, applied, failed;
     private float fraction;
 
     ColorAppBarMask(Context context) {
         super(context);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        tint = TopEdgeGradient.header(context);
+        setForeground(tint);
         ColorOsTheme.watch(this, this::refresh);
         refresh();
     }
@@ -27,16 +30,13 @@ final class ColorAppBarMask extends View {
         } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) { return null; }
     }
 
-    boolean hasGradient() { return material; }
-
     void refresh() {
         Context context = getContext();
         PowerManager power = context.getSystemService(PowerManager.class);
         boolean enabled = ColorOsTheme.materialBlur(context) && (power == null || !power.isPowerSaveMode());
-        if (material != enabled) { material = enabled; requestLayout(); }
+        material = enabled;
         if (!enabled) {
             clearEffect();
-            setBackgroundColor(ColorOsTheme.background(context));
         } else {
             if (!applied && !failed && isHardwareAccelerated() && isAttachedToWindow() && CREATE_GRADIENT != null) {
                 try {
@@ -47,24 +47,28 @@ final class ColorAppBarMask extends View {
                     android.util.Log.w("ColorAppBar", "Using the app bar color gradient", unavailable);
                 }
             }
-            int rgb = ColorOsTheme.background(context) & 0xffffff;
-            boolean dark = ColorOsTheme.dark(context);
-            int[] colors = dark ? new int[]{rgb, rgb | (applied ? 0x66000000 : 0xff000000)}
-                                : new int[]{rgb, rgb | 0xb2000000, rgb | 0xff000000};
-            GradientDrawable gradient = new GradientDrawable();
-            gradient.setOrientation(GradientDrawable.Orientation.BOTTOM_TOP);
-            gradient.setColors(colors, dark ? new float[]{0, 1} : new float[]{0, .4f, 1});
-            setBackground(gradient);
         }
+        int rgb = ColorOsTheme.background(context) & 0xffffff;
+        boolean dark = ColorOsTheme.dark(context);
+        GradientDrawable gradient = new GradientDrawable();
+        gradient.setOrientation(GradientDrawable.Orientation.BOTTOM_TOP);
+        if (!applied) {
+            // Keep text passing behind the header legible without a blur-capable renderer.
+            gradient.setColors(new int[]{rgb, rgb | 0xff000000, rgb | 0xff000000}, new float[]{0, .33f, 1});
+        } else if (dark) {
+            gradient.setColors(new int[]{rgb, rgb | 0x66000000}, new float[]{0, 1});
+        } else {
+            gradient.setColors(new int[]{rgb, rgb | 0xb2000000, rgb | 0xff000000}, new float[]{0, .4f, 1});
+        }
+        setBackground(gradient);
+        tint.refreshTheme();
         setFraction(fraction);
     }
 
     void setFraction(float value) {
         fraction = value;
-        float alpha = material ? value : 1;
+        float alpha = material ? ColorTitleMotion.maskOpacity(value) : 1;
         if (getAlpha() != alpha) setAlpha(alpha);
-        int visibility = alpha == 0 ? INVISIBLE : VISIBLE;
-        if (getVisibility() != visibility) setVisibility(visibility);
     }
 
     private void clearEffect() {
