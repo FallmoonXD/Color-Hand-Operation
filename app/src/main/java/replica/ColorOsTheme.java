@@ -47,7 +47,7 @@ public final class ColorOsTheme {
   for(String k:new String[]{"material_color_value","font_variation_settings","font_scale","system_material_stroke_enable","system_material_blur_enable","super_powersave_mode_state","color_theme_setting","custom_theme_path_setting"})try{application.getContentResolver().registerContentObserver(Settings.System.getUriFor(k),false,observer);}catch(RuntimeException ignored){}
   for(String k:new String[]{"sysui_type_accent_color","theme_customization_overlay_packages","global_theme_enabled"})try{application.getContentResolver().registerContentObserver(Settings.Secure.getUriFor(k),false,observer);}catch(RuntimeException ignored){}
   for(String k:new String[]{"low_power","disable_window_blurs","animator_duration_scale","transition_animation_scale"})try{application.getContentResolver().registerContentObserver(Settings.Global.getUriFor(k),false,observer);}catch(RuntimeException ignored){}
-  try{IntentFilter f=new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED);f.addAction(Intent.ACTION_WALLPAPER_CHANGED);application.registerReceiver(configuration,f,Context.RECEIVER_NOT_EXPORTED);}catch(RuntimeException ignored){}
+  try{IntentFilter f=new IntentFilter(Intent.ACTION_CONFIGURATION_CHANGED);f.addAction(Intent.ACTION_WALLPAPER_CHANGED);f.addAction(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);application.registerReceiver(configuration,f,Context.RECEIVER_NOT_EXPORTED);}catch(RuntimeException ignored){}
   initialized=true;
  }
  private static final class Palette {int accent,text,secondary,tertiary,background,card,popup,error,fill,disabled;boolean dark,stroke,blur;float animations;long material;String source="fallback",skin="not-checked";}

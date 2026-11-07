@@ -2,7 +2,9 @@
 
 设置页用 ColorOS Settings 的主题、排版和控件状态。控件确实盖住滚动内容时，可以给它的背景加 Oplus View 效果。快速工具、音量和小组件覆盖在别的应用上，继续由各自的窗口负责取景和合成。手势波形、角度编辑器等跟随输入的图形用 Canvas。
 
-下表中的“沿用”表示当前代码已有这条路径。“候选”表示下一次视觉改动的实施位置。此次修改解决了功能 Bug，新增的 View 背景实验运行在独立测试应用中。
+设置页的背景材质集中在 `SettingsSurface`。工具栏和页内动作列表在自己的 View 下取景。菜单、调色板和确认框则从各自的窗口取景。已有的快速工具、音量和小组件继续使用各自的跨应用捕获窗口。
+
+首页标题的 `Color` 使用 ColorOS 17 官网样式表中的 OPPO Sans 4.0。两个矢量资源分别是用该字体排好的单词，常规标题取 550 字重，系统加粗时取 700。标题按同一条基线绘制，`Hand Operation` 跟随系统字体，读屏仍朗读完整名称。仓库只包含排好的单词。[ColorOS 17 官网](https://www.coloros.com/version/coloros17/) · [OPPO Sans 4.0](https://www.coloros.com/article/A00000074/)
 
 ## 同窗口材质的实机结果
 
@@ -17,9 +19,9 @@
 | 场景 | 渲染方式 | CHO 的接入位置和回退 |
 | --- | --- | --- |
 | 页面底色、卡片、行、文字、分隔线 | 解析 Settings Theme 属性，用普通 View、Drawable、Ripple 绘制 | `ColorOsTheme`、`ColorSettingsScaffold` 和 `MainActivity.row()`。使用 `couiColorBackgroundWithCard`、`couiColorSurface`、`couiColorLabelPrimary/Secondary` 和当前强调色。资源不可用时使用现有亮暗色板 |
-| 同窗口中悬在内容上的小控件 | 将背景 RenderEffect 应用于目标 View 的 RenderNode，子视图保持正常绘制 | 候选为工具栏返回/更多按钮或确有内容从下面经过的局部表面。按需组合模糊与颜色过滤，能力不可用时回到主题色圆角 Drawable |
-| 设置页内嵌选择层 | 自己的面板背景、scrim、滚动区、内容和底部操作区 | `ColorActionSheet.showEmbedded()`。在宿主页内管理层级和无障碍焦点，优先沿用实色面板。若试验局部材质，只应用在面板背景 |
-| 独立 Dialog / PopupWindow | 根据新窗口的 token、透明背景、系统模糊开关和空间决定是否使用窗口模糊 | COUI 菜单与底部弹窗有专门的 ViewRoot/窗口背景方案。CHO 先保留主题弹窗底色。Dialog 可单独评估公开的 `Window.setBackgroundBlurRadius()`，PopupWindow 需另测实际弹窗窗口和锚点。使用不透明模式时配对正文、图标与分隔颜色 |
+| 同窗口中悬在内容上的小控件 | 目标 View 的背景使用 Oplus RenderEffect，图标单独绘制 | 返回和更多按钮使用 Settings 工具栏的 20 px 模糊与两层混色。滚动内容经过圆形按钮，标题区域铺页面底色。能力不可用时使用主题色圆角背景 |
+| 设置页内嵌选择层 | 自己的面板背景、scrim、滚动区、内容和底部操作区 | `ColorActionSheet.showEmbedded()` 只给面板背景加模糊及主题色，字、选中态和配置齿轮正常绘制。返回与无障碍焦点仍由宿主页管理 |
+| 独立 Dialog / PopupWindow | 在卡片自己的 ViewRoot 上创建背景 Drawable，按窗口模糊开关切换 | 菜单使用 ColorOS 的 160 px 半径和 popup 混色，确认框用 200 px，底部弹窗用 400 px。调色板只给卡片取景。能力缺失、系统关闭模糊或进入省电时使用不透明主题底色 |
 | 跨应用实时浮层 | 一个面板背景拥有捕获请求，接收 HardwareBuffer 后由 AGSL 混色、描边和光学层合成 | `ColorOsSurface` 的面板样式、`NativeMaterial`、`NativeBlur`。沿用已确认的捕获与 shader 参数。按现有策略处理服务缺失、Root 被拒、首帧超时、软件 Canvas 和脱离窗口 |
 | 图形、光标、编辑反馈 | Canvas/矢量直接绘制，手势或动画期间刷新 | `GestureWaveView`、`AngleEditorView`、`ColorPalettePicker` 和光标。只给需要手势输入的窗口接触摸，辅助图形使用不可触摸窗口 |
 | 外部内容 | 内容生产方或 Android 系统绘制 | 应用图标、任务快照、AppWidget、IME、SAF、系统授权、录屏和侧边栏由相应提供方绘制。CHO 管容器、裁切、焦点和生命周期 |
@@ -32,7 +34,7 @@
 
 | 路由 / 页面 | 内容应怎样画 | 合适的改动与验证 |
 | --- | --- | --- |
-| `home` 首页 | 主题页底、分组卡片、总开关、触钮状态行。标题随滚动连续移动，右侧更多按钮是独立点击目标 | 沿用 `ColorSettingsScaffold`、`ColorTitleMotion`、`ColorSwitch`。候选为更多按钮的局部背景。在顶端纯色和列表滚入栏下方两处比较，检查首帧、深色与大字号 |
+| `home` 首页 | 主题页底、分组卡片、总开关、触钮状态行。品牌标题随滚动连续移动，更多按钮是独立点击目标 | `ColorSettingsScaffold` 让列表进入按钮后方，`ColorTitleMotion` 继续控制标题与按钮的位置。检查展开、收起、深色和大字号时两者是否重叠 |
 | `left` / `right` / `extra_left` / `extra_right` / `extra2_left` / `extra2_right` | 同一页模板。方向图标用矢量，摘要用 TextView，开关与尺寸/位置用现有 COUI 风格控件 | 触钮调节期间仅更新草稿显示和边缘预览。确认、取消、切后台、双侧对齐和第三对触钮都要覆盖 |
 | `advanced` / `gestures` | 分组、文本、开关与滑条。振动方式和长滑时间采用普通设置行 | 沿用 `ColorSwitch` / `ColorSlider`，保存后更新相关行。检查手指从滑条改为纵向滚动、取消拖动和系统动画关闭 |
 | `angle` | 卡片内由 `AngleEditorView` 画扇区、方向箭头和拖柄，标签按系统字体缩放 | 只更新被拖动边界。镜像、最小夹角、多指取消及 RTL 下分别检查几何与语义节点 |
@@ -54,7 +56,7 @@
 
 | 入口 | 当前宿主与建议 | 交互验收 |
 | --- | --- | --- |
-| 首页更多、减少触钮、导航项齿轮 | `ColorPopupMenu` 创建锚定 PopupWindow。当前用主题 popup 底色、圆角、阴影和行 Ripple。候选为匹配的跨窗口背景 Drawable | 锚点附近可用空间、RTL、键盘遮挡、点外部关闭、危险项色和分隔线 |
+| 首页更多、减少触钮、导航项齿轮 | `ColorPopupMenu` 创建锚定 PopupWindow。卡片使用当前窗口的背景 Drawable、圆角、阴影和行 Ripple | 锚点附近可用空间、RTL、键盘遮挡、点外部关闭、危险项色和分隔线 |
 | 选择手势动作 | 内嵌 `ColorActionSheet`。动作行和配置齿轮分别有点击与无障碍语义，保留自有布局 | 从配置页返回同一选择层、同一滚动位置。返回按钮与名为“返回”的动作行分别检查 |
 | 触钮颜色 | `ColorPaletteSheet` 以 Dialog 形式打开 `ColorActionSheet`，色环、SV 方块、网格、透明度和色样由 Canvas 绘制 | 网格/色环、HEX 输入、IME、确定和取消。棋盘格只出现在透明度展示中；旧浮点透明度按百分比显示 |
 | 恢复默认、未保存退出、删除组件/页面 | 设置页用 `ColorDialogBuilder`；浮层内按上下文使用 `GlassDialogBuilder` | 消息简短时居中，长列表/表单使用底部选择。按钮随字宽换行，危险项可读，取消不提交 |
@@ -80,11 +82,11 @@ ColorOS 的 `COUIPopupListWindow.setUseBackgroundBlur()` 把开关传给内外�
 | 屏幕自由移动 | `ScreenMoveOverlay` 单独管理截图/HardwareBuffer、内容位移及输入映射；局部控制区挂现有材质 | 截图失败、受保护画面、边界命中、画面关闭后释放 buffer，控制区不吞掉映射点击 |
 | 桌面与通知图标 | Android AdaptiveIconDrawable 负责裁切和 MD3 着色，通知使用专用单色矢量 | 彩色、MD3 和通知分开校验，在小尺寸、圆形及圆角遮罩下检查 |
 
-## 实施顺序
+## 实现与验证
 
 1. **先核对主题与基本控件。** 对照原生显示/声音页和 CHO 首页的运行时主题属性。开关轨道在这台 560 dpi 设备上为 154×84 px，圆径 63 px，内边距 10.5 px，对应 44×24、18、3 dp。已有 `ColorSwitch`、`ColorSlider`、`ColorRadioButton`、`ColorCheckBox` 负责状态和无障碍语义。滑条拇指的渐变、缓存阴影和按压覆盖层参考 `TexturedThumbRenderer`。字体使用系统 Typeface 及当前字重调整，字号使用 sp。
-2. **先选一个小控件试同窗口效果。** 选择二级页工具栏返回按钮，在真实滚动内容上与实色版本对照。实现位置应在共享 scaffold 或按钮 Drawable 的绑定处。每个进程探测类和签名，结合硬件加速、系统质感开关、主题及省电状态决定是否启用。挂载或主题变化时设置效果，回退或 detach 时清除。先验证模糊，再单独评估描边、按压 spotlight 和焦散。
-3. **分别测试两种选择层。** 内嵌动作列表在宿主页测试同窗口背景；颜色 Dialog、更多菜单在独立窗口测试透明度、window token、IME 与系统窗口模糊。只有在滚动背景确实可见、前景可读、动画无残影时采用材质。无法调用接口时继续使用 `ColorOsTheme.popup()` 和已有阴影。
+2. **工具栏。** 首页更多和二级页返回共用同窗口材质。背景模糊与轮廓有各自的系统开关。`ToolbarEdge` 通过 OplusMaterialUtil 设置 COUI 圆形按钮的亮边与阴影，在 PKR110 上单独关闭再开启轮廓，按钮裁图恢复到相同像素。按压沿用 Ripple。每个进程探测接口签名，挂载和主题变化时更新，脱离窗口时清除。
+3. **菜单与选择层。** 页内选择列表用同窗口效果，首页菜单和调色板使用各自的窗口。在 PKR110 上，普通确认框仅设置 Android 的窗口模糊半径时仍能看见底下的文字。改成与 COUI 相同的 `ViewRootManager` 卡片背景后，正文和下层应用可以清楚区分。接口缺失时使用 `ColorOsTheme.popup()`。
 4. **跨应用面板按现有参数做回归。** 快速工具、音量、小组件以已确认效果为基准。其他服务面板共用相同的捕获生命周期和各自前景色。新的列表行和按钮使用父窗口的结果或局部绘制，先记录活动客户端、帧数及释放，再决定是否需要新的捕获表面。
 
 ## 验证矩阵
@@ -99,7 +101,7 @@ ColorOS 的 `COUIPopupListWindow.setUseBackgroundBlur()` 把开关传给内外�
 | 性能与内存 | 同机同场景记录 `dumpsys gfxinfo` 的帧耗时、活动捕获数、首帧等待和重复开关后的内存趋势。按测试时刷新率比较，静止页面不持续刷新 |
 | 系统/第三方内容 | 实际 AppWidget、系统 SAF、权限页、受保护任务预览和系统录屏。检查回到 CHO 后的状态和窗口，分别记录外部提供方的限制 |
 
-当前已打开检查 CHO 首页、首页更多菜单、内嵌动作列表、快速工具和上述条纹实验图。快速工具上测得 `connected=true` 且有帧返回，小组件手势返回后原页面节点和滚动位置保留。矩阵中的其他组合是后续视觉改动的检查清单。
+PKR110 实机检查覆盖首页大标题与收起标题、独立菜单、页内动作列表、调色板键盘、确认框，以及关闭系统模糊后的实色回退。1.45 倍字号和阿拉伯语布局下，首页仍只有一个完整标题，更多按钮会镜像到左侧。快速工具、音量、小组件各占一个捕获请求，小组件打开二级菜单时仍为一个，全部关闭后为零。主题商店自定义皮肤、其他机型及无 Root 环境还有待实测。
 
 ## 查资料的位置
 

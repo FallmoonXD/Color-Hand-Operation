@@ -51,6 +51,7 @@ public final class ColorPopupMenu implements AutoCloseable {
     private int pending=-1;
     private MenuWindow window;
     private MenuCard card;
+    private SettingsSurface surface;
     private LinearLayout content;
     private TextView heading, description;
     private ValueAnimator animator;
@@ -132,6 +133,7 @@ public final class ColorPopupMenu implements AutoCloseable {
 
     private void build(){
         card=new MenuCard(context);card.setClipToOutline(true);
+        surface=new SettingsSurface(card,SettingsSurface.Kind.POPUP,20,null);
         ScrollView scroll=new ScrollView(context);scroll.setFillViewport(false);scroll.setVerticalScrollBarEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);scroll.setBackgroundColor(Color.TRANSPARENT);
         content=new LinearLayout(context);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(8),dp(8),dp(8),dp(8));
@@ -164,7 +166,7 @@ public final class ColorPopupMenu implements AutoCloseable {
     private void addRule(){View rule=new View(context);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,Math.max(1,dp(.5f)));lp.setMargins(dp(12),dp(4),dp(12),dp(4));content.addView(rule,lp);rules.add(rule);}
     private void refreshColors(){
         if(card==null)return;
-        card.setBackground(PanelStyle.shape(context,ColorOsTheme.popup(context),20));
+        surface.refresh();
         if(heading!=null){heading.setTextColor(ColorOsTheme.text(context));heading.setTypeface(ColorOsTheme.typeface(context,500));}
         if(description!=null){description.setTextColor(ColorOsTheme.secondary(context));description.setTypeface(ColorOsTheme.typeface(context,400));}
         for(int i=0;i<rows.size();i++){TextView row=rows.get(i);row.setTextColor(destructive.contains(i)?ColorOsTheme.error(context):ColorOsTheme.text(context));row.setTypeface(ColorOsTheme.typeface(context,400));row.setBackground(ColorDialogBuilder.touchBackground(context,Color.TRANSPARENT,12));}

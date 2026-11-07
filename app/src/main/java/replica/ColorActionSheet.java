@@ -49,6 +49,7 @@ public final class ColorActionSheet implements AutoCloseable {
     private View shade,handle,divider;
     private FrameLayout dragArea,header;
     private LinearLayout panel,footer;
+    private SettingsSurface surface;
     private TextView heading,cancel;
     private ImageView close;
     private ValueAnimator animator;
@@ -191,6 +192,7 @@ public final class ColorActionSheet implements AutoCloseable {
             @Override public boolean performAccessibilityAction(int action,Bundle args){if(action==AccessibilityNodeInfo.ACTION_DISMISS){dismiss();return true;}return super.performAccessibilityAction(action,args);}
         };
         panel.setOrientation(LinearLayout.VERTICAL);panel.setVisibility(View.INVISIBLE);panel.setClipToOutline(true);panel.setClickable(true);panel.setOnClickListener(v->{});panel.setAccessibilityPaneTitle(title);
+        surface=new SettingsSurface(panel,embedded?SettingsSurface.Kind.EMBEDDED_SHEET:SettingsSurface.Kind.SHEET,28,null);
         root.addView(panel,new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM|Gravity.LEFT));
         dragArea=new FrameLayout(owner);dragArea.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);dragArea.setOnTouchListener(drag);
         handle=new View(owner);FrameLayout.LayoutParams hp=new FrameLayout.LayoutParams(dp(28),dp(4),Gravity.CENTER);dragArea.addView(handle,hp);panel.addView(dragArea,new LinearLayout.LayoutParams(-1,dp(24)));
@@ -239,7 +241,7 @@ public final class ColorActionSheet implements AutoCloseable {
         animator.start();
     }
     private void refreshColors(){
-        if(panel==null)return;panel.setBackground(PanelStyle.shape(owner,ColorOsTheme.popup(owner),28));
+        if(panel==null)return;surface.refresh();
         heading.setTextColor(ColorOsTheme.text(owner));heading.setTypeface(ColorOsTheme.typeface(owner,600));
         handle.setBackground(PanelStyle.shape(owner,ColorOsTheme.tertiary(owner),2));divider.setBackgroundColor(ColorOsTheme.dark(owner)?0x18ffffff:0x10000000);
         close.setColorFilter(ColorOsTheme.text(owner));close.setBackground(ColorDialogBuilder.touchBackground(owner,ColorOsTheme.fill(owner),24));

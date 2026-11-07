@@ -101,6 +101,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
  private final class ColorDialog extends AlertDialog {
   private final boolean sheet=items!=null||adapter!=null||content!=null;
   private LinearLayout root,header,actions;private FrameLayout viewport;private View body;private ListView list;
+  private SettingsSurface surface;
   private TextView heading,description;private ImageView close;private View rule,handle;
   private final HashMap<Integer,Button> buttons=new HashMap<>();
   private final java.util.IdentityHashMap<TextView,TextStyle> contentStyles=new java.util.IdentityHashMap<>();
@@ -244,7 +245,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    super.onStart();Context c=getContext();Window window=getWindow();window.setWindowAnimations(0);window.setDimAmount(glass?.12f:.24f);
    if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
    if(glass){window.setBackgroundDrawable(new ColorOsSurface(c,sheet?28:24,3).attach(window));try{window.getClass().getMethod("setBackgroundBlurRadius",int.class).invoke(window,PanelStyle.blurRadius(c));}catch(Exception ignored){}}
-   else window.setBackgroundDrawable(PanelStyle.shape(c,ColorOsTheme.popup(c),sheet?28:22));
+   else if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
    window.getDecorView().setClipToOutline(true);layoutWindow();refreshColors();observeOwner();
    if(sheet){window.getDecorView().setAlpha(0);root.post(entrance);}
    else if(glass){motion=new ColorMotion(window);motion.enter();}
@@ -266,7 +267,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(done!=null)animator.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){done.run();}});animator.start();
   }
   private void refreshColors(){
-   if(root==null)return;Context c=getContext();if(!glass)getWindow().setBackgroundDrawable(PanelStyle.shape(c,ColorOsTheme.popup(c),sheet?28:22));
+   if(root==null)return;Context c=getContext();if(surface!=null)surface.refresh();
    if(heading!=null){heading.setTextColor(ColorOsTheme.text(c));heading.setTypeface(ColorOsTheme.typeface(c,600));}if(description!=null){description.setTextColor(ColorOsTheme.secondary(c));description.setTypeface(ColorOsTheme.typeface(c,400));}
    if(handle!=null)handle.setBackground(PanelStyle.shape(c,ColorOsTheme.tertiary(c),2));if(close!=null){close.setColorFilter(ColorOsTheme.text(c));close.setBackground(touchBackground(c,ColorOsTheme.fill(c),24));}if(rule!=null)rule.setBackgroundColor(ColorOsTheme.dark(c)?0x18ffffff:0x10000000);
    if(customTitle!=null)styleChildren(customTitle);if(content!=null)styleChildren(content);if(list!=null){styleList(list);if(list.getAdapter() instanceof BaseAdapter)((BaseAdapter)list.getAdapter()).notifyDataSetChanged();}

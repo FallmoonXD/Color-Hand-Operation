@@ -32,7 +32,7 @@ public final class ColorAppPickerPage implements AutoCloseable {
         this.owner=owner;this.excluded=new HashSet<>(excluded);this.selected=selected;initialScroll=y;
         scaffold=new ColorSettingsScaffold(owner,"添加应用快捷入口",false,back);
         search=ColorDialogBuilder.editText(owner,"搜索应用");search.setContentDescription("搜索应用");search.setSingleLine(true);search.setText(query);search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
-        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,-2);sp.setMargins(dp(16),dp(8),dp(16),dp(4));scaffold.page.addView(search,1,sp);
+        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,-2);sp.setMargins(dp(16),dp(8),dp(16),dp(4));scaffold.setSearchHeader(search,sp);
         scaffold.root.setOnApplyWindowInsetsListener((view,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());int bottom=Math.max(bars.bottom,insets.getInsets(WindowInsets.Type.ime()).bottom);view.setPadding(bars.left,bars.top,bars.right,bottom);return insets;});
         rows=new LinearLayout(owner);rows.setOrientation(LinearLayout.VERTICAL);rows.setPadding(dp(4),dp(4),dp(4),dp(4));rows.setBackground(PanelStyle.shape(owner,ColorOsTheme.card(owner),20));scaffold.content.addView(rows,new LinearLayout.LayoutParams(-1,-2));
         message("正在读取应用…");search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){initialScroll=0;if(!loading)filter();}public void afterTextChanged(Editable e){}});
