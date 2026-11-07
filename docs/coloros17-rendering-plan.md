@@ -4,7 +4,7 @@
 
 设置页的背景材质集中在 `SettingsSurface`。工具栏和页内动作列表在自己的 View 下取景。菜单、调色板和确认框则从各自的窗口取景。已有的快速工具、音量和小组件继续使用各自的跨应用捕获窗口。
 
-首页标题的 `Color` 使用 ColorOS 17 官网样式表中的 OPPO Sans 4.0。两个矢量资源分别是用该字体排好的单词，常规标题取 550 字重，系统加粗时取 700。标题按同一条基线绘制，`Hand Operation` 跟随系统字体，读屏仍朗读完整名称。仓库只包含排好的单词。[ColorOS 17 官网](https://www.coloros.com/version/coloros17/) · [OPPO Sans 4.0](https://www.coloros.com/article/A00000074/)
+首页标题的 `Color` 来自 ColorOS 17 官网首屏的品牌字标。首屏视频和海报里有相同的五个字母。按 4320 × 3414 海报中的轮廓和间距制作了一个矢量，保留圆形 `o` 和短弯钩 `r`。系统开启粗体时在同一轮廓上加细描边。`Hand Operation` 跟随系统字体，整句共用基线，读屏朗读完整名称。[ColorOS 17 官网](https://www.coloros.com/version/coloros17/) · [首屏原图](https://coloros-website-cn.allawnfs.com/website-resource-20260917/os17/images/module1/pc/imgLog.png)
 
 ## 同窗口材质的实机结果
 

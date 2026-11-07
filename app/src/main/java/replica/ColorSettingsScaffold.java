@@ -158,7 +158,7 @@ public final class ColorSettingsScaffold {
                 float height=paint.getTextSize(),advance=wordWidth();
                 colorWord.setTint(paint.getColor()|0xff000000);colorWord.setAlpha(paint.getAlpha());
                 colorWord.setBounds(0,0,Math.round(advance),Math.round(height));
-                // The typeset word has its baseline at 800 in a 1000-unit viewport.
+                // The l and r in the hero wordmark rest at y=160 in its 200-unit viewport.
                 int save=canvas.save();canvas.translate(start,baseline-.8f*height);colorWord.draw(canvas);canvas.restoreToCount(save);
                 start+=advance;
             }
