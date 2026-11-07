@@ -14,27 +14,23 @@ public final class TitleMotionCheck {
         close(ColorTitleMotion.ease(0),0,0,"exact curve start");
         close(ColorTitleMotion.ease(1),1,0,"exact curve end");
         close(ColorTitleMotion.ease(.5f),.5f,.00001f,"source symmetric midpoint");
-        close(ColorTitleMotion.lerp(32,18,0),32,0,"accepted expanded size");
-        close(ColorTitleMotion.lerp(32,18,1),18,0,"accepted collapsed size");
-        close(ColorTitleMotion.alpha(0),1,0,"expanded fully opaque");
-        close(ColorTitleMotion.alpha(1),1,0,"collapsed fully opaque");
-        close(ColorTitleMotion.alpha(.5f),.75f,.00001f,"single-run complementary crossfade");
-        boolean monotonic=true,continuous=true,readable=true,reversible=true,symmetric=true;
-        float previousY=100,previousSize=32,previousX=24;
+        close(ColorTitleMotion.fittedSize(32,300,299),32,0,"available space preserves brand size");
+        close(ColorTitleMotion.fittedSize(32,240,300),25.6f,.00001f,"narrow window fits the entire wordmark");
+        close(ColorTitleMotion.progress(0,30),0,0,"mask hidden at rest");
+        close(ColorTitleMotion.progress(15,30),.5f,0,"half opacity after 15 dp");
+        close(ColorTitleMotion.progress(45,30),1,0,"full mask after 30 dp");
+        boolean monotonic=true,continuous=true,reversible=true;
+        float previousY=100,previousX=24;
         for(int i=0;i<=1000;i++){
-            float p=i/1000f,y=ColorTitleMotion.lerp(100,32,p),size=ColorTitleMotion.lerp(32,18,p),x=ColorTitleMotion.lerp(24,20,p),alpha=ColorTitleMotion.alpha(p);
-            monotonic&=y<=previousY+.00001f&&size<=previousSize+.00001f&&x<=previousX+.00001f;
-            continuous&=Math.abs(y-previousY)<.12f&&Math.abs(size-previousSize)<.03f;
-            readable&=alpha>=.75f&&alpha<=1;
+            float p=i/1000f,y=ColorTitleMotion.lerp(100,32,p),x=ColorTitleMotion.lerp(24,20,p);
+            monotonic&=y<=previousY+.00001f&&x<=previousX+.00001f;
+            continuous&=Math.abs(y-previousY)<.12f;
             reversible&=Math.abs(y-ColorTitleMotion.lerp(32,100,1-p))<.0002f;
-            symmetric&=Math.abs(alpha-ColorTitleMotion.alpha(1-p))<.00001f;
-            previousY=y;previousSize=size;previousX=x;
+            previousY=y;previousX=x;
         }
         check(monotonic,"no direction reversal during upward scroll");
         check(continuous,"no threshold jumps in geometry");
-        check(readable,"no invisible interval during handoff");
         check(reversible,"reverse scrolling uses identical path without timing state");
-        check(symmetric,"alpha is symmetric on reversal");
         for(float p:new float[]{0,.1f,.3f,.5f,.8f,1}){
             close(ColorTitleMotion.lerp(300,304,p),324-ColorTitleMotion.lerp(24,20,p),.0001f,"RTL mirror at "+p);
             close(ColorTitleMotion.lerp(132,64,p)-ColorTitleMotion.lerp(100,32,p),32,.0001f,"insets preserve path at "+p);

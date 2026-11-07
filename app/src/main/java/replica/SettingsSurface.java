@@ -61,6 +61,11 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
         } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) { return null; }
     }
 
+    static void setLocalBackgroundEffect(View view, RenderEffect effect) throws ReflectiveOperationException {
+        if (VIEW_EFFECT == null) throw new NoSuchMethodException("setBackgroundRenderEffect");
+        VIEW_EFFECT.invoke(null, effect, view);
+    }
+
     private boolean local() { return kind == Kind.TOOLBAR || kind == Kind.EMBEDDED_SHEET; }
 
     @Override public void onViewAttachedToWindow(View v) {
@@ -107,7 +112,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
         boolean dark = ColorOsTheme.dark(c);
         try {
             if (local()) {
-                VIEW_EFFECT.invoke(null, localEffect(dark), view);
+                setLocalBackgroundEffect(view, localEffect(dark));
                 applied = true;
                 background(kind == Kind.TOOLBAR ? Color.TRANSPARENT : ((ColorOsTheme.popup(c) & 0xffffff) | 0xe6000000));
             } else {

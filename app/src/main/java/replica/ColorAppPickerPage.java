@@ -52,19 +52,36 @@ public final class ColorAppPickerPage implements AutoCloseable {
         this.owner=owner;this.scaffold=scaffold;this.mode=mode;this.worker=worker;
         this.excluded=new HashSet<>(excluded);this.first=first;this.checked=checked;this.select=select;
         search=scaffold.search("搜索应用",query,value->{this.first=0;if(loaded)filter();});
-        scaffold.page.removeView(scaffold.scroll);
-        list=new ListView(owner);ColorDialogBuilder.styleList(list);list.setAdapter(rows);
-        list.setBackground(PanelStyle.shape(owner,ColorOsTheme.card(owner),20));list.setClipToOutline(true);
+        list=new ResultList(owner);ColorDialogBuilder.styleList(list);list.setAdapter(rows);list.setClipToPadding(false);
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,0,1);
         lp.setMargins(dp(16),dp(6),dp(16),dp(12));scaffold.page.addView(list,lp);
         status=new TextView(owner);status.setGravity(Gravity.CENTER);status.setMinHeight(dp(80));
         status.setTextSize(15);status.setTextColor(ColorOsTheme.secondary(owner));status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         scaffold.page.addView(status,new LinearLayout.LayoutParams(-1,-2));
+        scaffold.setResultList(list,status);
         load();
+    }
+    /** The card's top follows the first row as it scrolls behind the pinned search field. */
+    private final class ResultList extends ListView {
+        private final android.graphics.Path clip=new android.graphics.Path();
+        private final android.graphics.Paint fill=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        ResultList(Activity activity){super(activity);}
+        @Override protected void dispatchDraw(Canvas canvas){
+            View first=getChildAt(0);
+            if(first==null){super.dispatchDraw(canvas);return;}
+            float top=getFirstVisiblePosition()==0?first.getTop():-dp(20);
+            clip.rewind();clip.addRoundRect(0,top,getWidth(),getHeight(),dp(20),dp(20),android.graphics.Path.Direction.CW);
+            fill.setColor(ColorOsTheme.card(owner));canvas.drawPath(clip,fill);
+            int save=canvas.save();canvas.clipPath(clip);super.dispatchDraw(canvas);canvas.restoreToCount(save);
+        }
     }
     private int dp(float v){return PanelStyle.dp(owner,v);}
     public String query(){return search.getText().toString();}
-    public int firstVisibleIndex(){return loaded&&!visible.isEmpty()?list.getFirstVisiblePosition():first;}
+    public int firstVisibleIndex(){
+        if(!loaded||visible.isEmpty())return first;
+        int atHeader=list.pointToPosition(list.getWidth()/2,list.getPaddingTop());
+        return atHeader!=ListView.INVALID_POSITION?atHeader:list.getFirstVisiblePosition();
+    }
     public void hideKeyboard(){owner.getSystemService(InputMethodManager.class).hideSoftInputFromWindow(search.getWindowToken(),0);search.clearFocus();}
     private boolean alive(){return !closed&&!owner.isFinishing()&&!owner.isDestroyed();}
     private void message(String text,boolean retry){

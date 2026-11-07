@@ -11,8 +11,9 @@ public final class ColorTitleMotion {
         return (float)(3*(1-t)*t*t+t*t*t);
     }
     public static float lerp(float start,float end,float progress){return start+(end-start)*ease(progress);}
-    /** Composite alpha of complementary crossfade layers, rendered as one glyph run. */
-    public static float alpha(float progress){float t=ease(progress);return 1-t*(1-t);}
+    public static float fittedSize(float size,float available,float measured){
+        return measured>available&&measured>0?size*available/measured:size;
+    }
     private static float clamp(float value){return Float.isNaN(value)?0:Math.max(0,Math.min(1,value));}
     private ColorTitleMotion(){}
 }
