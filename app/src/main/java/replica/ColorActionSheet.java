@@ -227,6 +227,7 @@ public final class ColorActionSheet implements AutoCloseable {
     }
     private void pose(float value){
         reveal=Math.max(0,Math.min(1,value));if(panel==null)return;
+        if(!embedded)surface.setRevealAlpha(reveal==0?0:1);
         FrameLayout.LayoutParams p=(FrameLayout.LayoutParams)panel.getLayoutParams();
         float distance=Math.max(1,p.height>0?p.height:panel.getHeight())+p.bottomMargin;
         panel.setTranslationY((1-reveal)*distance);shade.setAlpha(.28f*reveal);

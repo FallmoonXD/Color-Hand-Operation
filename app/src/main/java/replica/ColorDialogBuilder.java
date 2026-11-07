@@ -246,9 +246,9 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
    if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
    window.getDecorView().setClipToOutline(true);layoutWindow();refreshColors();observeOwner();
-   if(sheet){window.getDecorView().setAlpha(0);root.post(entrance);}
+   if(sheet){poseSheet(0,Math.max(root.getHeight(),lastHeight));root.post(entrance);}
    else if(glass){motion=new ColorMotion(window);motion.enter();}
-   else{root.setAlpha(0);root.setScaleX(.96f);root.setScaleY(.96f);root.animate().alpha(1).scaleX(1).scaleY(1).setDuration(animations()?220:0).setInterpolator(ColorMotion.spring(.3,0)).start();}
+   else{poseCenter(0,.96f);animatePanel(true,null);}
   }
   private void observeOwner(){Activity owner=activity(getContext());if(owner==null||lifecycle!=null)return;lifecycle=new android.app.Application.ActivityLifecycleCallbacks(){
    public void onActivityCreated(Activity a,Bundle b){}public void onActivityStarted(Activity a){}public void onActivityResumed(Activity a){if(a==owner)paused=false;}
@@ -257,12 +257,27 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   };owner.getApplication().registerActivityLifecycleCallbacks(lifecycle);}
   private boolean ownerAvailable(){Activity a=activity(getContext());return !paused&&(a==null||!a.isFinishing()&&!a.isDestroyed());}
   private boolean animations(){return android.animation.ValueAnimator.areAnimatorsEnabled()&&ColorOsTheme.animationScale(getContext())!=0;}
+  private void poseSheet(float value,int distance){
+   reveal=value;getWindow().getDecorView().setTranslationY((1-value)*distance);
+   surface.setRevealAlpha(value<=0?0:1);
+  }
+  private void poseCenter(float value,float scale){
+   // Keep the material root opaque. Only the content and the compositor region fade.
+   reveal=value;surface.setRevealAlpha(value);
+   for(int i=0;i<root.getChildCount();i++)root.getChildAt(i).setAlpha(value);
+   root.setScaleX(scale);root.setScaleY(scale);
+  }
   private void animatePanel(boolean enter,Runnable done){
    if(animator!=null){animator.removeAllUpdateListeners();animator.removeAllListeners();animator.cancel();animator=null;}
-   View decor=getWindow().getDecorView();float start=reveal,end=enter?1:0;int distance=Math.max(root.getHeight(),lastHeight);
-   if(!animations()){reveal=end;decor.setAlpha(1);decor.setTranslationY((1-end)*distance);if(done!=null)done.run();return;}
-   animator=android.animation.ValueAnimator.ofFloat(start,end);animator.setDuration(250);animator.setInterpolator(enter?new android.view.animation.PathInterpolator(.3f,0,.1f,1):new android.view.animation.PathInterpolator(.3f,0,1,1));
-   animator.addUpdateListener(value->{reveal=(float)value.getAnimatedValue();decor.setAlpha(1);decor.setTranslationY((1-reveal)*distance);});
+   float start=reveal,end=enter?1:0,startScale=root.getScaleX(),endScale=enter?1:.97f;
+   int distance=Math.max(root.getHeight(),lastHeight);
+   if(!animations()){if(sheet)poseSheet(end,distance);else poseCenter(end,endScale);if(done!=null)done.run();return;}
+   animator=android.animation.ValueAnimator.ofFloat(0,1);animator.setDuration(sheet?250:enter?220:140);
+   if(sheet)animator.setInterpolator(enter?new android.view.animation.PathInterpolator(.3f,0,.1f,1):new android.view.animation.PathInterpolator(.3f,0,1,1));
+   else animator.setInterpolator(ColorMotion.spring(.3,0));
+   animator.addUpdateListener(animation->{float t=(float)animation.getAnimatedValue(),value=start+(end-start)*t;
+    if(sheet)poseSheet(value,distance);else poseCenter(value,startScale+(endScale-startScale)*t);
+   });
    if(done!=null)animator.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){done.run();}});animator.start();
   }
   private void refreshColors(){
@@ -281,7 +296,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(closing||finished)return;
    if(root==null||!isShowing()||!root.isAttachedToWindow()||!ownerAvailable()){finishDismiss();return;}
    closing=true;root.cancelPendingInputEvents();root.removeCallbacks(entrance);NativeMaterial.cancelEntrance(getWindow().getDecorView());
-   if(sheet)animatePanel(false,()->finishDismiss(true));else if(glass&&motion!=null)motion.exit(()->finishDismiss(true));else{root.animate().withEndAction(null).cancel();root.animate().alpha(0).scaleX(.97f).scaleY(.97f).setDuration(animations()?140:0).withEndAction(()->finishDismiss(true)).start();}
+   if(!sheet&&glass&&motion!=null)motion.exit(()->finishDismiss(true));else animatePanel(false,()->finishDismiss(true));
   }
   private void finishDismiss(){deliveryCancelled=true;pendingAction=null;finishDismiss(false);}
   private void finishDismiss(boolean dispatch){

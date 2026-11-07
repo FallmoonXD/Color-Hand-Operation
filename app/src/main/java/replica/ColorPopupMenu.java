@@ -101,7 +101,7 @@ public final class ColorPopupMenu implements AutoCloseable {
         window.setOnDismissListener(()->{if(!closed){pending=-1;release();notifyDismiss();}});
         refreshColors();
         if(!layout(true)){dismissImmediately();return this;}
-        card.setAlpha(0);card.setScaleX(.94f);card.setScaleY(.94f);
+        setReveal(0);card.setScaleX(.94f);card.setScaleY(.94f);
         try{showWindow();}
         catch(RuntimeException|ReflectiveOperationException failure){android.util.Log.w("ColorPopupMenu","Unable to show menu window",failure);dismissImmediately();return this;}
         showing=true;
@@ -216,7 +216,7 @@ public final class ColorPopupMenu implements AutoCloseable {
     }
     private void release(){
         closed=true;showing=false;closing=true;pending=-1;
-        if(animator!=null){animator.removeAllListeners();animator.cancel();animator=null;}
+        if(animator!=null){animator.removeAllUpdateListeners();animator.removeAllListeners();animator.cancel();animator=null;}
         if(card!=null)card.removeCallbacks(relayout);
         anchor.removeOnAttachStateChangeListener(attach);
         if(tree!=null&&tree.isAlive()){tree.removeOnGlobalLayoutListener(globalLayout);tree.removeOnScrollChangedListener(scrolled);}tree=null;
@@ -225,13 +225,19 @@ public final class ColorPopupMenu implements AutoCloseable {
         selection=null;
     }
     private void notifyDismiss(){if(notifying)return;notifying=true;Runnable callback=onDismiss;onDismiss=null;if(callback!=null)callback.run();}
+    private void setReveal(float alpha){
+        // A translucent parent puts the blur drawable in an offscreen layer until the
+        // last frame. Fade its compositor region and the menu contents independently.
+        surface.setRevealAlpha(alpha);
+        content.setAlpha(alpha);
+    }
     private void animate(boolean enter,Runnable done){
-        if(animator!=null){animator.removeAllListeners();animator.cancel();}
-        if(ColorOsTheme.animationScale(context)==0){card.setAlpha(enter?1:0);card.setScaleX(enter?1:.96f);card.setScaleY(enter?1:.96f);if(done!=null)done.run();return;}
-        float alpha=card.getAlpha(),scale=card.getScaleX(),endAlpha=enter?1:0,endScale=enter?1:.96f;
+        if(animator!=null){animator.removeAllUpdateListeners();animator.removeAllListeners();animator.cancel();}
+        if(!ValueAnimator.areAnimatorsEnabled()||ColorOsTheme.animationScale(context)==0){setReveal(enter?1:0);card.setScaleX(enter?1:.96f);card.setScaleY(enter?1:.96f);if(done!=null)done.run();return;}
+        float alpha=content.getAlpha(),scale=card.getScaleX(),endAlpha=enter?1:0,endScale=enter?1:.96f;
         animator=ValueAnimator.ofFloat(0,1);animator.setDuration(enter?250:200);
         animator.setInterpolator(enter?new PathInterpolator(.2f,0,.1f,1):new PathInterpolator(.3f,0,.8f,.15f));
-        animator.addUpdateListener(value->{float f=(float)value.getAnimatedValue();card.setAlpha(alpha+(endAlpha-alpha)*f);float s=scale+(endScale-scale)*f;card.setScaleX(s);card.setScaleY(s);});
+        animator.addUpdateListener(value->{float f=(float)value.getAnimatedValue();setReveal(alpha+(endAlpha-alpha)*f);float s=scale+(endScale-scale)*f;card.setScaleX(s);card.setScaleY(s);});
         if(done!=null)animator.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator animation){done.run();}});
         animator.start();
     }

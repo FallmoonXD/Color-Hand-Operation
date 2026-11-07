@@ -1,6 +1,12 @@
 # Settings anchored menus
 
-`replica.ColorPopupMenu` replaces the settings overflow and handle add/remove choice dialogs. It is a normal focusable `PopupWindow` anchored to the actual invoking view, without a modal scrim. It does not change floating tool panels, confirmation/input `ColorDialogBuilder`, or their accepted material rendering.
+`replica.ColorPopupMenu` anchors a `PopupWindow` to the invoking control. The home overflow and navigation settings use activity windows. Widgets, the launcher and keyboard shortcuts use their accessibility-service window token.
+
+## Opening and closing
+
+ColorOS composites the blur region separately from the menu text. The Settings implementation connects `RoundFrameLayout.setAlpha()` to `COUIBackgroundBlurBuilder.onTargetViewAlphaChanged()`. In CHO the card root stays at full View alpha while its content and background drawable animate with the same reveal value. Apply that value before installing a new native or solid drawable, including when blur availability changes during the transition. The root still scales around the invoking control. Centered confirmation dialogs use the same approach. Bottom sheets start outside the visible area and reveal the blur region as they slide in.
+
+On PKR110, frame-by-frame recordings of the home menu showed the background appearing nearly fully formed before the labels, fading backwards, then changing abruptly at the end. The device check samples the controls visible through the trailing edge of the menu, and checks both the first visible frame and the end of the fade. Run it on an unlocked phone at normal animation speed with `python tools/verify_popup_reveal.py`. [Device check](../tools/verify_popup_reveal.py)
 
 ## Source evidence
 
