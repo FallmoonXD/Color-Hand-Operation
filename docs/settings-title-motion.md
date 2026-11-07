@@ -12,10 +12,12 @@
 
 ## CHO 的实现
 
-`ColorSettingsScaffold` 在滚动内容和固定标题之间绘制 `ColorAppBarMask`。首页、二级设置、搜索结果和短页面打开时都有一层淡渐变。CHO 将页首遮罩透明度设为 55%，上滑 30dp 后达到 100%，回到页首恢复到 55%。应用选择页读取列表首行位置，动作目录读取滚动容器偏移。标题、固定搜索框、返回和保存按钮画在遮罩上方。
+`ColorSettingsScaffold` 的首页首行容纳字标和更多按钮，直接从状态栏安全区下方排版。展开行最小高度为 64dp。长页面上滑时，字标平移到 52dp 工具栏中央。列表下拉回弹时，标题和更多按钮停在展开位置。二级页沿用系统设置的工具栏高度。
+
+`ColorAppBarMask` 使用页面底色到透明的渐变。列表回到顶部时页面保持自身的底色，上滑 30dp 后背景模糊达到完整强度。应用选择页读取列表首行位置，动作目录读取滚动容器偏移。标题、固定搜索框、返回和保存按钮画在遮罩上方。
 
 ColorOS 上使用 `OplusRenderEffect.createGradientBlurEffect` 和 `OplusViewBackgroundRenderEffect.setBackgroundRenderEffect`。关闭模糊、开启省电或设备缺少接口时，标题仍有底色渐变。
 
-更多菜单、确认框、底部选择窗和手势面板共用 `TopEdgeGradient`。浅色主题从顶部略微压暗，深色主题从顶部略微提亮。浮层渐变最多向下延伸 88dp，按圆角裁切；快速启动和任务切换器的标题卡也沿用相同处理。渐变跟随窗口淡入，玻璃面板继续共用原有的取景。系统设置、文档选择器和小组件提供方的设置界面由对应应用绘制。
+更多菜单、确认框、底部选择窗使用弹窗底色做局部渐变；快速启动和任务切换器的标题卡取各自的卡片底色。玻璃面板的明暗由取景和边缘光照决定，见[材质记录](material-policy.md)。系统设置、文档选择器和小组件提供方的设置界面由对应应用绘制。
 
-`validation/settings-title/run.ps1` 检查标题位置、窄窗口适配和渐变透明度。实机对照、菜单入场测量及浅色和深色的像素检查记录在本地 `verification/unified-gradient/`。
+`validation/settings-title/run.ps1` 检查标题位置、窄窗口适配和滚动透明度。本机标题、菜单、手势面板和系统音量条的前后对照在 `verification/title-glass-match/`。

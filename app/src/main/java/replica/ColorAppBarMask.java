@@ -10,15 +10,12 @@ import java.lang.reflect.Method;
 /** The Settings app bar samples the scrolling content behind it in the same window. */
 final class ColorAppBarMask extends View {
     private static final Method CREATE_GRADIENT = gradientMethod();
-    private final TopEdgeGradient tint;
     private boolean material, applied, failed;
     private float fraction;
 
     ColorAppBarMask(Context context) {
         super(context);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-        tint = TopEdgeGradient.header(context);
-        setForeground(tint);
         ColorOsTheme.watch(this, this::refresh);
         refresh();
     }
@@ -61,13 +58,12 @@ final class ColorAppBarMask extends View {
             gradient.setColors(new int[]{rgb, rgb | 0xb2000000, rgb | 0xff000000}, new float[]{0, .4f, 1});
         }
         setBackground(gradient);
-        tint.refreshTheme();
         setFraction(fraction);
     }
 
     void setFraction(float value) {
         fraction = value;
-        float alpha = material ? ColorTitleMotion.maskOpacity(value) : 1;
+        float alpha = material ? value : 1;
         if (getAlpha() != alpha) setAlpha(alpha);
     }
 

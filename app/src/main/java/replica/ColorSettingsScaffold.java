@@ -71,9 +71,15 @@ public final class ColorSettingsScaffold {
         }
         title=titleLabel(label,18,550);title.setPadding(dp(home?8:6),0,dp(8),0);bar.addView(title,new LinearLayout.LayoutParams(0,-1,1));
         scroll=new ColorSettingsScrollView(activity);scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setVerticalScrollBarEnabled(false);page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        scroll.setPadding(0,dp(52),0,0);
+        scroll.setPadding(0,home?0:dp(52),0,0);
         LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);scroll.addView(body,new ScrollView.LayoutParams(-1,-2));
-        largeTitle=titleLabel(label,32,600);largeTitle.setPadding(dp(24),dp(4),dp(24),dp(22));if(home){body.addView(largeTitle,new LinearLayout.LayoutParams(-1,-2));title.setVisibility(View.INVISIBLE);title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);largeTitle.setVisibility(View.INVISIBLE);largeTitle.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);}
+        largeTitle=titleLabel(label,32,600);
+        if(home){
+            largeTitle.setMinHeight(dp(64));largeTitle.setPaddingRelative(dp(24),dp(8),dp(24),0);
+            body.addView(largeTitle,new LinearLayout.LayoutParams(-1,-2));
+            title.setVisibility(View.INVISIBLE);title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            largeTitle.setVisibility(View.INVISIBLE);largeTitle.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
         content=new LinearLayout(activity);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(16),dp(home?2:12),dp(16),dp(32));body.addView(content,new LinearLayout.LayoutParams(-1,-2));
         if(home){movingTitle=new CollapsingTitle(label);root.addView(movingTitle,new FrameLayout.LayoutParams(-1,-1));}
         applyInsets(activity.getWindow().getDecorView().getRootWindowInsets());
@@ -111,7 +117,11 @@ public final class ColorSettingsScaffold {
             if(resultList.getPaddingTop()!=bottom)resultList.setPadding(0,bottom,0,0);
             LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)emptyResults.getLayoutParams();
             if(lp.topMargin!=bottom){lp.topMargin=bottom;emptyResults.setLayoutParams(lp);}
-        }else if(scroll.getPaddingTop()!=bottom)scroll.setPadding(0,bottom,0,0);
+        }else{
+            // The home body's first row already provides the title and its trailing button.
+            int start=home?statusInset:bottom;
+            if(scroll.getPaddingTop()!=start)scroll.setPadding(0,start,0,0);
+        }
         int offset=scroll.getScrollY();
         if(resultList!=null){
             View first=resultList.getChildAt(0);
@@ -147,7 +157,7 @@ public final class ColorSettingsScaffold {
         ImageView more=new ImageView(activity);more.setImageResource(dev.edgeflow.R.drawable.cos_settings_more);more.setColorFilter(ColorOsTheme.text(activity));more.setScaleType(ImageView.ScaleType.CENTER_INSIDE);more.setPadding(dp(12),dp(12),dp(12),dp(12));more.setContentDescription(description);more.setTooltipText(description);more.setBackground(ColorDialogBuilder.touchBackground(activity,Color.TRANSPARENT,24));more.setOnClickListener(action);more.setFocusable(true);
         if(home){
             View slot=new View(activity);slot.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);setTrailing(slot);
-            largeTitle.setPaddingRelative(dp(24),dp(4),dp(72),dp(22));homeMore=more;
+            largeTitle.setPaddingRelative(dp(24),largeTitle.getPaddingTop(),dp(72),largeTitle.getPaddingBottom());homeMore=more;
             toolbarSurface=new SettingsSurface(more,SettingsSurface.Kind.TOOLBAR,24,null);
             root.addView(more,new FrameLayout.LayoutParams(dp(48),dp(48)));movingTitle.updateGeometry();
         }else setTrailing(more);
@@ -180,8 +190,8 @@ public final class ColorSettingsScaffold {
             boolean nextRtl=getLayoutDirection()==LAYOUT_DIRECTION_RTL;
             float expandedX=localX(largeTitle)+(nextRtl?largeTitle.getWidth()-largeTitle.getCompoundPaddingRight():largeTitle.getCompoundPaddingLeft());
             float collapsedX=localX(title)+(nextRtl?title.getWidth()-title.getCompoundPaddingRight():title.getCompoundPaddingLeft());
-            // Recover the unscrolled anchor; retain the existing boundary translation on pull-down.
-            float expandedY=localY(largeTitle)+largeTitle.getBaseline()+scroll.getScrollY();
+            // The list springs on pull-down. The app bar stays at its expanded anchor.
+            float expandedY=localY(largeTitle)+largeTitle.getBaseline()+scroll.getScrollY()-scroll.getChildAt(0).getTranslationY();
             // Fit the whole wordmark once to the narrower endpoint. Scroll affects position only.
             float width=Math.max(1,Math.min(largeTitle.getWidth()-largeTitle.getCompoundPaddingLeft()-largeTitle.getCompoundPaddingRight(),title.getWidth()-title.getCompoundPaddingLeft()-title.getCompoundPaddingRight()));
             float textSize=largeTitle.getTextSize();

@@ -102,6 +102,8 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
         float[] tint=new float[20];tint[1]=1;
         if(kind==3){tint[2]=tint[3]=tint[4]=dark?.12f:.84f;tint[5]=.78f;}
         uniform("u_colorArray",tint);float s=density/3.5f;
+        // ColorOS uses 5% white for the side volume bar; apply it once to the captured glass.
+        uniform("u_faceLight",kind==2&&strokeAllowed?.05f:0f);
         // Enabled values remain the accepted geometry/mixing, byte for byte.
         uniform("u_edgeArray",1,1,1,1.6f*s,3*s,1.6f*s,3*s,strokeAllowed?(dark?.35f:.25f):0,strokeAllowed?(dark?.4f:.6f):0,.25f,.6f,.15f,.5f,0,10,.5f);
         uniform("u_shadowArray",1,1,1,strokeAllowed?(dark?.07f:.15f):0,0,0,40*s,0,36*s,1.3f,1.3f,20,.5f,6*s,20,.3f);

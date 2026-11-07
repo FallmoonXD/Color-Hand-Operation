@@ -34,7 +34,7 @@ public final class PanelStyle {
   Context c=view.getContext();Runnable update=()->{
    int fill=ColorOsTheme.card(c)&0xffffff|0xed000000;
    Drawable surface=clickable?ColorDialogBuilder.touchBackground(c,fill,radius):shape(c,fill,radius);
-   view.setBackground(header?TopEdgeGradient.panel(c,dp(c,radius)).over(surface):surface);
+   view.setBackground(header?TopEdgeGradient.panel(c,dp(c,radius),fill).over(surface):surface);
   };
   update.run();ColorOsTheme.watch(view,update);
  }

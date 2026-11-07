@@ -43,7 +43,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
         wm = view.getContext().getSystemService(WindowManager.class);
         edge = kind == Kind.TOOLBAR ? new ToolbarEdge(view) : null;
         int px = PanelStyle.dp(view.getContext(), corner);
-        panelTint = kind == Kind.TOOLBAR ? null : TopEdgeGradient.panel(view.getContext(), px);
+        panelTint = kind == Kind.TOOLBAR ? null : TopEdgeGradient.panel(view.getContext(), px, ColorOsTheme.popup(view.getContext()));
         view.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View v, Outline outline) {
                 outline.setRoundRect(0, 0, v.getWidth(), v.getHeight(), px);
@@ -100,7 +100,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
 
     void refresh() {
         Context c = view.getContext();
-        if (panelTint != null) panelTint.refreshTheme();
+        if (panelTint != null) panelTint.setSurfaceColor(ColorOsTheme.popup(c));
         PowerManager power = c.getSystemService(PowerManager.class);
         boolean available = view.isAttachedToWindow() && view.isHardwareAccelerated()
                 && (power == null || !power.isPowerSaveMode());

@@ -6,21 +6,14 @@ import java.lang.ref.WeakReference;import java.util.ArrayList;import java.util.W
 public final class ColorOsSurface extends Drawable implements Drawable.Callback {
  private final OriginalMaterial optics;private final float corner;private final NativeMaterial nativeMaterial;
  private final MaterialThemeBinding theme;
- private final TopEdgeGradient panelTint;
- private final Context context;
  private Rect[] pills;
  private Path pillClip;
- private TopEdgeGradient[] pillTints;
- private int opacity=255;
- private ColorFilter filter;
  public ColorOsSurface(Context c,float radius,int style){
-  context=c;
   corner=PanelStyle.dp(c,radius);
   optics=new OriginalMaterial(c,radius,style,true);
   optics.managedByParent();optics.setCallback(this);
   boolean panel=style==2||style==3;
   nativeMaterial=panel&&android.os.Build.VERSION.SDK_INT>=33?new NativeMaterial(c,radius,style,this):null;
-  panelTint=panel?TopEdgeGradient.panel(c,corner):null;
   theme=new MaterialThemeBinding(this,this::themeChanged,optics::releaseSample);
  }
  public ColorOsSurface attach(View host){theme.attach(host);if(nativeMaterial!=null)nativeMaterial.attach(host,null);return this;}
@@ -32,14 +25,12 @@ public final class ColorOsSurface extends Drawable implements Drawable.Callback 
  public void setPillBounds(Rect[] shapes){
   if(shapes.length>6)throw new IllegalArgumentException("A rail supports one grip and five actions");
   if(java.util.Arrays.equals(pills,shapes))return;
-  pills=new Rect[shapes.length];pillClip=new Path();pillTints=new TopEdgeGradient[shapes.length];
+  pills=new Rect[shapes.length];pillClip=new Path();
   float[] data=new float[6*4];
   for(int i=0;i<shapes.length;i++){
    Rect r=pills[i]=new Rect(shapes[i]);float radius=Math.min(r.width(),r.height())*.5f;
    pillClip.addRoundRect(r.left,r.top,r.right,r.bottom,radius,radius,Path.Direction.CW);
    int at=4*i;data[at]=r.exactCenterX();data[at+1]=r.exactCenterY();data[at+2]=r.width()*.5f;data[at+3]=r.height()*.5f;
-   TopEdgeGradient tint=pillTints[i]=TopEdgeGradient.panel(context,radius);
-   tint.setBounds(r);tint.setAlpha(opacity);tint.setColorFilter(filter);
   }
   optics.setPills(pills,data);
   if(nativeMaterial!=null)nativeMaterial.setPills(pills.length,data);
@@ -48,8 +39,6 @@ public final class ColorOsSurface extends Drawable implements Drawable.Callback 
  private void themeChanged(){
   optics.refreshTheme();
   if(nativeMaterial!=null)nativeMaterial.themeChanged();
-  if(panelTint!=null)panelTint.refreshTheme();
-  if(pillTints!=null)for(TopEdgeGradient tint:pillTints)tint.refreshTheme();
   invalidateSelf();
  }
  @Override public void draw(Canvas canvas){
@@ -59,29 +48,20 @@ public final class ColorOsSurface extends Drawable implements Drawable.Callback 
   if(nativeMaterial!=null){nativeMaterial.themeChanged();nativeMaterial.draw(canvas,optics);}
   else optics.draw(canvas);
   if(pillClip!=null)canvas.restoreToCount(save);
-  if(pillTints!=null){for(TopEdgeGradient tint:pillTints)tint.draw(canvas);}
-  else if(panelTint!=null)panelTint.draw(canvas);
  }
  @Override protected void onBoundsChange(Rect bounds){
   optics.setBounds(bounds);
   if(nativeMaterial!=null)nativeMaterial.bounds(bounds);
-  if(panelTint!=null)panelTint.setBounds(bounds);
   if(theme!=null)theme.track();
  }
  @Override public void setAlpha(int alpha){
-  opacity=alpha;
   optics.setAlpha(alpha);
   if(nativeMaterial!=null)nativeMaterial.alpha(alpha);
-  if(panelTint!=null)panelTint.setAlpha(alpha);
-  if(pillTints!=null)for(TopEdgeGradient tint:pillTints)tint.setAlpha(alpha);
   invalidateSelf();
  }
  @Override public void setColorFilter(ColorFilter filter){
-  this.filter=filter;
   optics.setColorFilter(filter);
   if(nativeMaterial!=null)nativeMaterial.filter(filter);
-  if(panelTint!=null)panelTint.setColorFilter(filter);
-  if(pillTints!=null)for(TopEdgeGradient tint:pillTints)tint.setColorFilter(filter);
   invalidateSelf();
  }
  public int getOpacity(){return PixelFormat.TRANSLUCENT;}

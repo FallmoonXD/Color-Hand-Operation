@@ -4,17 +4,17 @@
     {
       "file": "src\\main\\assets\\coloros-live-optics.agsl",
       "source_sha256": "c21b0b04a569c1a20962bce4de0e936dbe4b69f8bcff9a1de4f7487078d5bbbb",
-      "sha256": "2a923f413587702841031b879a5cfcd0cc816af75023381fbc245c2dd6ff5c83"
+      "sha256": "79a0126e092543b2cad1d7e2331e6282473cb428c0c489eb556b97ee96cd1974"
     },
     {
       "file": "src\\main\\assets\\coloros-native-live.agsl",
       "source_sha256": "38f0ed1781645de6a5465ad863ecdad456ea81b1f3e4306174bb9cb8b0e51629",
-      "sha256": "718a8b83340849ec0e80dc2a1b43f5bc7a8e72ff5d28828be1ac76ddf08b695d"
+      "sha256": "1b81fa7aac6032e9042c696a4ac40da426ae61344d3191bdf0c75f19f142b09e"
     },
     {
       "file": "src\\main\\assets\\coloros-qs-material.agsl",
       "source_sha256": "a14d301df481a49dff120e1f810c336688bc5e13f11a3c550da02be85dc5a717",
-      "sha256": "4c6b2affff8db40a5dd9ffe16885ba986caeaeaa234aaf7259f6e6b927911f02"
+      "sha256": "e8b4c89a4646d8e128f05178530cde9c7cdcfa5f77561d4750713ddf4de30d03"
     }
   ],
   "vectors": [

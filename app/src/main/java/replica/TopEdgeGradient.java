@@ -11,25 +11,20 @@ import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 
-/** A neutral tint at the top of a page or panel, drawn behind its contents. */
+/** Fade the card's own surface color into its native background. */
 final class TopEdgeGradient extends Drawable {
-    private final Context context;
     private final float corner;
     private final int maxHeight;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.DITHER_FLAG);
     private int topColor;
 
-    private TopEdgeGradient(Context context,float corner,int maxHeight) {
-        this.context=context;this.corner=corner;this.maxHeight=maxHeight;
-        refreshTheme();
+    private TopEdgeGradient(Context context,float corner,int color) {
+        this.corner=corner;maxHeight=PanelStyle.dp(context,88);
+        setSurfaceColor(color);
     }
 
-    static TopEdgeGradient header(Context context) {
-        return new TopEdgeGradient(context,0,Integer.MAX_VALUE);
-    }
-
-    static TopEdgeGradient panel(Context context,float cornerPx) {
-        return new TopEdgeGradient(context,cornerPx,PanelStyle.dp(context,88));
+    static TopEdgeGradient panel(Context context,float cornerPx,int color) {
+        return new TopEdgeGradient(context,cornerPx,color);
     }
 
     Drawable over(Drawable background) {
@@ -38,8 +33,8 @@ final class TopEdgeGradient extends Drawable {
         return layers;
     }
 
-    void refreshTheme() {
-        int color=(ColorOsTheme.text(context)&0x00ffffff)|(ColorOsTheme.dark(context)?0x30000000:0x24000000);
+    void setSurfaceColor(int surface) {
+        int color=(surface&0x00ffffff)|0x24000000;
         if(topColor==color)return;
         topColor=color;onBoundsChange(getBounds());invalidateSelf();
     }

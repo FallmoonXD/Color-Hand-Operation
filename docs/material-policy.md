@@ -4,6 +4,8 @@ The material lives in `ColorOsSurface`, `NativeMaterial`, `OriginalMaterial` and
 
 The navigation rail supplies the shader with the grip and button contours in window coordinates. Each gets its own rim. All buttons sample the same captured frame. The clickable slots are larger than the glass shapes, with room for a small shadow. The spaces between buttons remain transparent.
 
+The captured panel uses the ColorOS side volume bar's 5% white light, scaled by backdrop luminance. It fades across the actual rim. Inner controls share the result from the panel beneath them. Quick tools keeps its separate shading between controls. Menus, sheets and launcher header cards fade their own surface color into the underlying material.
+
 `ColorOsTheme.materialBlur`, `materialStroke` and `dark` are the source of current policy. Theme already combines the user's material settings with power-saving/global window-blur restrictions. No private system setting is written by these classes.
 
 ## Runtime behavior
@@ -12,7 +14,7 @@ The navigation rail supplies the shader with the grip and button contours in win
 | --- | --- |
 | Blur disabled | Immediately removes this native capture request, invalidates its callback generation, clears pending/displayed-frame references and unsubscribes from native clients. Window background blur is forced to zero. White-content floating panels use the system volume panel's opaque inverse fallback; Settings-style dialogs keep their matching system card. Existing Drawable/window alpha still controls entrance/exit. A pending first-frame entrance is released immediately. |
 | Blur enabled again | Re-enrolls the attached surface as a native client and obtains a fresh frame. The existing fallback/native transition remains in use. Old buffer callbacks cannot reattach a stale frame. |
-| Stroke disabled, blur enabled | Keeps capture, backdrop mixing and tint. Sets the near/far edge and inner-shadow alphas to zero and skips the fallback reflection and rim. |
+| Stroke disabled, blur enabled | Keeps capture, backdrop mixing and tint. Disables the face light, near/far edge, inner shadow and fallback reflection. |
 | Stroke enabled again | Restores the same accepted values for the current light/dark palette. |
 | Night mode changed | Updates the current shader's tint and optical uniforms before its next draw, reusing the existing backdrop. It does not restart capture, reset entrance, or wait until the panel is fully visible to recolor. |
 | Host detached | Cancels entrance timeout/initial-capture retry, removes capture and pre-draw observation, clears frame references and closes the host theme subscription. Reattaching reads current policy again. |

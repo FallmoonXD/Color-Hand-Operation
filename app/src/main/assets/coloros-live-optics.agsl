@@ -1,4 +1,5 @@
 uniform float u_edgeReferenceAspect;
+uniform float u_faceLight;
 uniform int u_pillCount;
 uniform float4 u_pills[6];
 uniform shader uniBDFBitmap;
@@ -321,7 +322,14 @@ float mix_c = 1.0;sdf = smoothSDF_D(rectData.pos, rectData.halfSize, rectData.co
 //     return half4((sin(shapeResult.sdf)+1.0)*0.5,shape,0.0,1.0);
      if(shape < EPS){
         return half4(0.0);
-     }outputCol = blendEdge(rectData, outputCol, rawCol, shapeResult.sdf, 1.0);outputCol = blendShadowColor(coords, rectData, outputCol, shapeResult.sdf, 1.0);return outputCol*shape;}
+     }outputCol = blendEdge(rectData, outputCol, rawCol, shapeResult.sdf, 1.0);outputCol = blendShadowColor(coords, rectData, outputCol, shapeResult.sdf, 1.0);
+    // Match the volume glass on a flat backdrop. The only boundary is the actual rim.
+    float luminance = dot(float3(outputCol.rgb), float3(0.2126, 0.7152, 0.0722));
+    float response = 1.0 - clamp((luminance - 0.6) * 1.6, 0.0, 1.0);
+    float interior = smoothstep(0.0, max(ANTIALIASING, u_edgeArray[4]), -shapeResult.sdf);
+    outputCol.rgb = min(outputCol.rgb + half3(u_faceLight * response * response * interior), half3(1.0));
+    return outputCol*shape;
+}
 half4 main(float2 p) {
  half4 lo=shadeOptics(p,half3(0)); half4 hi=shadeOptics(p,half3(1));
  half3 trans=clamp(hi.rgb-lo.rgb,half3(0),half3(1));
