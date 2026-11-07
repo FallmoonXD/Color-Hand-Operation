@@ -83,7 +83,7 @@ public final class ActionExecutor {
     case "media_next":media(audio,KeyEvent.KEYCODE_MEDIA_NEXT);break;
     case "scroll_up":scroll(c,false);break;case "scroll_down":scroll(c,true);break;
     case "browser_forward":root(c,"input keyevent 125",title(id));break;
-    case "close_app":closeApp(c);break;
+    case "close_app":closeCurrentApp(c, ForegroundAppCloser.target(c));break;
     case "flashlight":torch(c);break;
     case "rotation":toggle(c,"system","accelerometer_rotation",title(id));break;
     case "rotate_right":rotate(c,1);break;case "rotate_left":rotate(c,3);break;
@@ -113,7 +113,20 @@ public final class ActionExecutor {
  }
  private static void preparePanel(String id){switch(id){case "quick_tools":case "widgets":case "quick_launcher":case "task_switcher":case "virtual_touchpad":case "navigation_panel":case "keyboard_shortcuts":case "app_launcher":case "screen_timeout":case "volume_up":case "volume_down":case "sidebar":case "screen_magnifier":case "screen_free_move":
    replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();TouchpadOverlay.dismissAll();NavigationOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();KeyboardShortcutsOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();if(!id.equals("widgets"))replica.WidgetActivity.dismissAll();break;default:break;}}
- private static void magnify(AccessibilityService c,float[] anchor){AccessibilityService.MagnificationController controller=c.getMagnificationController();android.accessibilityservice.MagnificationConfig current=controller.getMagnificationConfig();boolean active=current!=null&&current.isActivated()&&current.getScale()>1.01f;boolean accepted;if(active)accepted=controller.reset(true);else{android.graphics.Point size=replica.PanelGeometry.screen(c);android.accessibilityservice.MagnificationConfig config=new android.accessibilityservice.MagnificationConfig.Builder().setMode(android.accessibilityservice.MagnificationConfig.MAGNIFICATION_MODE_FULLSCREEN).setActivated(true).setScale(2f).setCenterX(Math.max(0,Math.min(size.x,anchor[2]))).setCenterY(Math.max(0,Math.min(size.y,anchor[3]))).build();accepted=controller.setMagnificationConfig(config,true);}if(!accepted)message(c,"系统未允许屏幕放大，请检查无障碍服务状态");}
+ private static void magnify(AccessibilityService service, float[] anchor) {
+  AccessibilityService.MagnificationController controller = service.getMagnificationController();
+  android.accessibilityservice.MagnificationConfig current = controller.getMagnificationConfig();
+  boolean accepted;
+  if (MagnificationCompat.active(current) && current.getScale() > 1.01f) {
+   accepted = controller.reset(true);
+  } else {
+   android.graphics.Point screen = replica.PanelGeometry.screen(service);
+   float x = Math.max(0, Math.min(screen.x, anchor[2]));
+   float y = Math.max(0, Math.min(screen.y, anchor[3]));
+   accepted = controller.setMagnificationConfig(MagnificationCompat.fullscreen(2f, x, y), true);
+  }
+  if (!accepted) message(service, "系统未允许屏幕放大，请检查无障碍服务状态");
+ }
  private static void global(AccessibilityService c,int id,String fallback){if(!c.performGlobalAction(id))root(c,fallback,"系统动作");}
  private static void media(AudioManager audio,int key){audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,key));audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,key));}
  private static void rotate(Context c,int add){int current=Settings.System.getInt(c.getContentResolver(),Settings.System.USER_ROTATION,0);root(c,"settings put system accelerometer_rotation 0; settings put system user_rotation "+((current+add)%4),"屏幕旋转");}
@@ -129,7 +142,20 @@ public final class ActionExecutor {
  static boolean commandFailed(int exit,String output){if(exit!=0)return true;String value=output.toLowerCase(java.util.Locale.ROOT);if(value.contains("exception:")||value.contains("exception in thread")||value.contains("permission denial")||value.contains("permission denied")||value.contains("unknown command"))return true;for(String line:value.split("\\r?\\n")){String s=line.trim();if(s.startsWith("error:")||s.startsWith("error type ")||s.startsWith("failure [")||s.startsWith("/system/bin/sh:")||s.startsWith("sh:"))return true;}return false;}
  private static void start(Context c,Intent i){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);try{c.startActivity(i);}catch(Exception e){message(c,"当前系统没有可处理此操作的应用");android.util.Log.w("EdgeActions","Launch unavailable",e);}}
  private static void launchApp(Context c,String value){ComponentName component=ComponentName.unflattenFromString(value);Intent i=component!=null?new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(component):c.getPackageManager().getLaunchIntentForPackage(value);if(i==null){message(c,"找不到所选应用");return;}start(c,i);}
- private static void closeApp(AccessibilityService c){String pkg=replica.NativeState.foreground(c);if(pkg==null||!pkg.matches("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+")||pkg.equals(c.getPackageName())||pkg.equals("com.android.systemui")||pkg.equals("android")||pkg.contains("launcher")){message(c,"没有可关闭的前台应用");return;}root(c,"am force-stop "+quote(pkg),"关闭当前应用");}
+ public static void closeCurrentApp(AccessibilityService service, String expected) {
+  if (service == null) return;
+  if (expected == null) { message(service, "没有可关闭的前台应用"); return; }
+  WORK.execute(() -> {
+   try {
+    if (!ForegroundAppCloser.close(service, expected)) message(service, "前台应用已变化");
+   } catch (InterruptedException interrupted) {
+    Thread.currentThread().interrupt();
+   } catch (Exception failure) {
+    android.util.Log.w("EdgeActions", "Could not confirm or stop focused app", failure);
+    message(service, "关闭失败，请检查前台应用和 Root 授权");
+   }
+  });
+ }
  private static void scroll(AccessibilityService c,boolean forward){AccessibilityNodeInfo node=c.getRootInActiveWindow();try{if(node==null||!scrollNode(node,forward))message(c,"当前页面没有可滚动区域");}finally{if(node!=null)node.recycle();}}
  private static boolean scrollNode(AccessibilityNodeInfo n,boolean forward){if(n==null)return false;if(n.isScrollable()&&n.performAction(forward?AccessibilityNodeInfo.ACTION_SCROLL_FORWARD:AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD))return true;for(int i=0;i<n.getChildCount();i++){AccessibilityNodeInfo child=n.getChild(i);try{if(scrollNode(child,forward))return true;}finally{if(child!=null)child.recycle();}}return false;}
  private static void torch(Context c)throws Exception{

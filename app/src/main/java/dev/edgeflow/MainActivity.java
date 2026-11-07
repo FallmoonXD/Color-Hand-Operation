@@ -236,7 +236,7 @@ public final class MainActivity extends Activity {
  private void dismissColorPalette(){if(colorPalette!=null){replica.ColorPaletteSheet previous=colorPalette;colorPalette=null;previous.dismissImmediately();}}
  private void showColorPalette(String id,boolean both){
   dismissColorPalette();colorHandle=id;colorBoth=both;
-  replica.ColorPaletteSheet sheet=new replica.ColorPaletteSheet(this,handleColor(id),prefs.getInt("handle_opacity",0),new replica.ColorPaletteSheet.Listener(){
+  replica.ColorPaletteSheet sheet=new replica.ColorPaletteSheet(this,handleColor(id),AppPrefs.handleOpacity(prefs),new replica.ColorPaletteSheet.Listener(){
    public void onPreview(int argb,int opacity){ColorSwatch swatch=colorSwatches.get(id);if(swatch!=null)swatch.setColor(argb);}
    public void onConfirm(int argb,int opacity){if(isFinishing()||isDestroyed())return;android.content.SharedPreferences.Editor edit=prefs.edit().putInt(id+"_color",argb).putInt("handle_opacity",Math.max(0,Math.min(100,opacity)));if(both)edit.putInt(HandleSettings.peer(id)+"_color",argb);edit.apply();refreshColorSwatches();reload();}
    public void onCancel(){refreshColorSwatches();}

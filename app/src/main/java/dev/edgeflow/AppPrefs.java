@@ -8,14 +8,23 @@ public final class AppPrefs {
  }
  public static String action(Context c,String side,String direction,boolean hold){return get(c).getString("action_"+side+"_"+direction+"_"+(hold?"long":"short"),GestureHandleConfig.defaultAction(side,direction,hold));}
  public static int handleColor(SharedPreferences p,String id){return p.getInt(id+"_color",p.getInt("handle_color",0xff188dff));}
- /** Handle opacity remains separate from the fixed opaque gesture-wave style. */
+ /** Older stores used a floating fraction; current UI and archives use integer percent. */
+ private static int opacityPercent(Object value) {
+  if (!(value instanceof Number)) return 0;
+  double amount = ((Number)value).doubleValue();
+  if (!Double.isFinite(amount)) return 0;
+  boolean integralType = value instanceof Integer || value instanceof Long || value instanceof Short
+          || value instanceof Byte || value instanceof java.math.BigInteger;
+  if (!integralType && amount >= 0 && amount <= 1) amount *= 100;
+  return (int)Math.round(Math.max(0, Math.min(100, amount)));
+ }
+ public static int handleOpacity(SharedPreferences prefs) { return opacityPercent(prefs.getAll().get("handle_opacity")); }
  public static int visibleHandleColor(SharedPreferences p,String id){
-  int color=handleColor(p,id);Object opacity=p.getAll().get("handle_opacity");float amount=opacity instanceof Number?((Number)opacity).floatValue():0;
-  if(opacity instanceof Integer||amount>1)amount/=100f;amount=Math.max(0,Math.min(1,amount));
-  return (Math.round((color>>>24)*amount)<<24)|(color&0x00ffffff);
+  int color=handleColor(p,id);
+  return (Math.round((color>>>24)*handleOpacity(p)/100f)<<24)|(color&0x00ffffff);
  }
  private static boolean isHandleColor(String key){return key.equals("handle_color")||key.matches("(extra2?_)?(left|right)_color");}
- public static JSONObject export(Context c)throws Exception{JSONObject o=new JSONObject();for(Map.Entry<String,?> e:get(c).getAll().entrySet()){Object v=e.getValue();o.put(e.getKey(),v instanceof Set?new JSONArray((Set<?>)v):v);}return o;}
+ public static JSONObject export(Context c)throws Exception{JSONObject o=new JSONObject();for(Map.Entry<String,?> e:get(c).getAll().entrySet()){Object v=e.getValue();if(e.getKey().equals("handle_opacity"))v=opacityPercent(v);o.put(e.getKey(),v instanceof Set?new JSONArray((Set<?>)v):v);}return o;}
  /** Validate every field before writing any preference. Imported JSON never controls storage types. */
  public static JSONObject validate(JSONObject input)throws Exception{
   JSONObject out=new JSONObject();Set<String> booleans=new HashSet<>(Arrays.asList("enabled","left_enabled","right_enabled","vibration","haptics","quick_vibration","custom_vibration","long_immediate","hide_landscape","hide_keyboard","hide_when_keyboard","landscape_enabled","navigation_vertical","hide_home","hide_notifications","quick_action_short","quick_action_long","extra_left_enabled","extra_right_enabled","extra2_left_enabled","extra2_right_enabled"));
@@ -37,7 +46,12 @@ public final class AppPrefs {
    else if(key.equals(HandleSettings.VERSION_KEY)){min=1;max=HandleSettings.VERSION;integer=true;}
    else if(key.equals("handle_pair_count")){min=1;max=3;integer=true;}
    else if(key.equals("long_delay_ms")){min=0;max=1000;integer=true;}
-   else if(key.equals("handle_opacity")){min=0;max=100;integer=true;}
+   else if(key.equals("handle_opacity")){
+    if (!(value instanceof Number)) throw new JSONException("handle_opacity 必须为数字");
+    double raw=((Number)value).doubleValue();
+    if (!Double.isFinite(raw)||raw<0||raw>100) throw new JSONException("handle_opacity 超出范围");
+    out.put(key,opacityPercent(value));continue;
+   }
    else if(isHandleColor(key)){min=Integer.MIN_VALUE;max=Integer.MAX_VALUE;integer=true;}
    else if(key.equals("vibration_strength")){min=0;max=255;integer=true;}
    else if(key.equals("vibration_duration_ms")){min=0;max=30;integer=true;}

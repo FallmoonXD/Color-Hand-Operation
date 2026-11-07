@@ -2,6 +2,11 @@ package dev.edgeflow;
 import android.accessibilityservice.AccessibilityService;import android.app.AlertDialog;import android.content.*;import android.os.*;import android.view.*;import android.widget.*;import org.json.*;import java.util.*;
 /** Named per-foreground-app keyboard shortcuts, stored as validated Android key codes. */
 public final class KeyboardShortcutsOverlay {
+ static final int MAX_NAME_LENGTH=256, MAX_CHORD_LENGTH=128;
+ static String nameError(String name) {
+  if (name.trim().isEmpty()) return "请输入名称";
+  return name.length() > MAX_NAME_LENGTH ? "名称最多 256 个字符，请缩短后保存" : null;
+ }
  private static KeyboardShortcutsOverlay current;private static final Handler MAIN=new Handler(Looper.getMainLooper());
  private final AccessibilityService service;private final Context context;private final SharedPreferences prefs;private final String app;private final ArrayList<Entry> entries=new ArrayList<>();
  private final ArrayList<AlertDialog> dialogs=new ArrayList<>();private boolean closed;private Runnable pending;private AlertDialog menuDialog;private LinearLayout menuRows;private ScrollView menuScroll;private replica.ColorPopupMenu popup;private long childDismissedAt;
@@ -55,7 +60,8 @@ public final class KeyboardShortcutsOverlay {
   fieldLabel(fields,"组合键");EditText keys=replica.ColorDialogBuilder.editText(context,"例如 CTRL+T 或 ALT+LEFT");keys.setContentDescription("快捷键组合");keys.setSingleLine();keys.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);fields.addView(keys,new LinearLayout.LayoutParams(-1,-2));
   TextView hint=text("支持 Ctrl、Alt、Shift、Meta、字母、数字和方向键，最多 4 个按键。仅用于"+appName()+"。",13,400,true);hint.setPadding(dp(8),dp(12),dp(8),dp(4));fields.addView(hint);
   if(original!=null){name.setText(original.name);keys.setText(original.chord);}AlertDialog editor=builder(original==null?"添加快捷方式":"修改快捷方式").setView(fields).setPositiveButton("保存",null).setNegativeButton("取消",null).create();show(editor,true);if(closed)return;name.requestFocus();
-  editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{String title=name.getText().toString().trim(),chord=keys.getText().toString().trim().toUpperCase(Locale.ROOT);if(title.isEmpty()){name.setError("请输入名称");return;}try{parse(chord);}catch(IllegalArgumentException invalid){keys.setError(invalid.getMessage());return;}
+  if(original!=null && original.name.length()>MAX_NAME_LENGTH)name.setError(nameError(original.name));
+  editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{String title=name.getText().toString().trim(),chord=keys.getText().toString().trim().toUpperCase(Locale.ROOT);String error=nameError(title);if(error!=null){name.setError(error);return;}if(chord.length()>MAX_CHORD_LENGTH){keys.setError("组合键文字最多 128 个字符");return;}try{parse(chord);}catch(IllegalArgumentException invalid){keys.setError(invalid.getMessage());return;}
    replica.ColorDialogBuilder.dismissThen(editor,()->{if(closed)return;Entry entry=new Entry(title,chord);if(original==null){if(entries.size()>=200)return;entries.add(entry);}else{int index=entries.indexOf(original);if(index<0)return;entries.set(index,entry);}save();renderMenu();});
   });
  }

@@ -35,7 +35,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private SeekBar liveVolume; private ImageView autoIcon; private final Handler liveHandler=new Handler();
     private String lastPoll="";private int pendingVolume=-1;private boolean volumeWriting;
     private final Runnable liveRefresh=new Runnable(){public void run(){if(closed)return;refresh();liveHandler.postDelayed(this,500);}};
-    private String foreground;
+    private String closeTarget;
     private boolean torch;
     private CameraManager cameras;
     private String cameraId;
@@ -55,7 +55,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         super(base,base.getResources().getIdentifier(PanelStyle.dark(base)?"ReplicaGlassDark":"ReplicaGlass","style",base.getPackageName()));this.window=window;this.close=close;tiles=ToolsConfig.load(this);
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        gesture=anchor==null?NativeState.gesture(this):anchor;audio=(AudioManager)getSystemService(AUDIO_SERVICE);foreground=NativeState.foreground(this);
+        gesture=anchor==null?NativeState.gesture(this):anchor;audio=(AudioManager)getSystemService(AUDIO_SERVICE);closeTarget=dev.edgeflow.ForegroundAppCloser.target(dev.edgeflow.GestureService.instance());
         cameras=(CameraManager)getSystemService(CAMERA_SERVICE);
         try{for(String id:cameras.getCameraIdList())if(Boolean.TRUE.equals(cameras.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE))){cameraId=id;break;}}catch(Exception ignored){}
         if(cameraId!=null)cameras.registerTorchCallback(torchCallback,new Handler());
@@ -169,7 +169,9 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
                     command("settings put system screen_off_timeout "+(seconds[which]*1000));dialog.dismiss();
                 }).setNegativeButton("取消",null).create());break;
             case 11:
-                if(foreground.matches("[a-zA-Z0-9_]+(\\.[a-zA-Z0-9_]+)+")&&!foreground.equals(getPackageName())&&!foreground.equals("com.android.systemui")&&!foreground.contains("launcher")) {finish();command("am force-stop "+foreground);}break;
+                finish();
+                dev.edgeflow.ActionExecutor.closeCurrentApp(dev.edgeflow.GestureService.instance(), closeTarget);
+                break;
         }
     }
     public void closeResources(){if(closed)return;closed=true;for(AlertDialog child:new java.util.ArrayList<>(childDialogs))ColorDialogBuilder.dismissImmediately(child);childDialogs.clear();liveHandler.removeCallbacksAndMessages(null);MaterialBackdrop.release(this);if(brightnessControl!=null)brightnessControl.close();if(cameras!=null&&cameraId!=null)cameras.unregisterTorchCallback(torchCallback);worker.shutdown();}

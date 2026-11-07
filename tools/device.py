@@ -79,7 +79,8 @@ def preferences(name='edgeflow'):
   out[n.get('name')]=value
  return out
 
-def _match(n,s,description=False):
+def _match(n,s,description=False,action_row=False):
+ if action_row:return n.get('class')=='android.widget.RadioButton' and n.get('content-desc','').partition('，')[0]==s
  return n.get('content-desc')==s if description else n.get('text')==s or n.get('content-desc')==s
 
 def _scroll_containers(tree):
@@ -103,17 +104,17 @@ def _scroll(tree,forward=True):
  start,end=(high,low) if forward else (low,high)
  sh('input','swipe',str(x),str(start),str(x),str(end),'450');time.sleep(.25)
 
-def find_item(s,description=False,timeout=3):
+def find_item(s,description=False,timeout=3,*,action_row=False):
  """Find a visible item in a page or chooser, including restored scroll positions."""
  deadline=time.monotonic()+timeout
  while True:
-  tree=ui();found=next((n for n in tree.iter('node') if _match(n,s,description) and visible(n)),None)
+  tree=ui();found=next((n for n in tree.iter('node') if _match(n,s,description,action_row) and visible(n)),None)
   if found is not None:return found
   if time.monotonic()>=deadline:break
   time.sleep(.15)
  previous=None;forward=True;stalled_ends=0
  for _ in range(44):
-  tree=ui();targets=[n for n in tree.iter('node') if _match(n,s,description)]
+  tree=ui();targets=[n for n in tree.iter('node') if _match(n,s,description,action_row)]
   found=next((n for n in targets if visible(n)),None)
   if found is not None:return found
   try:a,b,c,e=_scroll_bounds(tree)
@@ -220,7 +221,15 @@ def action_titles():
 def action_key(handle='right',direction='straight',longer=False):return 'action_'+handle+'_'+direction+('_long' if longer else '_short')
 
 def choose_action(title,handle='right',direction='straight',longer=False):
- open_action_chooser(handle,direction,longer);click_item(title,True)
+ open_action_chooser(handle,direction,longer)
+ tap(find_item(title,True,action_row=True))
+ expected=next((action for action,label in action_titles().items() if label==title),None)
+ if expected is None:return
+ deadline=time.monotonic()+4
+ key=action_key(handle,direction,longer)
+ while preferences().get(key)!=expected:
+  if time.monotonic()>=deadline:raise AssertionError('Action selection did not commit: '+key)
+  time.sleep(.1)
 
 @contextmanager
 def preserved_action(handle='right',direction='straight',longer=False):

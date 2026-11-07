@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.widget.SeekBar;
 import android.widget.Toast;
+import dev.edgeflow.PendingRootCommand;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -24,6 +25,7 @@ public final class BrightnessControl {
     private volatile boolean writing,closed;
     private volatile State state;
     private Request pending;
+    private PendingRootCommand inFlight;
     private static final class State {
         final BrightnessRangePolicy.Range range;final boolean multibits;
         State(BrightnessRangePolicy.Range range,boolean multibits){this.range=range;this.multibits=multibits;}
@@ -73,13 +75,15 @@ public final class BrightnessControl {
             Object manager=type.getMethod("getInstance").invoke(null);
             multibits=Boolean.TRUE.equals(type.getMethod("hasFeature",String.class).invoke(manager,MULTIBITS));
         }catch(Exception|LinkageError unavailable){/* Never infer raw adjustment from the model or range. */}
-        synchronized(this){
-            State old=state;
-            if(range!=null&&old!=null&&range.same(old.range)&&multibits==old.multibits)return;
-            state=range==null?null:new State(range,multibits);
-            pending=null;
-            if(dragging)dragInvalidated=true;
-        }
+        updateRange(range, multibits);
+    }
+    private synchronized void updateRange(BrightnessRangePolicy.Range range, boolean multibits) {
+        if (closed || (range == null && state == null)) return;
+        if (state != null && range != null && range.same(state.range) && multibits == state.multibits) return;
+        state = range == null ? null : new State(range, multibits);
+        pending = null;
+        if (inFlight != null) inFlight.cancel();
+        if (dragging) dragInvalidated = true;
     }
     public void sync(){
         if(closed)return;
@@ -115,22 +119,30 @@ public final class BrightnessControl {
         catch(RejectedExecutionException stopped){synchronized(this){pending=null;writing=false;}}
     }
     private void drainWrites(){
-        try{
-            while(true){
-                Request request;
-                synchronized(this){
-                    if(closed||pending==null){pending=null;writing=false;break;}
-                    request=pending;pending=null;
-                }
-                if(closed||request.state!=state)continue;
-                String command=BrightnessRangePolicy.command(request.state.range,request.state.multibits,request.progress);
-                Process process=new ProcessBuilder("su","-c",command).redirectErrorStream(true).start();
-                try(java.io.InputStream input=process.getInputStream()){byte[] buffer=new byte[256];while(input.read(buffer)!=-1){}}
-                if(process.waitFor()!=0)throw new IllegalStateException("brightness write failed");
+        while (true) {
+            Request request;
+            PendingRootCommand command;
+            synchronized (this) {
+                if (closed || pending == null) { pending = null; writing = false; break; }
+                request = pending;
+                pending = null;
+                if (request.state != state) continue;
+                command = new PendingRootCommand(BrightnessRangePolicy.command(state.range, state.multibits, request.progress));
+                inFlight = command;
             }
-        }catch(Exception failure){
-            synchronized(this){pending=null;writing=false;}
-            if(!closed)handler.post(()->{if(!closed)Toast.makeText(context,"亮度调整未完成",Toast.LENGTH_SHORT).show();});
+            try {
+                command.run(() -> {
+                    synchronized (this) { return !closed && state == request.state && pending == null; }
+                });
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            } catch (Exception failure) {
+                handler.post(() -> {
+                    if (!closed && state == request.state) Toast.makeText(context,"亮度调整未完成",Toast.LENGTH_SHORT).show();
+                });
+            } finally {
+                synchronized (this) { inFlight = null; }
+            }
         }
         if(!closed)handler.post(this::sync);
     }
@@ -142,7 +154,7 @@ public final class BrightnessControl {
     public void stop(){if(!started)return;started=false;context.getContentResolver().unregisterContentObserver(observer);}
     public void close(){
         if(closed)return;
-        synchronized(this){closed=true;pending=null;}
+        synchronized(this){closed=true;pending=null;if(inFlight!=null)inFlight.cancel();}
         stop();handler.removeCallbacksAndMessages(null);slider.setOnSeekBarChangeListener(null);worker.shutdown();
     }
 }

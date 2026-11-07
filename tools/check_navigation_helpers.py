@@ -6,6 +6,12 @@ from unittest.mock import patch
 import device as d
 
 class NavigationHelpers(unittest.TestCase):
+ def test_back_action_is_not_the_toolbar_or_system_back_button(self):
+  def node(cls,label):return E.Element('node',{'class':cls,'content-desc':label})
+  self.assertFalse(d._match(node('android.widget.ImageView','返回'),'返回',True,True))
+  self.assertFalse(d._match(node('android.widget.FrameLayout','返回'),'返回',True,True))
+  self.assertTrue(d._match(node('android.widget.RadioButton','返回'),'返回',True,True))
+  self.assertTrue(d._match(node('android.widget.RadioButton','启动指定应用，设置'),'启动指定应用',True,True))
  def setUp(self):
   self.state={'enabled':True,'left_enabled':True,'right_enabled':True,'action_right_straight_short':'back'}
   self.calls=[]
