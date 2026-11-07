@@ -14,17 +14,20 @@ import android.view.animation.DecelerateInterpolator;
 public final class GestureWaveView extends View {
     private final Paint body=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path curve=new Path();
-    private final float density,maxWidth,halfHeight,iconSize;
+    private final float density,maxWidth,iconSize;
+    private final int arrowPixels;
+    private final int[] location=new int[2];
     private final Drawable arrow;
     private String actionId="";
     private boolean left,visible;
-    private float baseY,depth,deflection;
+    private float downY,baseY,halfHeight,depth,deflection,dragY;
     private int direction;
     private ValueAnimator returning;
     public GestureWaveView(Context c){
         super(c);density=getResources().getDisplayMetrics().density;
-        // Accepted reference: 135px width at density3.5; half-height=2.875*width.
-        maxWidth=135f*density/3.5f;halfHeight=maxWidth*2.875f;iconSize=maxWidth*.5670317f;
+        maxWidth=135f*density/3.5f;
+        arrowPixels=c.getResources().getDimensionPixelSize(R.dimen.oho_curve_arrow_size);
+        iconSize=arrowPixels;
         body.setColor(Color.BLACK);
         // OHO 9.3.13 curve_style uses ic_arrow_forward in six directions, not
         // action icons or labels (SGPFluidAnimationView.a / dispatchDraw).
@@ -37,21 +40,29 @@ public final class GestureWaveView extends View {
         setContentDescription(ActionExecutor.title(id));
     }
     public void begin(boolean left,float y){
-        stopAnimation();this.left=left;visible=true;depth=deflection=0;direction=0;
+        stopAnimation();this.left=left;visible=true;depth=dragY=0;direction=0;
         float height=getHeight()>0?getHeight():getResources().getDisplayMetrics().heightPixels;
-        float top=Math.min(halfHeight+24*density,height/2),bottom=Math.max(top,height-halfHeight-24*density);
-        baseY=Math.max(top,Math.min(bottom,y));invalidate();
+        getLocationOnScreen(location);downY=y-location[1];
+        // OHO curve_style uses a ten-arrow-high window, lifted half a physical inch.
+        halfHeight=Math.min(5f*arrowPixels,height/2f);
+        float dpi=getResources().getDisplayMetrics().xdpi;
+        if(!Float.isFinite(dpi)||dpi<=0)dpi=getResources().getDisplayMetrics().densityDpi;
+        float top=Math.max(0,Math.min(height-2*halfHeight,(int)(downY-halfHeight-(int)dpi/2f)));
+        baseY=top+halfHeight;deflection=offsetAt(downY);invalidate();
+    }
+    private float offsetAt(float touchY){
+        float limit=Math.max(0,halfHeight-2f*arrowPixels);
+        return Math.max(-limit,Math.min(limit,touchY-3f*arrowPixels-baseY));
     }
     public void update(float inward,float vertical,int direction){
         if(!visible)return;depth=Math.min(maxWidth,Math.max(0,inward));
-        deflection=Math.max(-halfHeight*.6f,Math.min(halfHeight*.6f,vertical));this.direction=direction;postInvalidateOnAnimation();
+        dragY=vertical;deflection=offsetAt(downY+dragY);this.direction=direction;postInvalidateOnAnimation();
     }
     public void release(){
-        if(!visible)return;stopAnimation();final float startDepth=depth,startDeflection=deflection;
-        int sw=getResources().getConfiguration().smallestScreenWidthDp;float returnIcon=(sw>=411?25:sw>=360?22:19)*density;
-        long duration=Math.max(50,(long)(Math.min(startDepth,2*returnIcon)/(2*returnIcon)*300));
+        if(!visible)return;stopAnimation();final float startDepth=depth,verticalAtRelease=dragY;
+        long duration=Math.max(50,(long)(Math.min(startDepth,2*iconSize)/(2*iconSize)*300));
         returning=ValueAnimator.ofFloat(1,0);returning.setDuration(duration);returning.setInterpolator(new DecelerateInterpolator(1));
-        returning.addUpdateListener(a->{float f=(Float)a.getAnimatedValue();depth=startDepth*f;deflection=startDeflection*f;if(f<=.001f)visible=false;invalidate();});returning.start();
+        returning.addUpdateListener(a->{float f=(Float)a.getAnimatedValue();depth=startDepth*f;deflection=offsetAt(downY+verticalAtRelease*f);if(f<=.001f)visible=false;invalidate();});returning.start();
     }
     public void clear(){stopAnimation();visible=false;depth=deflection=0;invalidate();}
     private void stopAnimation(){if(returning!=null){returning.cancel();returning=null;}}
