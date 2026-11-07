@@ -39,7 +39,7 @@
 | `exceptions` / `action_app` | 应用列表用原应用图标、标题、摘要及复选/单选控件。搜索和加载状态使用同一页底 | 保留异步读取、generation 检查、未绑定位图释放。跨主题重建后核对选中状态和滚动位置 |
 | `action_shortcut` | 应用分组、箭头、真实快捷方式图标和可用状态。内容使用共享设置滚动区 | `ShortcutPicker.embedded()`。测试展开/收起、无条目、应用卸载、返回和保留的原选择层 |
 | `tools` | 设置页内只放编辑和预览入口 | 编辑进入 `ToolsSettingsActivity` 的不透明设置页。预览打开独立快速工具浮层，两者按不同宿主绘制 |
-| `widgets` | 循环翻页开关和预览入口使用设置行 | 真实小组件在 `WidgetActivity` 绘制。返回设置时保留原节点、滚动位置和选中态 |
+| `widgets` | 循环翻页开关和预览入口使用设置行 | 服务开启时由 `WidgetOverlay` 托管 `WidgetPanel`。服务关闭时，设置页的预览入口使用 `WidgetActivity`。返回时核对原节点、滚动位置和选中态 |
 | `launcher` / `launcher_columns` | 最近应用开关、编辑入口、列数单选 | 设置选择用 `ColorRadioButton`。快速启动预览使用独立浮层，进入编辑态后显示添加和选项 |
 | `tasks` | 最近任务数量使用单选行，兼容已有数量设置 | 实际任务内容留给 `TaskSwitcherOverlay`。设置页只读当前数量，预览关闭后核对选择 |
 | `touchpad` | 指针速度滑条和预览入口使用设置控件 | 虚拟触控板的触摸面和光标单独绘制。滑条取消、预览返回和速度读回分别检查 |
@@ -59,7 +59,7 @@
 | 触钮颜色 | `ColorPaletteSheet` 以 Dialog 形式打开 `ColorActionSheet`，色环、SV 方块、网格、透明度和色样由 Canvas 绘制 | 网格/色环、HEX 输入、IME、确定和取消。棋盘格只出现在透明度展示中；旧浮点透明度按百分比显示 |
 | 恢复默认、未保存退出、删除组件/页面 | 设置页用 `ColorDialogBuilder`；浮层内按上下文使用 `GlassDialogBuilder` | 消息简短时居中，长列表/表单使用底部选择。按钮随字宽换行，危险项可读，取消不提交 |
 | 快速启动添加、文件夹菜单与编辑、键盘组合键 | 短菜单跟随实际按钮。长列表和输入使用独立表单窗口，按需获得 IME 焦点 | 子窗口关闭后父层可操作，退出动画期间不穿透点击。失去有效窗口 token 时取消展示 |
-| 小组件页面、卡片、移动、provider 选择 | `WidgetActivity` 自有菜单；provider 列表包含真实图标、加载/空状态与搜索。provider 设置由提供方启动 | 保持 AppWidget ID，取消绑定只释放本次分配的 ID。搜索、IME、小屏与横屏重新测量高度 |
+| 小组件页面、卡片、移动、provider 选择 | `WidgetPanel` 管理菜单、搜索和选择列表。系统绑定或提供方配置需要打开 Activity 时，由 `WidgetActivity` 接收结果 | 新增时取消应释放新 ID。重新配置已有组件时取消应保留原 ID。返回先关闭最上层菜单，再关面板 |
 
 ColorOS 的 `COUIPopupListWindow.setUseBackgroundBlur()` 把开关传给内外菜单容器。`RoundFrameLayout` 转交 `COUIBackgroundBlurBuilder`，由 ViewRoot 管理背景 Drawable、混色、圆角和半径。`COUIBottomSheetDialog.applyBlurParams()` 也有自己的明暗混色与半径选项。试验 Popup 或 Dialog 时，应使用它自己的窗口做截图比较。同窗口 View 实验的通过结果只能用于同窗口控件。
 
@@ -68,10 +68,10 @@ ColorOS 的 `COUIPopupListWindow.setUseBackgroundBlur()` 把开关传给内外�
 | 表面 | 推荐渲染与当前实现 | 必查行为 |
 | --- | --- | --- |
 | 左右触钮、设置中的触控区域预览 | `EdgeHandleView` 和临时预览使用窄无障碍窗口，颜色和透明度直接绘制。预览不可点 | 系统栏安全区、屏幕方向、预览撤销、左右段优先级、主开关和应用例外 |
-| OHO+ 手势波形 | 两个固定窄绘制窗口，`GestureWaveView` 用 Canvas 画不透明曲线与方向箭头，按输入或有限回弹刷新 | 六个方向、长短滑、取消、屏幕关闭、手势结束后清空绘制 |
+| OHO+ 手势波形 | 两个固定窄绘制窗口，`GestureWaveView` 用 Canvas 画曲线与方向箭头。箭头在当前触点上方三个图标高度，靠近上下边缘时限位 | 左右侧、六个方向、长短滑、取消、屏幕边缘和回弹。面板锚点仍取真实触点 |
 | 快速工具与 `ToolsActivity` | `ToolsBackdrop` / `ColorOsSurface` 承担主窗口背景，按钮、媒体胶囊和 `GlassSeekBar` 绘制在其上。激活态使用主题强调色 | 左右触发位置、亮度/音量/媒体可读性、首帧、连续打开关闭、子菜单与视频焦点 |
 | 音量浮层 | `VolumeOverlay` 在窗口或附着 View 上挂现有样式 2，图标和音量轨道保持前景清晰 | 音量变化、长按、超时退出、模糊/轮廓分别关闭后的文字对比度 |
-| 小组件面板 | 外壳由 `PanelStyle.window()` 处理。每个组件的内容交给 `SizedWidgetHostView` / RemoteViews，移动和缩放把手用 Canvas | host ID `17672`、分页、尺寸上报、点击 provider、编辑取消、返回调用页 |
+| 小组件面板 | `WidgetOverlay` 使用可接收返回的无障碍窗口。外壳由 `PanelStyle.window()` 处理，组件内容交给 `SizedWidgetHostView` / RemoteViews，移动和缩放把手用 Canvas | host ID `17672`、分页、尺寸上报、点击 provider、编辑取消。与快速工具一样，普通打开时底下的 Activity 应保持 resumed |
 | 快速启动 | 主 Dialog 使用样式 2。应用和文件夹图标采用真实图标、合成缩略图、普通文字及 Ripple | 页数、图标异步加载、编辑态与浏览态、悬停抬手选择以及子菜单关闭 |
 | 任务切换 | 外壳用主窗口材质。已有系统任务快照作为图片内容，读不到快照时显示应用图标 | 任务消失、受保护内容、刷新/关闭时释放位图、焦点和取消旧查询 |
 | 虚拟触控板、导航键面板 | 外壳采用共享窗口材质。触控面、指针、按键与状态采用 Canvas、系统矢量和按钮 Drawable | 光标窗口不可触摸，注入时面板临时让出输入，手势完成/取消后恢复。导航键横竖排列和命中区独立验证 |

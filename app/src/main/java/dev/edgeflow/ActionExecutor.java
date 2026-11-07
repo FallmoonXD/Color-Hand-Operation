@@ -40,6 +40,7 @@ public final class ActionExecutor {
   if(c==null||id==null||id.equals("none"))return;
   float[] points=anchor==null?replica.NativeState.defaultGesture(c):anchor.clone();
   if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->execute(c,id,points));return;}
+  if(id.equals("back")&&(replica.WidgetOverlay.handleBack()||replica.ToolsOverlay.handleBack()))return;
   preparePanel(id);
   if(!id.equals("quick_launcher"))QuickLauncherOverlay.dismissAll();
   if(!id.equals("task_switcher"))TaskSwitcherOverlay.dismissAll();
@@ -70,7 +71,7 @@ public final class ActionExecutor {
     case "system_magnification":magnify(c,points);break;
     case "screen_magnifier":MagnificationOverlay.show(c,points);break;
     case "screen_free_move":ScreenMoveOverlay.show(c,points);break;
-    case "widgets":start(c,new Intent(c,replica.WidgetActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra(replica.NativeState.GESTURE_EXTRA,points));break;
+    case "widgets":replica.WidgetOverlay.show(c,points);break;
     case "one_hand":root(c,bridge(c,"onehand 1"),title(id));break;
     case "sidebar":root(c,"content call --uri content://com.coloros.sidebar --method OVOICE_OPEN_FLOATBAR_ACTION",title(id));break;
     case "power_menu":if(!c.performGlobalAction(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG))message(c,"系统未允许打开电源菜单");break;
@@ -112,7 +113,7 @@ public final class ActionExecutor {
   }catch(Exception e){android.util.Log.e("EdgeActions",id,e);message(c,title(id)+"暂不可用："+e.getClass().getSimpleName());}
  }
  private static void preparePanel(String id){switch(id){case "quick_tools":case "widgets":case "quick_launcher":case "task_switcher":case "virtual_touchpad":case "navigation_panel":case "keyboard_shortcuts":case "app_launcher":case "screen_timeout":case "volume_up":case "volume_down":case "sidebar":case "screen_magnifier":case "screen_free_move":
-   replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();TouchpadOverlay.dismissAll();NavigationOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();KeyboardShortcutsOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();if(!id.equals("widgets"))replica.WidgetActivity.dismissAll();break;default:break;}}
+   replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();TouchpadOverlay.dismissAll();NavigationOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();KeyboardShortcutsOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();if(!id.equals("widgets")){replica.WidgetOverlay.dismissAll();replica.WidgetActivity.dismissAll();}break;default:break;}}
  private static void magnify(AccessibilityService service, float[] anchor) {
   AccessibilityService.MagnificationController controller = service.getMagnificationController();
   android.accessibilityservice.MagnificationConfig current = controller.getMagnificationConfig();

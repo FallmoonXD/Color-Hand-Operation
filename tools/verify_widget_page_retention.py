@@ -159,7 +159,6 @@ def await_activity(fragment, timeout=8):
         time.sleep(.15)
     raise AssertionError('Activity did not resume: ' + fragment)
 
-
 def self_test():
     tree = ET.fromstring('<hierarchy><node content-desc="右侧手势区域" visible-to-user="true" bounds="[1220,360][1264,2700]" /></hierarchy>')
     state = {'enabled': True, 'right_enabled': True, 'action_right_up_long': 'widgets'}
@@ -194,9 +193,11 @@ def run(args):
         plan = gesture_plan(d.preferences(), d.ui(), width, height, density)
         report['gesture'] = plan
         d.sh('input', 'swipe', *(str(n) for n in plan['from'] + plan['to']), str(plan['duration_ms']))
-        report['widget_resumed'] = await_activity('replica.WidgetActivity')
+        d.wait_widget_panel()
+        report['underlying_activity_with_widget_visible'] = await_activity(d.P + '/.MainActivity')
         time.sleep(.45)
         d.sh('input', 'keyevent', '4')
+        d.wait_widget_panel(False)
         report['main_resumed'] = await_activity(d.P + '/.MainActivity')
         after = stable_page()
         report['before'] = before;report['after'] = after
@@ -210,7 +211,7 @@ def run(args):
         raise
     finally:
         # Close only our still-open widget panel; do not navigate or reset arbitrary UI.
-        if 'replica.WidgetActivity' in d.resumed():
+        if d.widget_page_menu() is not None:
             d.sh('input', 'keyevent', '4');time.sleep(.4)
         changes = preference_diff(baseline, all_preferences())
         report['preferences_unchanged'] = not changes;report['preference_changes'] = changes

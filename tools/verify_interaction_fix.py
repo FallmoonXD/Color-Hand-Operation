@@ -41,11 +41,11 @@ try:
     for side,x,end in [('left',5,455),('right',1259,809)]:
         current_volume=d.vol();d.sh('input','swipe',str(x),'1900',str(end),'1450','80');time.sleep(.25)
         assert d.vol()==current_volume+1,(side,d.vol(),current_volume)
-        assert 'replica.WidgetActivity' not in d.resumed(),'Fast release bypassed long duration'
+        assert d.widget_page_menu() is None,'Fast release bypassed long duration'
         d.sh('input','tap','630','2550');time.sleep(.65)
         d.sh('cmd','media_session','volume','--stream','3','--set',str(current_volume))
     result['fast_far_release_is_short_both_sides']=True
-    d.sh('input','swipe','5','1900','455','1450','650');d.wait_node('第 1 页，共 1 页；页面菜单')
+    d.sh('input','swipe','5','1900','455','1450','650');d.wait_widget_panel()
     d.sh('input','tap','630','2550');time.sleep(.4);result['qualified_long_still_opens_widgets']=True
 finally:
     if d.preferences().get('left_handle_width_dp')!=before['left_handle_width_dp']:

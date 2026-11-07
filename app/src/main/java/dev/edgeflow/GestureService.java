@@ -51,7 +51,7 @@ public final class GestureService extends AccessibilityService implements Shared
     private boolean pendingWindowState,pendingConfiguration,pendingGeometry;
     private final Runnable applyPreferences=this::applyPreferenceChanges;
     private final BroadcastReceiver changes=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent intent){
-        String a=intent.getAction();if(Intent.ACTION_SCREEN_OFF.equals(a)){screenOn=false;cancelGesture();removeHandlePreviews();dismissPanels();}
+        String a=intent.getAction();if(Intent.ACTION_SCREEN_OFF.equals(a)){screenOn=false;cancelGesture();removeHandlePreviews();dismissPanels();replica.WidgetOverlay.dismissAll();}
         else if(Intent.ACTION_SCREEN_ON.equals(a)||Intent.ACTION_USER_PRESENT.equals(a))screenOn=true;
         if((getPackageName()+".RELOAD_GESTURES").equals(a))schedulePreferences(true);else updateVisibility();
     }};
@@ -264,14 +264,14 @@ public final class GestureService extends AccessibilityService implements Shared
     private void removeWindows(){removeGestureWindows();removeHandlePreviews();}
     private void remove(View v){if(v!=null)try{windows.removeViewImmediate(v);}catch(IllegalArgumentException ignored){}}
     @Override public void onSharedPreferenceChanged(SharedPreferences p,String key){schedulePreferences(key==null||key.equals("hide_home")||key.equals("hide_notifications")||key.equals("hide_keyboard")||key.equals("hide_when_keyboard")||key.equals("disabled_apps")||key.equals("excluded_packages"));}
-    @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);cancelGesture();Point size=new Point();windows.getDefaultDisplay().getRealSize(size);if(size.x!=screenWidth||size.y!=screenHeight||screenDensity!=getResources().getDisplayMetrics().density)dismissPanels();pendingConfiguration=true;schedulePreferences(true);}
+    @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);cancelGesture();Point size=new Point();windows.getDefaultDisplay().getRealSize(size);if(size.x!=screenWidth||size.y!=screenHeight||screenDensity!=getResources().getDisplayMetrics().density)dismissPanels();replica.WidgetOverlay.configurationChanged();pendingConfiguration=true;schedulePreferences(true);}
     @Override public void onInterrupt(){cancelGesture();removeHandlePreviews();}
     @Override public void onTaskRemoved(Intent rootIntent){super.onTaskRemoved(rootIntent);Log.i(TAG,"Settings task removed; accessibility binding retained");}
     private void dismissPanels(){replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();TouchpadOverlay.dismissAll();NavigationOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();}
     private void disconnect(){
         connected=false;if(running==this)running=null;main.removeCallbacksAndMessages(null);pendingConfiguration=pendingWindowState=pendingGeometry=false;
         if(receiverRegistered){try{unregisterReceiver(changes);}catch(IllegalArgumentException ignored){}receiverRegistered=false;}
-        removeWindows();dismissPanels();ActionExecutor.release(this);stopForeground(STOP_FOREGROUND_REMOVE);
+        removeWindows();dismissPanels();replica.WidgetOverlay.dismissAll();ActionExecutor.release(this);stopForeground(STOP_FOREGROUND_REMOVE);
         sendBroadcast(new Intent(getPackageName()+".SERVICE_STATE").setPackage(getPackageName()));
     }
     @Override public boolean onUnbind(Intent intent){disconnect();stopSelf();return super.onUnbind(intent);}

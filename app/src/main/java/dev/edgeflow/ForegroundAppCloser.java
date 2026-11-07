@@ -44,7 +44,11 @@ public final class ForegroundAppCloser {
     }
 
     static boolean close(AccessibilityService service, String expected) throws Exception {
-        if (expected == null || !expected.equals(target(service))) return false;
+        if (expected == null || service != GestureService.instance()) return false;
+        // Dismissing a focusable panel can leave no focused application for a frame.
+        // The authorization handshake below checks the live window before allowing the operation.
+        String focused = target(service);
+        if (focused != null && !expected.equals(focused)) return false;
         String apk = service.getApplicationInfo().sourceDir.replace("'", "'\\''");
         int user = android.os.Process.myUid() / 100000;
         String command = "CLASSPATH='" + apk + "' exec app_process /system/bin "

@@ -64,6 +64,18 @@ def wait_node(s,timeout=6):
   time.sleep(.2)
  raise AssertionError('No visible node: '+s)
 
+def widget_page_menu():
+ return next((n for n in ui().iter('node') if n.get('package')==P
+              and n.get('content-desc','').endswith('页面菜单') and visible(n)),None)
+
+def wait_widget_panel(shown=True,timeout=8):
+ deadline=time.monotonic()+timeout
+ while time.monotonic()<deadline:
+  menu=widget_page_menu()
+  if (menu is not None)==shown:return menu
+  time.sleep(.15)
+ raise AssertionError('Unexpected widget panel visibility: '+str(shown))
+
 def click(s):tap(wait_node(s));time.sleep(.25)
 
 def preferences(name='edgeflow'):

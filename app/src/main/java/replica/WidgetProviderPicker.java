@@ -1,6 +1,5 @@
 package replica;
 
-import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProviderInfo;
 import android.content.Context;
@@ -34,7 +33,7 @@ import java.util.function.Consumer;
 /** Searchable real AppWidget providers, owned by one add-widget sheet. No host IDs are allocated here. */
 final class WidgetProviderPicker implements AutoCloseable {
     private static final ExecutorService WORK=Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"widget-provider-picker");t.setDaemon(true);return t;});
-    private final Activity owner;
+    private final Context owner;
     private final Handler main=new Handler(Looper.getMainLooper());
     private final LinearLayout content;
     private final EditText search;
@@ -51,7 +50,7 @@ final class WidgetProviderPicker implements AutoCloseable {
     private int rowsVersion,gestureRowsVersion;
     private boolean blockedTouch;
 
-    WidgetProviderPicker(Activity owner,Consumer<AppWidgetProviderInfo> selection){
+    WidgetProviderPicker(Context owner,Consumer<AppWidgetProviderInfo> selection){
         this.owner=owner;this.selection=selection;
         content=new LinearLayout(owner);content.setOrientation(LinearLayout.VERTICAL);
         search=ColorDialogBuilder.editText(owner,"搜索应用或小组件");search.setSingleLine(true);
@@ -113,7 +112,7 @@ final class WidgetProviderPicker implements AutoCloseable {
             }catch(Exception failure){error="无法读取小组件列表，请关闭后重试";}
             final String message=error;
             main.post(()->{
-                if(closed||token!=generation||owner.isFinishing()||owner.isDestroyed())return;
+                if(closed||token!=generation)return;
                 loading=false;failed=message!=null;entries.clear();entries.addAll(result);filter();
                 if(message!=null)status.setText(message);
             });

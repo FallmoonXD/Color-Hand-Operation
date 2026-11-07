@@ -19,6 +19,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private final Window window;private final Runnable close;private volatile boolean closed;
     private final java.util.ArrayList<AlertDialog> childDialogs=new java.util.ArrayList<>();
     public boolean hasChildDialogs(){return !childDialogs.isEmpty();}
+    boolean dismissChild(){if(childDialogs.isEmpty())return false;childDialogs.get(childDialogs.size()-1).dismiss();return true;}
     private void showChild(AlertDialog dialog){
         if(closed||hasChildDialogs())return;Window child=dialog.getWindow();if(overlay()){child.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);child.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);}
         childDialogs.add(dialog);dialog.setOnDismissListener(d->childDialogs.remove(dialog));try{dialog.show();}catch(RuntimeException error){childDialogs.remove(dialog);ColorDialogBuilder.dismissImmediately(dialog);android.util.Log.w("ReplicaTools","Unable to open settings",error);}
@@ -169,8 +170,8 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
                     command("settings put system screen_off_timeout "+(seconds[which]*1000));dialog.dismiss();
                 }).setNegativeButton("取消",null).create());break;
             case 11:
-                finish();
-                dev.edgeflow.ActionExecutor.closeCurrentApp(dev.edgeflow.GestureService.instance(), closeTarget);
+                Runnable stop=()->dev.edgeflow.ActionExecutor.closeCurrentApp(dev.edgeflow.GestureService.instance(),closeTarget);
+                if(overlay())ToolsOverlay.closeThen(stop);else{finish();stop.run();}
                 break;
         }
     }
