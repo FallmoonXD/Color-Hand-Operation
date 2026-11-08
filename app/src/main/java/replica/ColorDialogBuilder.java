@@ -246,7 +246,8 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
 
   @Override protected void onStart(){
    super.onStart();Context c=getContext();Window window=getWindow();window.setWindowAnimations(0);window.setDimAmount(glass?.12f:.24f);
-   if(window.getAttributes().type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY){
+   if(window.getAttributes().type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+       &&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)==0){
     if((window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0&&!containsTextEditor(root))window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
     PanelOutsideTouch.makeModal(window);
    }else if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
@@ -299,6 +300,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(closing||finished)return true;
    Window w=getWindow();
    return (w.getAttributes().type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+       &&(w.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)==0
        &&overlayTouch.consume(w.getDecorView(),event,outsideCancel))||super.dispatchTouchEvent(event);
   }
   @Override public boolean onTouchEvent(android.view.MotionEvent event){if(event.getActionMasked()==android.view.MotionEvent.ACTION_OUTSIDE&&allowCancel&&outsideDismiss){cancel();return true;}return super.onTouchEvent(event);}

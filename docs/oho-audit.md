@@ -51,6 +51,12 @@ Configuration validators are available before import mutation: LauncherLayout.va
 
 Final source review added ownership and dismissal for nested launcher/task/keyboard dialogs, cancels pending recent-task reads when their panels close, suppresses delayed keyboard injection after foreground changes, and releases camera state callbacks on service disconnection. Normal selection panels retain FLAG_NOT_FOCUSABLE; only actual text editors request keyboard focus. This prevents accidental focus transfer by design, but does not itself prove that every third-party media application will keep playing. Root command handling checks both exit status and Android error output; nine host assertions cover zero-exit activity errors, service denial, valid task results and the native sidebar null response. Shell variables are fixed commands, validated numeric task/key IDs or properly quoted APK paths; arbitrary shortcut URI strings are passed through Intent parsing rather than a shell.
 
+OHO+ 9.3.13 creates a button-sized, non-focusable mini-volume window in `r5.f.s`. Its touch listener in `y5.g` can receive an outside notification while the touched app receives the original gesture. It arms a 3-second timeout on show and a 1.5-second timeout on a button step or repeat. CHO follows the visible SystemUI volume window on ColorOS. These timeouts are the fallback when the system does not expose a recognizable window.
+
+The standalone OHO+ screen-timeout picker (`r5.f.o`, `y5.p`) uses a narrow window and dismisses on an outside notification. In CHO this applies to the gesture action. The picker inside quick tools remains a modal child.
+
+The OHO+ quick tools (`r5.f.c`), widgets (`r5.f`), quick launcher (`v5.a0`), task switcher (`l6.j`) and keyboard shortcut menu (`r5.f`) use screen-sized input windows around their content. CHO keeps taps outside those temporary panels in the topmost window. Its navigation rail and touchpad stay open for continued use of the foreground app.
+
 Opening a temporary tool replaces the previous temporary tool through `ActionExecutor.preparePanel`. The navigation keys, touchpad and magnifier stay available across these switches. ToolsPanel's own toggles retain their panel. Reopening quick tools recreates it with the current trigger anchor. External launcher/task-switcher cleanup immediately cancels animations and dismisses owned windows; user outside-touch dismissal still animates. Root shell mutations share one worker queue to preserve submitted command order.
 
 ## Background recovery evidence

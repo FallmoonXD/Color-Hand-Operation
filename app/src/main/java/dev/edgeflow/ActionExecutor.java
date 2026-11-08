@@ -134,7 +134,7 @@ public final class ActionExecutor {
   }catch(Exception e){android.util.Log.e("EdgeActions",id,e);message(c,title(id)+"暂不可用："+e.getClass().getSimpleName());}
  }
  private static void preparePanel(String id){switch(id){case "quick_tools":case "widgets":case "quick_launcher":case "task_switcher":case "virtual_touchpad":case "navigation_panel":case "keyboard_shortcuts":case "app_launcher":case "screen_timeout":case "volume_up":case "volume_down":case "sidebar":case "screen_magnifier":case "screen_free_move":
-   replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();KeyboardShortcutsOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();if(!id.equals("widgets")){replica.WidgetOverlay.dismissAll();replica.WidgetActivity.dismissAll();}break;default:break;}}
+   replica.ToolsOverlay.dismissAll();if(!id.equals("volume_up")&&!id.equals("volume_down"))replica.VolumeOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();KeyboardShortcutsOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();if(!id.equals("widgets")){replica.WidgetOverlay.dismissAll();replica.WidgetActivity.dismissAll();}break;default:break;}}
  private static void magnify(AccessibilityService service, float[] anchor) {
   AccessibilityService.MagnificationController controller = service.getMagnificationController();
   android.accessibilityservice.MagnificationConfig current = controller.getMagnificationConfig();
@@ -199,7 +199,15 @@ public final class ActionExecutor {
  private static void dismissDialogs(){dialogGeneration++;for(AlertDialog d:new ArrayList<>(DIALOGS))try{replica.ColorDialogBuilder.dismissImmediately(d);}catch(Exception ignored){}DIALOGS.clear();}
  /** Called when the accessibility service disconnects; never turns off a user-owned torch. */
  public static void release(AccessibilityService service){if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->release(service));return;}lifecycleGeneration++;dismissDialogs();KeyboardShortcutsOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();releaseTorch();}
- private static void timeout(Context c){int[] seconds={15,30,60,120,300,600};String[] names={"15 秒","30 秒","1 分钟","2 分钟","5 分钟","10 分钟"};int current=Settings.System.getInt(c.getContentResolver(),Settings.System.SCREEN_OFF_TIMEOUT,30000)/1000,selected=-1;for(int i=0;i<seconds.length;i++)if(seconds[i]==current)selected=i;show(dialog(c,"屏幕超时").setSingleChoiceItems(names,selected,(d,n)->{root(c,"settings put system screen_off_timeout "+(seconds[n]*1000),"屏幕超时");d.dismiss();}).setNegativeButton("取消",null).create());}
+ private static void timeout(Context c){
+  int[] seconds={15,30,60,120,300,600};String[] names={"15 秒","30 秒","1 分钟","2 分钟","5 分钟","10 分钟"};
+  int current=Settings.System.getInt(c.getContentResolver(),Settings.System.SCREEN_OFF_TIMEOUT,30000)/1000,selected=-1;
+  for(int i=0;i<seconds.length;i++)if(seconds[i]==current)selected=i;
+  AlertDialog choices=dialog(c,"屏幕超时").setSingleChoiceItems(names,selected,(d,n)->{root(c,"settings put system screen_off_timeout "+(seconds[n]*1000),"屏幕超时");d.dismiss();}).setNegativeButton("取消",null).create();
+  // This is the standalone action. The child chooser in quick tools stays modal.
+  choices.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
+  show(choices);
+ }
  /** Compatibility for already assigned legacy launchers; the removed option stays out of new menus. */
  private static void apps(Context c){int generation=dialogGeneration;WORK.execute(()->{
   try{

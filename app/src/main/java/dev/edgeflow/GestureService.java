@@ -149,6 +149,8 @@ public final class GestureService extends AccessibilityService implements Shared
     }
     @Override public void onAccessibilityEvent(AccessibilityEvent e){
         if(!connected)return;
+        if(e.getEventType()==AccessibilityEvent.TYPE_WINDOWS_CHANGED||e.getEventType()==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+            replica.VolumeOverlay.systemWindowsChanged(this,e);
         if(e.getEventType()==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED&&e.getPackageName()!=null){
             String p=e.getPackageName().toString();if(!p.equals(getPackageName())&&!p.equals("com.android.systemui")&&!p.equals("android")){
                 boolean app=false;for(AccessibilityWindowInfo w:getWindows())if(w.getId()==e.getWindowId()&&w.getType()==AccessibilityWindowInfo.TYPE_APPLICATION&&(w.isActive()||w.isFocused())){app=true;break;}
