@@ -53,7 +53,7 @@ public final class MagnificationOverlay {
   int theme=c.getResources().getIdentifier(PanelStyle.dark(c)?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());
   dialog=new Dialog(c,theme);
   dialog.setOnDismissListener(d->remove());
-  LinearLayout root=new LinearLayout(c);root.setOrientation(1);root.setPadding(dp(10),dp(8),dp(10),dp(10));
+  LinearLayout root=new LinearLayout(c);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(10),dp(8),dp(10),dp(10));
   LinearLayout top=new LinearLayout(c);top.setGravity(Gravity.CENTER_VERTICAL);top.addView(text("屏幕放大镜",15),new LinearLayout.LayoutParams(0,dp(34),1));top.addView(button("关闭",this::dismiss),new LinearLayout.LayoutParams(dp(44),dp(34)));root.addView(top);
   View pad=new View(c){float x,y;@Override public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){x=e.getRawX();y=e.getRawY();return true;}if(e.getActionMasked()==MotionEvent.ACTION_MOVE){pan(e.getRawX()-x,e.getRawY()-y);x=e.getRawX();y=e.getRawY();return true;}return true;}};
   pad.setContentDescription("放大镜控制区：滑动移动放大视野");PanelStyle.inputSurface(pad,18);

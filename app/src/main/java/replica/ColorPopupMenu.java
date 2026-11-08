@@ -20,7 +20,7 @@ import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.animation.PathInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -101,7 +101,7 @@ public final class ColorPopupMenu implements AutoCloseable {
         window.setOnDismissListener(()->{if(!closed){pending=-1;release();notifyDismiss();}});
         refreshColors();
         if(!layout(true)){dismissImmediately();return this;}
-        setReveal(0);card.setScaleX(.94f);card.setScaleY(.94f);
+        setReveal(0);card.setScaleX(0);card.setScaleY(0);
         try{showWindow();}
         catch(RuntimeException|ReflectiveOperationException failure){android.util.Log.w("ColorPopupMenu","Unable to show menu window",failure);dismissImmediately();return this;}
         showing=true;
@@ -233,11 +233,15 @@ public final class ColorPopupMenu implements AutoCloseable {
     }
     private void animate(boolean enter,Runnable done){
         if(animator!=null){animator.removeAllUpdateListeners();animator.removeAllListeners();animator.cancel();}
-        if(!ValueAnimator.areAnimatorsEnabled()||ColorOsTheme.animationScale(context)==0){setReveal(enter?1:0);card.setScaleX(enter?1:.96f);card.setScaleY(enter?1:.96f);if(done!=null)done.run();return;}
-        float alpha=content.getAlpha(),scale=card.getScaleX(),endAlpha=enter?1:0,endScale=enter?1:.96f;
-        animator=ValueAnimator.ofFloat(0,1);animator.setDuration(enter?250:200);
-        animator.setInterpolator(enter?new PathInterpolator(.2f,0,.1f,1):new PathInterpolator(.3f,0,.8f,.15f));
-        animator.addUpdateListener(value->{float f=(float)value.getAnimatedValue();setReveal(alpha+(endAlpha-alpha)*f);float s=scale+(endScale-scale)*f;card.setScaleX(s);card.setScaleY(s);});
+        float end=enter?1:0;
+        if(!ValueAnimator.areAnimatorsEnabled()||ColorOsTheme.animationScale(context)==0){setReveal(end);card.setScaleX(end);card.setScaleY(end);if(done!=null)done.run();return;}
+        // Settings PopupGravityMotionParams: opacity and scale have independent springs.
+        ColorSpringTrack alpha=ColorSpringTrack.popupOpacity(content.getAlpha(),enter);
+        ColorSpringTrack scale=ColorSpringTrack.popupScale(card.getScaleX(),enter);
+        int duration=Math.max(alpha.durationMs,scale.durationMs);
+        animator=ValueAnimator.ofFloat(0,duration);animator.setDuration(duration);
+        animator.setInterpolator(new LinearInterpolator());
+        animator.addUpdateListener(value->{float t=(float)value.getAnimatedValue();setReveal(alpha.valueAt(t));float s=scale.valueAt(t);card.setScaleX(s);card.setScaleY(s);});
         if(done!=null)animator.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator animation){done.run();}});
         animator.start();
     }

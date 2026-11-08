@@ -74,14 +74,14 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         cameras=(CameraManager)getSystemService(CAMERA_SERVICE);
         try{for(String id:cameras.getCameraIdList())if(Boolean.TRUE.equals(cameras.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE))){cameraId=id;break;}}catch(Exception ignored){}
         if(cameraId!=null)cameras.registerTorchCallback(torchCallback,new Handler());
-        LinearLayout panel=new LinearLayout(this){private boolean blocked;@Override public boolean dispatchTouchEvent(MotionEvent event){int action=event.getActionMasked();if(action==MotionEvent.ACTION_DOWN)blocked=hasChildDialogs();boolean consume=blocked;if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL)blocked=false;return consume||super.dispatchTouchEvent(event);}};panel.setOrientation(1);panel.setPadding(dp(14),dp(14),dp(14),dp(14));setContentView(panel);
+        LinearLayout panel=new LinearLayout(this){private boolean blocked;@Override public boolean dispatchTouchEvent(MotionEvent event){int action=event.getActionMasked();if(action==MotionEvent.ACTION_DOWN)blocked=hasChildDialogs();boolean consume=blocked;if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL)blocked=false;return consume||super.dispatchTouchEvent(event);}};panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(14),dp(14),dp(14),dp(14));setContentView(panel);
         ToolsBackdrop backdrop=PanelStyle.controlsWindow(this,window,24,false);
         position();
         LinearLayout brightness=row();brightness.setPadding(dp(7),0,dp(7),0);panel.addView(brightness);
         ImageView sun=icon("brightness_icon",PanelStyle.accent(this));autoIcon=sun;sun.setContentDescription("自动亮度");sun.setOnClickListener(v->command("settings put system screen_brightness_mode "+(Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1?0:1)));brightness.addView(sun,new LinearLayout.LayoutParams(dp(35),dp(34)));
         SeekBar light=new GlassSeekBar(this);LinearLayout.LayoutParams lightParams=new LinearLayout.LayoutParams(0,dp(38),1);if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f)lightParams.rightMargin=dp(8);else lightParams.leftMargin=dp(8);brightness.addView(light,lightParams);brightnessControl=new BrightnessControl(this,light);
         if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){brightness.removeView(sun);brightness.addView(sun);}
-        LinearLayout media=new LinearLayout(this);media.setOrientation(1);media.setPadding(dp(12),dp(6),dp(12),dp(10));media.setBackground(PanelStyle.mediaSurface(this));
+        LinearLayout media=new LinearLayout(this);media.setOrientation(LinearLayout.VERTICAL);media.setPadding(dp(12),dp(6),dp(12),dp(10));media.setBackground(PanelStyle.mediaSurface(this));
         LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,dp(96));mp.topMargin=dp(14);panel.addView(media,mp);
         LinearLayout vr=row();media.addView(vr);speaker=icon("volume_media",Color.WHITE);vr.addView(speaker,new LinearLayout.LayoutParams(dp(35),dp(34)));
         speaker.setOnClickListener(v->adjustMediaVolume(AudioManager.ADJUST_TOGGLE_MUTE));
@@ -169,7 +169,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private void mediaButton(ImageView button,String icon,String action){
         button.setImageDrawable(SystemIcons.control(this,icon));button.setContentDescription(action);button.setTooltipText(action);
     }
-    private LinearLayout row(){LinearLayout r=new LinearLayout(this);r.setOrientation(0);r.setGravity(Gravity.CENTER_VERTICAL);return r;}
+    private LinearLayout row(){LinearLayout r=new LinearLayout(this);r.setOrientation(LinearLayout.HORIZONTAL);r.setGravity(Gravity.CENTER_VERTICAL);return r;}
     private ImageView icon(String name,int color){ImageView v=new ImageView(this);v.setImageDrawable(SystemIcons.control(this,name));v.setColorFilter(color);v.setScaleType(ImageView.ScaleType.FIT_CENTER);return v;}
     private void tintSlider(SeekBar v){v.setProgressTintList(ColorStateList.valueOf(0xff3979ff));v.setThumbTintList(ColorStateList.valueOf(0xff3979ff));}
     private TextView label(String text,int size){TextView t=new TextView(this);t.setText(text);t.setGravity(Gravity.CENTER);t.setTextSize(size);t.setTextColor(0xff3979ff);return t;}

@@ -72,7 +72,7 @@ public final class VolumeOverlay {
    @Override public boolean dispatchTouchEvent(MotionEvent event){
     return closing||(dialog==null&&outsideTouch(event))||super.dispatchTouchEvent(event);
    }
-  };view.setOrientation(1);view.setElevation(PanelStyle.dp(c,8));
+  };view.setOrientation(LinearLayout.VERTICAL);view.setElevation(PanelStyle.dp(c,8));
   ImageView plus=button("ic_expand_less_rounded","音量增加"),minus=button("ic_expand_more_rounded","音量减小");
   view.addView(plus,new LinearLayout.LayoutParams(-1,PanelStyle.dp(c,70)));
   view.addView(minus,new LinearLayout.LayoutParams(-1,PanelStyle.dp(c,70)));
@@ -234,6 +234,7 @@ public final class VolumeOverlay {
  }
  private void enter(){
   if(closing||removed)return;
+  if(!ValueAnimator.areAnimatorsEnabled()){pose(1);return;}
   pose(progress);
   NativeMaterial.whenReady(dialog!=null?dialog.getWindow().getDecorView():view,()->{
    if(!closing&&!removed)animate(1,ColorMotion.VOLUME_IN_MS,ColorMotion.VOLUME_IN);

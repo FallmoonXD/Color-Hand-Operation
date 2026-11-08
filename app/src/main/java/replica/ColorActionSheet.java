@@ -23,7 +23,6 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.animation.PathInterpolator;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -236,7 +235,7 @@ public final class ColorActionSheet implements AutoCloseable {
         if(animator!=null){animator.removeAllListeners();animator.cancel();}
         panel.setVisibility(View.VISIBLE);
         if(!ValueAnimator.areAnimatorsEnabled()||ColorOsTheme.animationScale(owner)==0){pose(end);if(done!=null)done.run();return;}
-        animator=ValueAnimator.ofFloat(reveal,end);animator.setDuration(250);animator.setInterpolator(end==1?new PathInterpolator(.3f,0,.1f,1):new PathInterpolator(.3f,0,1,1));
+        animator=ValueAnimator.ofFloat(reveal,end);animator.setDuration(ColorMotion.SHEET_MS);animator.setInterpolator(end==1?ColorMotion.ENTER:ColorMotion.EXIT);
         animator.addUpdateListener(value->pose((float)value.getAnimatedValue()));
         if(done!=null)animator.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator animation){done.run();}});
         animator.start();

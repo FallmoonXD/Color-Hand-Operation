@@ -8,7 +8,6 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.drawable.Drawable;
 import android.view.View;
-import android.view.animation.DecelerateInterpolator;
 
 /** Fixed, opaque OHO-style fluid curve. No preference-selected animation variants. */
 public final class GestureWaveView extends View {
@@ -60,9 +59,12 @@ public final class GestureWaveView extends View {
     }
     public void release(){
         if(!visible)return;stopAnimation();final float startDepth=depth,verticalAtRelease=dragY;
-        long duration=Math.max(50,(long)(Math.min(startDepth,2*iconSize)/(2*iconSize)*300));
-        returning=ValueAnimator.ofFloat(1,0);returning.setDuration(duration);returning.setInterpolator(new DecelerateInterpolator(1));
-        returning.addUpdateListener(a->{float f=(Float)a.getAnimatedValue();depth=startDepth*f;deflection=offsetAt(downY+verticalAtRelease*f);if(f<=.001f)visible=false;invalidate();});returning.start();
+        if(startDepth<=0||!ValueAnimator.areAnimatorsEnabled()){clear();return;}
+        // SystemUI BaseBezierCalculator retracts the horizontal edge with response .1, bounce 0.
+        replica.ColorSpringTrack retract=replica.ColorSpringTrack.backArrow(startDepth);
+        returning=ValueAnimator.ofFloat(0,retract.durationMs);returning.setDuration(retract.durationMs);
+        returning.setInterpolator(new android.view.animation.LinearInterpolator());
+        returning.addUpdateListener(a->{depth=retract.valueAt((Float)a.getAnimatedValue());deflection=offsetAt(downY+verticalAtRelease*depth/startDepth);if(depth==0)visible=false;invalidate();});returning.start();
     }
     public void clear(){stopAnimation();visible=false;depth=deflection=0;invalidate();}
     private void stopAnimation(){if(returning!=null){returning.cancel();returning=null;}}

@@ -19,7 +19,7 @@ Local ColorOS 17 Settings resources:
 - Extracted current Settings `single/PopupMenuLocateHelper.java`: anchor and window barriers, cutout boundaries, separate above/below positioning.
 - Extracted `single/DefaultScreenAnimationController.java` and `COUIPopupTouchMotionAnimator.java`: location-dependent popup pivot, scale/alpha motion and native animation-kit orchestration. No classes from those APKs are loaded or bundled.
 
-The 48 dp accessible action minimum (56 dp optional), 20 dp outline, 250 ms enter cubic (0.2, 0, 0.1, 1), 0.94 initial scale, 0.96 exit scale and 12 dp elevation are explicit standalone design choices. They preserve the anchored scale/fade behavior without claiming an exact port of ColorOS's animation kit. The 200 ms exit fade curve is taken from the native resource. Android's global animator scale applies normally; disabled animation is immediate.
+Menu items use a 48 dp accessible minimum (56 dp optional) and the existing anchor layout. The active Settings path uses `DefaultScreenAnimationController` and `PopupMotionAnimateKitController`. CHO now runs separate opacity and scale springs with the default responses and bounces from `PopupGravityMotionParamsExtKt`. The older 200 ms XML fade belongs to a different window animation. The system animator scale is applied once. See the [motion audit](coloros17-motion.md).
 
 ## API and lifecycle
 

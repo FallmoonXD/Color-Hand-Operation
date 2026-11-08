@@ -150,11 +150,11 @@ public final class MainActivity extends Activity {
  private ImageView icon(String name,String description){return icon(name,description,false);}
  private ImageView icon(String name,String description,boolean accent){ImageView view=new ImageView(this);view.setImageDrawable(replica.SystemIcons.raw(this,name));Runnable tint=()->view.setColorFilter(accent?ColorOsTheme.accent(this):ColorOsTheme.text(this));tint.run();ColorOsTheme.watch(view,tint);view.setScaleType(ImageView.ScaleType.FIT_CENTER);view.setContentDescription(description);return view;}
  private LinearLayout card(){return card(content);}
- private LinearLayout card(LinearLayout parent){LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setPadding(dp(4),dp(4),dp(4),dp(4));box.setBackground(replica.PanelStyle.shape(this,card,20));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(14);parent.addView(box,lp);return box;}
+ private LinearLayout card(LinearLayout parent){LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(4),dp(4),dp(4),dp(4));box.setBackground(replica.PanelStyle.shape(this,card,20));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(14);parent.addView(box,lp);return box;}
  private TextView note(String value){TextView view=text(value,14,secondary);view.setLineSpacing(0,1.2f);view.setPadding(dp(12),dp(2),dp(12),dp(18));content.addView(view);return view;}
  private void divider(LinearLayout box){if(box.getChildCount()==0||"settings_divider".equals(box.getChildAt(box.getChildCount()-1).getTag()))return;View line=new View(this);line.setTag("settings_divider");line.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);line.setBackgroundColor((fg&0x00ffffff)|0x10000000);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,Math.max(1,dp(.5f)));lp.leftMargin=dp(16);lp.rightMargin=dp(16);box.addView(line,lp);}
  private LinearLayout group(String heading){if(!heading.isEmpty()){TextView label=text(heading,14,secondary);label.setTypeface(ColorOsTheme.typeface(this,500));label.setPadding(dp(6),dp(10),0,dp(8));content.addView(label);}return card();}
- private LinearLayout row(LinearLayout box,String title,String detail){divider(box);LinearLayout row=new LinearLayout(this);row.setBaselineAligned(false);row.setGravity(Gravity.CENTER_VERTICAL);boolean hasDetail=detail!=null&&!detail.isEmpty();row.setPadding(dp(16),dp(hasDetail?10:4),dp(12),dp(hasDetail?10:4));row.setMinimumHeight(dp(hasDetail?64:56));LinearLayout labels=new LinearLayout(this);labels.setOrientation(1);TextView rowTitle=text(title,16,fg);rowTitle.setTypeface(ColorOsTheme.typeface(this,500));rowTitle.setLineSpacing(0,1.05f);labels.addView(rowTitle);if(detail!=null&&!detail.isEmpty()){TextView sub=text(detail,13,secondary);sub.setLineSpacing(0,1.2f);sub.setPadding(0,dp(4),dp(4),0);labels.addView(sub);}row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));box.addView(row);return row;}
+ private LinearLayout row(LinearLayout box,String title,String detail){divider(box);LinearLayout row=new LinearLayout(this);row.setBaselineAligned(false);row.setGravity(Gravity.CENTER_VERTICAL);boolean hasDetail=detail!=null&&!detail.isEmpty();row.setPadding(dp(16),dp(hasDetail?10:4),dp(12),dp(hasDetail?10:4));row.setMinimumHeight(dp(hasDetail?64:56));LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);TextView rowTitle=text(title,16,fg);rowTitle.setTypeface(ColorOsTheme.typeface(this,500));rowTitle.setLineSpacing(0,1.05f);labels.addView(rowTitle);if(detail!=null&&!detail.isEmpty()){TextView sub=text(detail,13,secondary);sub.setLineSpacing(0,1.2f);sub.setPadding(0,dp(4),dp(4),0);labels.addView(sub);}row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));box.addView(row);return row;}
  private LinearLayout link(LinearLayout box,String title,String detail,Runnable action){LinearLayout r=row(box,title,detail);ImageView arrow=new ImageView(this);arrow.setImageDrawable(replica.SystemIcons.raw(this,"com.android.settings:ic_arrow_forward"));arrow.setScaleType(ImageView.ScaleType.FIT_CENTER);arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);Runnable tint=()->arrow.setColorFilter(ColorOsTheme.secondary(this));tint.run();ColorOsTheme.watch(arrow,tint);r.addView(arrow,new LinearLayout.LayoutParams(dp(18),dp(18)));r.setContentDescription(title);r.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x15808080),null,replica.PanelStyle.shape(this,Color.WHITE,16)));r.setOnClickListener(v->action.run());return r;}
  private void toggle(LinearLayout box,String title,String detail,String key,boolean def){LinearLayout r=row(box,title,detail);ColorSwitch sw=new ColorSwitch(this);sw.setChecked(prefs.getBoolean(key,def));sw.setContentDescription(title);r.addView(sw);sw.setOnCheckedChangeListener((v,on)->{prefs.edit().putBoolean(key,on).apply();renderedPageData=pageData();reload();});r.setOnClickListener(v->sw.setChecked(!sw.isChecked()));}
  private void reload(){GestureService.reload(this);}
@@ -163,9 +163,8 @@ public final class MainActivity extends Activity {
   android.transition.TransitionManager.endTransitions(parent);
   if(!parent.isLaidOut()||!android.animation.ValueAnimator.areAnimatorsEnabled())return;
   android.transition.TransitionSet changes=new android.transition.TransitionSet().setOrdering(android.transition.TransitionSet.ORDERING_TOGETHER);
-  changes.addTransition(new android.transition.ChangeBounds().setDuration(280));
-  changes.addTransition(new android.transition.Fade().setDuration(180));
-  changes.setInterpolator(new android.view.animation.PathInterpolator(.3f,0,.1f,1));
+  changes.addTransition(new android.transition.ChangeBounds().setDuration(replica.ColorMotion.EXPAND_MS).setInterpolator(replica.ColorMotion.ENTER));
+  changes.addTransition(new android.transition.Fade().setDuration(120).setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()));
   android.transition.TransitionManager.beginDelayedTransition(parent,changes);
  }
  /** Keep switches, the title and scroll position alive when state changes. */
@@ -183,8 +182,8 @@ public final class MainActivity extends Activity {
    int lineHeight=Math.round(android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,20,getResources().getDisplayMetrics()));
    help.setLineHeight(Math.max(lineHeight,help.getPaint().getFontMetricsInt(null)));
    serviceCard=card();link(serviceCard,"开启无障碍服务","启用后即可从屏幕边缘滑动操作",()->open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
-   body=new LinearLayout(MainActivity.this);body.setOrientation(1);content.addView(body,new LinearLayout.LayoutParams(-1,-2));
-   pairsHost=new LinearLayout(MainActivity.this);pairsHost.setOrientation(1);body.addView(pairsHost,new LinearLayout.LayoutParams(-1,-2));
+   body=new LinearLayout(MainActivity.this);body.setOrientation(LinearLayout.VERTICAL);content.addView(body,new LinearLayout.LayoutParams(-1,-2));
+   pairsHost=new LinearLayout(MainActivity.this);pairsHost.setOrientation(LinearLayout.VERTICAL);body.addView(pairsHost,new LinearLayout.LayoutParams(-1,-2));
    LinearLayout controls=new LinearLayout(MainActivity.this);LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(48));cp.bottomMargin=dp(20);body.addView(controls,cp);
    add=button("添加触钮",()->{int n=HandleSettings.pairCount(prefs);if(n>=3)return;endGeometryPreview();HandleSettings.addPair(prefs);refresh(true);reload();});
    remove=button("移除触钮",MainActivity.this::removePair);controls.addView(add,new LinearLayout.LayoutParams(0,-1,1));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,-1,1);rp.leftMargin=dp(12);controls.addView(remove,rp);
@@ -205,7 +204,7 @@ public final class MainActivity extends Activity {
     serviceCard.setVisibility(GestureService.instance()==null?View.VISIBLE:View.GONE);
 
     for(Map.Entry<String,ColorSwitch> item:switches.entrySet()){String id=item.getKey();boolean on=prefs.getBoolean(id+"_enabled",!GestureHandleConfig.isExtra(id));item.getValue().setChecked(on);setGroupMarker(markers.get(id),id,on);}
-    enableTree(pairsHost,active);pairsHost.animate().cancel();if(pairsHost.isAttachedToWindow()&&android.animation.ValueAnimator.areAnimatorsEnabled())pairsHost.animate().alpha(active?1:.4f).setDuration(160).start();else pairsHost.setAlpha(active?1:.4f);
+    enableTree(pairsHost,active);pairsHost.setAlpha(active?1:.4f);
     add.setEnabled(active&&count<3);remove.setVisibility(count>1?View.VISIBLE:View.GONE);remove.setEnabled(active&&count>1);add.setAlpha(count<3?1:.35f);remove.setAlpha(count>1?1:.35f);
    }finally{binding=false;}refreshGeometryPreview();
   }
@@ -304,7 +303,7 @@ public final class MainActivity extends Activity {
  private void side(String id){
   LinearLayout shortActions=group("短距离滑动");directionRows(shortActions,id,false);
   LinearLayout longActions=group("");LinearLayout switchRow=row(longActions,"长距离滑动","当执行较长距离滑动并用手指按住屏幕时，执行不同的操作。");ColorSwitch longer=new ColorSwitch(this);longer.setChecked(prefs.getBoolean(id+"_long_enabled",true));longer.setContentDescription("长距离滑动");switchRow.addView(longer);
-  divider(longActions);View longLine=longActions.getChildAt(longActions.getChildCount()-1);LinearLayout longRows=new LinearLayout(this);longRows.setOrientation(1);longActions.addView(longRows);directionRows(longRows,id,true);longRows.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);longLine.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);
+  divider(longActions);View longLine=longActions.getChildAt(longActions.getChildCount()-1);LinearLayout longRows=new LinearLayout(this);longRows.setOrientation(LinearLayout.VERTICAL);longActions.addView(longRows);directionRows(longRows,id,true);longRows.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);longLine.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);
   longer.setOnCheckedChangeListener((v,on)->{prefs.edit().putBoolean(id+"_long_enabled",on).apply();beginListChange(content);longRows.setVisibility(on?View.VISIBLE:View.GONE);longLine.setVisibility(on?View.VISIBLE:View.GONE);reload();});switchRow.setOnClickListener(v->longer.setChecked(!longer.isChecked()));
   LinearLayout adjust=group("触钮设置");LinearLayout align=row(adjust,"对齐触钮","左侧和右侧保持相同的尺寸和位置");ColorSwitch linked=new ColorSwitch(this);linked.setChecked(HandleSettings.linked(prefs,id));linked.setContentDescription("对齐触钮");align.addView(linked);
   link(adjust,"触钮范围",null,()->page("range_"+id));
@@ -346,7 +345,7 @@ public final class MainActivity extends Activity {
  private void refreshDirectionSummaries(){for(Runnable bind:directionSummaries.values())bind.run();}
  private interface NumberEdit{void save(float value);}
  private LinearLayout sliderBody(LinearLayout box,String title,String description){
-  divider(box);LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(1);wrap.setPadding(dp(16),dp(10),dp(16),dp(4));box.addView(wrap);TextView label=text(title,16,fg);label.setTypeface(ColorOsTheme.typeface(this,500));wrap.addView(label);
+  divider(box);LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.setPadding(dp(16),dp(10),dp(16),dp(4));box.addView(wrap);TextView label=text(title,16,fg);label.setTypeface(ColorOsTheme.typeface(this,500));wrap.addView(label);
   if(description!=null&&!description.isEmpty()){TextView detail=text(description,13,secondary);detail.setLineSpacing(0,1.2f);detail.setPadding(0,dp(2),0,0);wrap.addView(detail);}return wrap;
  }
  private interface NumberLabel{String text(float value);}
@@ -643,7 +642,7 @@ public final class MainActivity extends Activity {
  private void vibrationSettings(LinearLayout group){
   LinearLayout quickRow=row(group,"快速振动","识别到手势时立即振动，而不是等到手指从屏幕上松开。");ColorSwitch quick=new ColorSwitch(this);quick.setChecked(GestureHaptics.quick(prefs.getAll()));quick.setContentDescription("快速振动");quickRow.addView(quick);
   LinearLayout customRow=row(group,"自定义振动强度","为"+appName()+" 设置自定义振动强度等级。");ColorSwitch custom=new ColorSwitch(this);custom.setChecked(GestureHaptics.custom(prefs.getAll()));custom.setContentDescription("自定义振动强度");customRow.addView(custom);
-  divider(group);View line=group.getChildAt(group.getChildCount()-1);LinearLayout strength=new LinearLayout(this);strength.setOrientation(1);group.addView(strength);final boolean[] syncing={false};
+  divider(group);View line=group.getChildAt(group.getChildCount()-1);LinearLayout strength=new LinearLayout(this);strength.setOrientation(LinearLayout.VERTICAL);group.addView(strength);final boolean[] syncing={false};
   Runnable bindStrength=()->{strength.removeAllViews();boolean on=GestureHaptics.custom(prefs.getAll());syncing[0]=true;custom.setChecked(on);syncing[0]=false;if(on)editableSlider(strength,"振动级别",null,"振动级别",GestureHaptics.level(prefs.getAll()),0,30,30,"低","高",v->SettingsDisplay.vibrationLevelPercent(v)+"%",v->hapticEdit().putInt("vibration_duration_ms",Math.round(v)).apply());line.setVisibility(on?View.VISIBLE:View.GONE);strength.setVisibility(on?View.VISIBLE:View.GONE);};bindStrength.run();
   quick.setOnCheckedChangeListener((v,on)->{hapticEdit().putBoolean("quick_vibration",on).apply();beginListChange(content);bindStrength.run();reload();});quickRow.setOnClickListener(v->quick.setChecked(!quick.isChecked()));
   custom.setOnCheckedChangeListener((v,on)->{if(syncing[0])return;hapticEdit().putBoolean("custom_vibration",on).apply();beginListChange(content);bindStrength.run();reload();});customRow.setOnClickListener(v->custom.setChecked(!custom.isChecked()));

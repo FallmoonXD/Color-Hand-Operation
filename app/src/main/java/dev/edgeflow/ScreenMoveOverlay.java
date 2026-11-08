@@ -72,9 +72,14 @@ public final class ScreenMoveOverlay {
  private void finish(float x,float y){float sourceX=x-offsetX,sourceY=y-offsetY;boolean inside=sourceX>=dp(16)&&sourceX<=screen.x-dp(16)&&sourceY>=PanelGeometry.inset(service,"status_bar_height")&&sourceY<screen.y-PanelGeometry.inset(service,"navigation_bar_height");dismiss(inside,sourceX,sourceY);}
  private void dismiss(boolean click,float x,float y){
   if(removed||closing)return;closing=true;main.removeCallbacks(timeout);
-  if(!added){remove();return;}root.setEnabled(false);float startX=offsetX,startY=offsetY;exit=ValueAnimator.ofFloat(1,0);exit.setDuration(220);exit.setInterpolator(ColorMotion.spring(.47,0));exit.addUpdateListener(a->{float v=(Float)a.getAnimatedValue();offsetX=startX*v;offsetY=startY*v;picture.invalidate();});
-  exit.addListener(new android.animation.AnimatorListenerAdapter(){public void onAnimationEnd(android.animation.Animator a){boolean allowed=click&&!removed;remove();if(allowed)main.postDelayed(()->inject(x,y),80);}});exit.start();
+  if(!added){remove();return;}
+  root.setEnabled(false);float startX=offsetX,startY=offsetY;
+  if((startX==0&&startY==0)||!ValueAnimator.areAnimatorsEnabled()){finishReturn(click,x,y);return;}
+  exit=ValueAnimator.ofFloat(1,0);exit.setDuration(ColorMotion.oneHandedDuration(service));exit.setInterpolator(ColorMotion::oneHandedReturn);
+  exit.addUpdateListener(a->{float v=(Float)a.getAnimatedValue();offsetX=startX*v;offsetY=startY*v;picture.invalidate();});
+  exit.addListener(new android.animation.AnimatorListenerAdapter(){public void onAnimationEnd(android.animation.Animator a){finishReturn(click,x,y);}});exit.start();
  }
+ private void finishReturn(boolean click,float x,float y){boolean allowed=click&&!removed;remove();if(allowed)main.postDelayed(()->inject(x,y),80);}
  private void inject(float x,float y){
   // Do not apply coordinates to another window, including a new activity in the same app.
   if(serial!=generation||GestureService.instance()!=service||!sameOwner())return;

@@ -1,6 +1,7 @@
 package replica;
 
 import android.content.Context;
+import android.animation.ValueAnimator;
 import android.graphics.*;
 import android.graphics.drawable.Drawable;
 import android.hardware.HardwareBuffer;
@@ -52,7 +53,9 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
     private int lastWindowBlur=-1;
     private int alpha=255,frameCount;
     private long firstFrame;
-    private boolean fallbackVisible,crossfade;
+    private boolean fallbackVisible;
+    private float mix=1;
+    private ValueAnimator materialFade;
     private Runnable entrance;
     private long waitStart;
     private final Runnable entranceTimeout=()->startEntrance("fallback-timeout");
@@ -236,9 +239,10 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
             if(latest==null)return;
             if(!active||!blurAllowed||!requested){latest.bitmap.recycle();return;}
             frame=latest;input=new BitmapShader(frame.bitmap,Shader.TileMode.CLAMP,Shader.TileMode.CLAMP);input.setFilterMode(BitmapShader.FILTER_MODE_LINEAR);
-            if(firstFrame==0){firstFrame=SystemClock.uptimeMillis();crossfade=fallbackVisible;
+            if(firstFrame==0){firstFrame=SystemClock.uptimeMillis();
                 NativeBlur.main.removeCallbacks(requestInitialFrame);
-                if(!crossfade)setBlur(true);
+                boolean crossfade=fallbackVisible&&ValueAnimator.areAnimatorsEnabled();
+                if(crossfade)startMaterialFade();else setBlur(true);
                 android.util.Log.i("ReplicaNativeMaterial","READY "+id+" "+frame.bitmap.getWidth()+"x"+frame.bitmap.getHeight()+" crossfade="+crossfade);
                 startEntrance("native");
             }
@@ -258,10 +262,17 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
     private void invalidateHost(){owner.invalidateSelf();if(host!=null)host.postInvalidateOnAnimation();}
     void disconnected(){removeRequest();clearFrame();invalidateHost();}
     void nativeUnavailable(){disconnected();startEntrance("native-unavailable");}
+    private void startMaterialFade(){
+        mix=0;materialFade=ValueAnimator.ofFloat(0,1);
+        materialFade.setDuration(ColorMotion.MATERIAL_MS);materialFade.setInterpolator(ColorMotion.MATERIAL_IN);
+        materialFade.addUpdateListener(a->{mix=(float)a.getAnimatedValue();invalidateHost();});
+        materialFade.start();
+    }
     private void clearFrame(){
         synchronized(this){if(pending!=null)pending.bitmap.recycle();pending=null;}
         // Displayed hardware bitmaps may still be referenced by RenderThread; let it release them.
-        frame=null;input=null;paint.setShader(null);firstFrame=0;fallbackVisible=false;crossfade=false;
+        if(materialFade!=null){materialFade.removeAllUpdateListeners();materialFade.cancel();materialFade=null;}
+        frame=null;input=null;paint.setShader(null);firstFrame=0;fallbackVisible=false;mix=1;
         if(shader!=null)shader.setInputShader("uniBDFBitmap",new LinearGradient(0,0,1,1,Color.TRANSPARENT,Color.TRANSPARENT,Shader.TileMode.CLAMP));
         setBlur(false);
     }
@@ -301,12 +312,10 @@ final class NativeMaterial implements View.OnAttachStateChangeListener, ViewTree
             fallback.draw(canvas);return;
         }
         try{
-            float mix=crossfade?Math.min(1,(SystemClock.uptimeMillis()-firstFrame)/140f):1;
             if(mix<1)fallback.draw(canvas);else setBlur(true);
             mapBackdrop();input.setLocalMatrix(matrix);
             shader.setInputShader("uniBDFBitmap",input);paint.setShader(shader);paint.setAlpha(Math.round(alpha*mix));
             int save=canvas.save();canvas.translate(bounds.left,bounds.top);canvas.drawRect(0,0,bounds.width(),bounds.height(),paint);canvas.restoreToCount(save);
-            if(mix<1)invalidateHost();
         }catch(Throwable e){failed=true;stopNative();startEntrance("native-failed");fallback.draw(canvas);android.util.Log.e("ReplicaNativeMaterial","Native draw failed",e);}
     }
     void alpha(int a){alpha=a;}

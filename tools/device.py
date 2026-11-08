@@ -89,7 +89,13 @@ def click(s):tap(wait_node(s));time.sleep(.25)
 
 def preferences(name='edgeflow'):
  """Read settings without changing process state or writing private files."""
- root=E.fromstring(sh('run-as',P,'cat','shared_prefs/'+name+'.xml'));out={}
+ if os.environ.get('CHO_TEST_READ_RELEASE_PREFS')=='1':
+  if not re.fullmatch(r'[A-Za-z0-9_]+',name):raise ValueError('Invalid preference name')
+  user=sh('am','get-current-user').strip()
+  if not user.isdecimal():raise RuntimeError('Cannot determine active Android user')
+  raw=sh('su','-c','cat /data/user/'+user+'/'+P+'/shared_prefs/'+name+'.xml')
+ else:raw=sh('run-as',P,'cat','shared_prefs/'+name+'.xml')
+ root=E.fromstring(raw);out={}
  for n in root:
   if n.tag=='string':value=n.text or ''
   elif n.tag=='boolean':value=n.get('value')=='true'

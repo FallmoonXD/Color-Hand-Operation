@@ -1,20 +1,39 @@
 package replica;
 
-/** COUI edge drag and spring-back model, with an analytic frame-rate-independent solver. */
+/** COUI edge drag and the frame stepping used by Settings' rebound scroller. */
 public final class ColorScrollPhysics {
     // COUI SpringOverScroller SpringConfig(12.19, 16 * 2.15).
     public static final double DAMPING=25+(12.19-8)*3;
     public static final double STIFFNESS=(16*2.15-30)*3.62+194;
-    private static final double ROOT=Math.sqrt(DAMPING*DAMPING-4*STIFFNESS);
-    private static final double R1=(-DAMPING+ROOT)/2,R2=(-DAMPING-ROOT)/2;
     public double position,velocity;
-    public void reset(){position=velocity=0;}
+    private double predictedPosition;
+    public void reset(){position=velocity=predictedPosition=0;}
+    void beginReturn(double releaseVelocity){velocity=releaseVelocity;predictedPosition=0;}
     public void step(double seconds){
         if(!Double.isFinite(seconds)||seconds<0)throw new IllegalArgumentException("Invalid frame time");
         if(seconds==0)return;
-        double before=position,a=(velocity-R2*position)/(R1-R2),b=position-a,e1=Math.exp(R1*seconds),e2=Math.exp(R2*seconds);
-        position=a*e1+b*e2;velocity=R1*a*e1+R2*b*e2;
-        if(before*position<0||(Math.abs(position)<.25&&Math.abs(velocity)<20))reset();
+        if(seconds>2){reset();return;}
+        int steps=(int)Math.ceil(seconds/.025);
+        double dt=Math.max(.0001,seconds/steps);
+        for(int i=0;i<steps;i++){
+            if(Math.abs(position)<.25){reset();return;}
+            double origin=position;
+            do{
+                integrate(dt);
+                if(origin*position<=0||(Math.abs(position)<.05&&Math.abs(velocity)<=20)){reset();return;}
+            }while(Math.abs(position-origin)<=.5);
+        }
+    }
+    private void integrate(double dt){
+        // SpringOverScroller starts the next RK step at the previous predicted
+        // position. It coalesces sub-pixel movement before presenting the frame.
+        double v1=velocity,a1=-STIFFNESS*predictedPosition;
+        double v2=v1+a1*dt/2,a2=-STIFFNESS*(position+v1*dt/2)-DAMPING*v2;
+        double v3=v1+a2*dt/2,a3=-STIFFNESS*(position+v2*dt/2)-DAMPING*v3;
+        predictedPosition=position+v3*dt;
+        double v4=v1+a3*dt,a4=-STIFFNESS*predictedPosition-DAMPING*v4;
+        position+=.167f*dt*(v1+2*v2+2*v3+v4);
+        velocity+=.167f*dt*(a1+2*a2+2*a3+a4);
     }
     public static double resisted(double delta,double offset,double limit){
         if(!Double.isFinite(delta)||!Double.isFinite(offset)||!Double.isFinite(limit)||limit<=0)throw new IllegalArgumentException("Invalid pull geometry");

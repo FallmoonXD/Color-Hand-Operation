@@ -10,6 +10,7 @@ import android.widget.FrameLayout;
 
 /** Installed Settings coui_{open,close}_slide curves, 350ms and 30% under-page travel. */
 public final class ColorPageMotion {
+    static final int PAGE_MS=350;
     private static final PathInterpolator OPEN_IN=new PathInterpolator(.3f,.1f,.3f,1);
     private static final PathInterpolator OPEN_OUT=new PathInterpolator(.3f,.15f,.3f,1);
     private static final PathInterpolator CLOSE_IN=new PathInterpolator(.3f,.26f,.4f,1);
@@ -31,14 +32,15 @@ public final class ColorPageMotion {
         cancel();restoreInteraction(next);this.host=host;FrameLayout old=current;current=next;
         if(old==null||direction==0||!ValueAnimator.areAnimatorsEnabled()){host.removeAllViews();host.addView(next,new FrameLayout.LayoutParams(-1,-1));return;}
         previous=old;blockInteraction(old);host.addView(next,new FrameLayout.LayoutParams(-1,-1));if(direction<0)old.bringToFront();
-        final long token=++generation;next.post(()->{if(token!=generation)return;float width=host.getWidth(),rtl=next.getLayoutDirection()==View.LAYOUT_DIRECTION_RTL?-1:1,closeSign=backX==0?rtl:Math.signum(backX);animation=ValueAnimator.ofFloat(0,1);animation.setDuration(350);animation.setInterpolator(input->input);animation.addUpdateListener(a->{float t=(float)a.getAnimatedValue();if(direction>0){next.setTranslationX(width*rtl*(1-OPEN_IN.getInterpolation(t)));old.setTranslationX(-.3f*width*rtl*OPEN_OUT.getInterpolation(t));old.setAlpha(1-.5f*OPACITY.getInterpolation(t));}else{next.setTranslationX(-.3f*width*closeSign*(1-CLOSE_IN.getInterpolation(t)));next.setAlpha(.5f+.5f*OPACITY.getInterpolation(t));old.setTranslationX(backX+(width*closeSign-backX)*CLOSE_OUT.getInterpolation(t));old.setScaleX(backScale+(1-backScale)*t);old.setScaleY(backScale+(1-backScale)*t);}});animation.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator a){if(token==generation){host.removeView(old);previous=null;reset(next);animation=null;Runnable action=completion;completion=null;if(action!=null)action.run();}}});animation.start();});
+        final long token=++generation;next.post(()->{if(token!=generation)return;float width=host.getWidth(),rtl=next.getLayoutDirection()==View.LAYOUT_DIRECTION_RTL?-1:1,closeSign=backX==0?rtl:Math.signum(backX);animation=ValueAnimator.ofFloat(0,1);animation.setDuration(PAGE_MS);animation.setInterpolator(input->input);animation.addUpdateListener(a->{float t=(float)a.getAnimatedValue();if(direction>0){next.setTranslationX(width*rtl*(1-OPEN_IN.getInterpolation(t)));old.setTranslationX(-.3f*width*rtl*OPEN_OUT.getInterpolation(t));old.setAlpha(1-.5f*OPACITY.getInterpolation(t));}else{next.setTranslationX(-.3f*width*closeSign*(1-CLOSE_IN.getInterpolation(t)));next.setAlpha(.5f+.5f*OPACITY.getInterpolation(t));old.setTranslationX(backX+(width*closeSign-backX)*CLOSE_OUT.getInterpolation(t));old.setScaleX(backScale+(1-backScale)*t);old.setScaleY(backScale+(1-backScale)*t);}});animation.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator a){if(token==generation){host.removeView(old);previous=null;reset(next);animation=null;Runnable action=completion;completion=null;if(action!=null)action.run();}}});animation.start();});
         float width=host.getWidth(),rtl=next.getLayoutDirection()==View.LAYOUT_DIRECTION_RTL?-1:1;next.setTranslationX(direction>0?width*rtl:-.3f*width*(backX==0?rtl:Math.signum(backX)));next.setAlpha(direction>0?1:.5f);if(direction<0){old.setTranslationX(backX);old.setScaleX(backScale);old.setScaleY(backScale);}
     }
     /** Runs after the current page transition settles; a new request replaces the old one.
      * Cancellation or subsequent navigation discards the pending action. */
     public void whenSettled(Runnable action){completion=null;if(previous==null){if(action!=null)action.run();}else completion=action;}
     public void progress(float progress,int edge){if(current==null)return;float p=Math.max(0,Math.min(1,progress));float sign=edge==0?1:-1;current.setPivotX(current.getWidth()/2f);current.setPivotY(current.getHeight()/2f);current.setScaleX(1-.035f*p);current.setScaleY(1-.035f*p);current.setTranslationX(current.getWidth()*.12f*p*sign);}
-    public void cancelBack(){if(current==null)return;current.animate().translationX(0).scaleX(1).scaleY(1).setDuration(ValueAnimator.areAnimatorsEnabled()?180:0).setInterpolator(CLOSE_IN).start();}
+    // BackProgressAnimator has already sprung to zero before Android calls onBackCancelled.
+    public void cancelBack(){if(current!=null){current.animate().cancel();current.setTranslationX(0);current.setScaleX(1);current.setScaleY(1);}}
     public void cancel(){generation++;completion=null;if(animation!=null){animation.cancel();animation=null;}if(previous!=null&&host!=null)host.removeView(previous);previous=null;if(current!=null){current.animate().cancel();reset(current);}}
     private void blockInteraction(FrameLayout page){
         restoreInteraction(page);

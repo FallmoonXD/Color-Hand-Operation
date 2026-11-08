@@ -12,10 +12,19 @@ public final class ScrollPhysicsCheck {
         ColorScrollPhysics.Pull reverse=ColorScrollPhysics.pull(40,200,1000);near(reverse.offset,0,0,"inward reversal returns content to boundary");check(reverse.remaining>0&&reverse.remaining<200,"excess inward drag returns to native scrolling");
         ColorScrollPhysics.Pull bottom=ColorScrollPhysics.pull(-40,-200,1000);near(bottom.offset,0,0,"bottom inward reversal returns to boundary");near(bottom.remaining,-reverse.remaining,1e-9,"remaining native distance is symmetric");
         check(Math.abs(ColorScrollPhysics.pull(900,-100000,1000).offset)<1000,"extreme input cannot cross viewport cap");
-        for(double x:new double[]{-400,120})for(double v:new double[]{0,800}){
-            ColorScrollPhysics p60=evolve(x,v,60,.4),p90=evolve(x,v,90,.4),p120=evolve(x,v,120,.4),one=new ColorScrollPhysics();one.position=x;one.velocity=v;one.step(.4);
-            near(p60.position,p90.position,1e-9,"60/90Hz same displacement");near(p60.position,p120.position,1e-9,"60/120Hz same displacement");near(p60.velocity,p120.velocity,1e-8,"refresh rates preserve velocity");near(p60.position,one.position,1e-9,"dropped frame follows actual elapsed time");
-            ColorScrollPhysics settled=evolve(x,v,120,3);near(settled.position,0,0,"finite spring snaps to exact rest");near(settled.velocity,0,0,"rest has no scheduled velocity");
+        // The installed COUI scroller advances again when a step moves <= .5px.
+        // Its presented trajectory depends on refresh rate. Compare each rate
+        // with its own native trace (see NativeMotionCheck.scroll).
+        for(int fps:new int[]{60,90,120}){
+            ColorScrollPhysics edge=new ColorScrollPhysics();edge.position=80;int frames=0;
+            do{edge.step(1d/fps);frames++;}while(edge.position>8&&frames<100);
+            check(frames<100,"edge reaches its final 10% at "+fps+" Hz");
+            if(fps==120)near(frames,35,0,"measured 120 Hz native return");
+            for(double x:new double[]{-400,120})for(double v:new double[]{0,800}){
+                ColorScrollPhysics partial=evolve(x,v,fps,.4);
+                check(Double.isFinite(partial.velocity)&&Math.abs(partial.position)<Math.abs(x),"return converges at "+fps+" Hz");
+                ColorScrollPhysics settled=evolve(x,v,fps,3);near(settled.position,0,0,"settles to exact rest");near(settled.velocity,0,0,"no residual velocity");
+            }
         }
         ColorScrollPhysics p=new ColorScrollPhysics();p.position=300;double energy=ColorScrollPhysics.STIFFNESS*p.position*p.position/2;boolean decays=true,monotonic=true;double previous=p.position;
         for(int i=0;i<300;i++){p.step(1d/120);double next=(p.velocity*p.velocity+ColorScrollPhysics.STIFFNESS*p.position*p.position)/2;decays&=next<=energy+1e-8;energy=next;monotonic&=p.position>=0&&p.position<=previous;previous=p.position;}

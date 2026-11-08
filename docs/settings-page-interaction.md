@@ -44,9 +44,7 @@ Main使用系统OnBackAnimationCallback接收手势进度，不拦截屏幕边�
 
 共享scaffold现在使用ColorSettingsScrollView，仅影响Main和ToolsSettings内部页面。范围内保留ScrollView的滚动、惯性、焦点和无障碍；到上下边缘后移动内容，不使用AOSP EdgeEffect拉伸。动作选择器的自建滚动区域随后也接入同一边界回弹；其余弹窗ListView仍为无glow普通滚动。动作选择器只调整窗口高度，保留ColorDialogBuilder的392dp/屏幕减40dp宽度限制。
 
-阻尼参考本机已解包COUIScrollView和COUIPhysicalAnimationUtil：delta × 0.4 × (1 − min(abs(over)/limit,1))。SpringOverScroller摩擦12.19经配置转换为37.57；ScrollView设置tension multiplier2.15，对应弹簧刚度209.928。独立实现求解相同阻尼弹簧的解析解，按实际帧间隔推进，并遵守系统动画倍率/禁用。
-
-未移植原类的快甩加速、OEM帧率提升、私有嵌套滚动策略、速度过滤、最小每帧0.5px额外积分及设备动画等级调整；不能把这称为整个COUIScrollView逐行等同。当前Settings APK的同名类尚未逐条反编译复核，模型依据来自同机SystemUI和安全中心的COUI实现。
+边缘拖动使用 Settings 的 `COUIPhysicalAnimationUtil`，距离系数为 0.4。回弹读取同一套摩擦和张力换算，阻尼 37.57，刚度 209.928，按 `SpringOverScroller` 的帧步和 0.5 px 合并规则更新。在 PKR110 的 Settings 实际类上以 60、90 和 120 Hz 逐帧比较；范围内的惯性和键盘、焦点交给系统 ScrollView。详见[动效验证](coloros17-motion.md)。
 
 触摸起点命中SeekBar时不被父页拦截；横向意图锁定排除，多指关闭本轮边界效果。抬手物理回弹，CANCEL归位，Detach/失去窗口焦点/隐藏/禁用动画立即清除位移与帧回调。惯性进入边界时只产生一次回弹，不改真实滚动范围或保存配置。
 

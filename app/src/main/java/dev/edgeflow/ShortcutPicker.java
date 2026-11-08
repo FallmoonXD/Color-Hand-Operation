@@ -215,7 +215,9 @@ public final class ShortcutPicker {
    int initial=body.getVisibility()==View.VISIBLE?body.getHeight():0;float initialAlpha=initial==0?0:body.getAlpha(),initialRotation=arrow.getRotation();
    body.measure(View.MeasureSpec.makeMeasureSpec(measuredWidth,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));int target=expanded?body.getMeasuredHeight():0;
    body.setVisibility(View.VISIBLE);params.height=initial;body.setLayoutParams(params);body.setAlpha(initialAlpha);
-   android.animation.ValueAnimator animator=android.animation.ValueAnimator.ofFloat(0,1);expansions.put(body,animator);animator.setDuration(220);animator.setInterpolator(new android.view.animation.PathInterpolator(.3f,0,.1f,1));
+   android.animation.ValueAnimator animator=android.animation.ValueAnimator.ofFloat(0,1);expansions.put(body,animator);
+   animator.setDuration(Math.round(replica.ColorMotion.EXPAND_MS*Math.min(1f,Math.abs(target-initial)/(float)Math.max(1,body.getMeasuredHeight()))));
+   animator.setInterpolator(replica.ColorMotion.ENTER);
    animator.addUpdateListener(a->{float fraction=(Float)a.getAnimatedValue();params.height=Math.round(initial+(target-initial)*fraction);body.setLayoutParams(params);body.setAlpha(initialAlpha+((expanded?1:0)-initialAlpha)*fraction);arrow.setRotation(initialRotation+(targetRotation-initialRotation)*fraction);});
    animator.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){if(expansions.get(body)!=animator)return;expansions.remove(body);params.height=-2;body.setLayoutParams(params);body.setVisibility(expanded?View.VISIBLE:View.GONE);body.setAlpha(1);arrow.setRotation(targetRotation);refresh();}});animator.start();
   }

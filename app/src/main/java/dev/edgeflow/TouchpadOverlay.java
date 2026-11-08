@@ -53,7 +53,7 @@ public final class TouchpadOverlay {
   int theme=c.getResources().getIdentifier(PanelStyle.dark(c)?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());
   dialog=new Dialog(c,theme);
   dialog.setOnDismissListener(d->remove());
-  LinearLayout root=new LinearLayout(c);root.setOrientation(1);root.setPadding(dp(10),dp(8),dp(10),dp(10));
+  LinearLayout root=new LinearLayout(c);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(10),dp(8),dp(10),dp(10));
   FrameLayout title=new FrameLayout(c);root.addView(title,new LinearLayout.LayoutParams(-1,dp(36)));
   TextView name=text("虚拟触控板",16);name.setSingleLine();name.setEllipsize(android.text.TextUtils.TruncateAt.END);
   FrameLayout.LayoutParams center=new FrameLayout.LayoutParams(-1,-1);center.setMargins(dp(48),0,dp(48),0);title.addView(name,center);

@@ -27,21 +27,22 @@ final class ColorScrollSpring implements Choreographer.FrameCallback {
     void release(double velocity){
         stop();
         if(!enabled()||!host.isAttachedToWindow()||Math.abs(physics.position)<.25){reset();return;}
-        physics.velocity=Math.max(-limit()*4,Math.min(limit()*4,velocity));
-        running=true;Choreographer.getInstance().postFrameCallback(this);
+        physics.beginReturn(Math.max(-limit()*4,Math.min(limit()*4,velocity)));
+        lastFrame=System.nanoTime();running=true;Choreographer.getInstance().postFrameCallback(this);
     }
     @Override public void doFrame(long nanos){
         if(!running)return;
         if(!host.isAttachedToWindow()||!host.isShown()||!enabled()){reset();return;}
-        if(lastFrame!=0){
-            double seconds=(nanos-lastFrame)/1e9/Math.max(.01f,ColorOsTheme.animationScale(host.getContext()));
-            physics.step(Math.max(0,seconds));
+        if(nanos>lastFrame){
+            double seconds=(nanos-lastFrame)/1e9;
+            double interval=seconds>.025?.008:Math.max(.008,seconds);
+            physics.step(interval/Math.max(.01f,ColorOsTheme.animationScale(host.getContext())));
             if(Math.abs(physics.position)>=limit()){
                 physics.position=Math.copySign(limit()*.999,physics.position);physics.velocity=0;
             }
             apply.run();
+            lastFrame=nanos;
         }
-        lastFrame=nanos;
         if(physics.position==0&&physics.velocity==0){running=false;lastFrame=0;}
         else Choreographer.getInstance().postFrameCallback(this);
     }

@@ -16,6 +16,8 @@ The dimensions and selectors were checked against the **current phone's Settings
 | Radio | Settings `drawable/coui_btn_radio_on.xml`, `coui_btn_radio_off.xml`, `coui_btn_radio_off_to_on_animation*` | 24 dp viewport; selected outer radius 10, white inner radius 6; unselected radius 9.2, stroke 1.3; 150 + 150 ms 1 → 1.08 → 1 pulse, 300 ms selection with cubic (0.3,0,0.1,1) |
 | Check | Settings `drawable/coui_btn_check_on_normal.xml`, `coui_btn_check_off_normal.xml`, `coui_checkbox_unselected_to_selected*` | 24 dp viewport; selected 18 dp rounded square with radius 4; unselected 16.4 dp square/radius 3.2/stroke 1.3. The animated vector's translated 72-unit check centerline is scaled to 24 units; 300 ms trim animation and 150 + 150 ms pulse |
 
+The off animation has its own channels. The radio fills fade in 200 ms while the inner radius and the returning outline take 267 ms. The checkbox fills in 150 ms, holds its fill for the first 150 ms of deselection and trims its check over 300 ms. These durations and easing curves are checked against the installed animated vectors in the [motion audit](coloros17-motion.md).
+
 The radio therefore uses the original filled accent disc with a white center. Recoloring an AOSP radio button would retain the wrong geometry.
 
 `animation/dynamicanimation/COUISpringForce.java` defines angular frequency as `2π / response`, stiffness as its square, and damping ratio as `1 - bounce`. `ColorControlPhysics` uses the analytic critically damped/underdamped/overdamped solutions. It does not approximate a spring with a fixed cubic easing or Euler integration.

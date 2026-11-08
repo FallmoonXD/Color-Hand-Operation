@@ -139,11 +139,12 @@ if __name__ == '__main__':
                 result['window_exit_ms'] = window_exit_ms
             path.with_suffix('.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
             print(title, action, result['visible_ms'], 'ms,', result['intermediate_frames'], 'frames')
-            # With the original 250 ms spring, 0.3.19 quick tools measured 52 ms
-            # (outside) and 63 ms (Back). Allow frame quantization and layout differences.
-            assert 25 <= result['visible_ms'] <= 85, 'Visible exit differs from the historical panel motion'
-            assert result['intermediate_frames'] >= 2, 'Panel snapped shut'
+            # Native Settings coui_center_dialog_exit: alpha 1→0, 150 ms,
+            # cubic (.3,0,1,1). The 90%→10% interval is 107 ms; allow two
+            # display/encoder frames of quantization at 60 Hz.
+            assert 75 <= result['visible_ms'] <= 141, 'Visible exit differs from the COUI center fade'
+            assert result['intermediate_frames'] >= 4, 'Panel snapped shut'
             if 'window_exit_ms' in result:
-                assert 230 <= result['window_exit_ms'] <= 320, 'Window did not complete the original 250 ms exit'
+                assert 135 <= result['window_exit_ms'] <= 195, 'Window did not complete the native 150 ms exit'
     finally:
         d.main_home()

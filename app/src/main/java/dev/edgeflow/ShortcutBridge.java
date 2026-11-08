@@ -25,7 +25,7 @@ public final class ShortcutBridge {
   if(android.os.Process.myUid()==0){Os.setgid(1000);Os.setuid(1000);}if(android.os.Process.myUid()!=1000)throw new SecurityException("Root system bridge required");
   IBinder binder=(IBinder)Class.forName("android.os.ServiceManager").getMethod("getService",String.class).invoke(null,"launcherapps");
   Object launcher=Class.forName("android.content.pm.ILauncherApps$Stub").getMethod("asInterface",IBinder.class).invoke(null,binder);Class<?> api=Class.forName("android.content.pm.ILauncherApps");UserHandle user=UserHandle.getUserHandleForUid(userId*100000);
-  LauncherApps.ShortcutQuery query=new LauncherApps.ShortcutQuery().setQueryFlags(1|2|8|1024);
+  LauncherApps.ShortcutQuery query=new LauncherApps.ShortcutQuery().setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC|LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED|LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST|LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED_BY_ANY_LAUNCHER);
   if(entry!=null)query.setPackage(entry.packageName);if(start)query.setShortcutIds(java.util.Collections.singletonList(entry.id));
   Class<?> wrapper=Class.forName("android.content.pm.ShortcutQueryWrapper");Object wrapped=wrapper.getConstructor(LauncherApps.ShortcutQuery.class).newInstance(query);Object slice=api.getMethod("getShortcuts",String.class,wrapper,UserHandle.class).invoke(launcher,"android",wrapped,user);
   @SuppressWarnings("unchecked") List<ShortcutInfo> shortcuts=slice==null?null:(List<ShortcutInfo>)slice.getClass().getMethod("getList").invoke(slice);if(shortcuts==null)throw new IllegalStateException("Shortcut service returned no result");

@@ -130,7 +130,12 @@ public final class ColorOsTheme {
   synchronized(fonts){Typeface font=fonts.get(target);if(font==null){font=Typeface.create(Typeface.DEFAULT,target,false);fonts.put(target,font);}return font;}
  }
  public static void text(TextView view,int weight){view.setTypeface(typeface(view.getContext(),weight));}
- public static void install(Activity a){initialize(a);a.getWindow().getDecorView();a.getWindow().setStatusBarColor(0);a.getWindow().setNavigationBarColor(0);a.getWindow().setNavigationBarContrastEnforced(false);android.view.WindowInsetsController c=a.getWindow().getInsetsController();if(c!=null)c.setSystemBarsAppearance(dark(a)?0:24,24);}
+ public static void install(Activity a){
+  initialize(a);a.getWindow().getDecorView();a.getWindow().setStatusBarColor(0);a.getWindow().setNavigationBarColor(0);a.getWindow().setNavigationBarContrastEnforced(false);
+  android.view.WindowInsetsController c=a.getWindow().getInsetsController();
+  int lightBars=android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+  if(c!=null)c.setSystemBarsAppearance(dark(a)?0:lightBars,lightBars);
+ }
  public static org.json.JSONObject describe(Context c){Palette p=palette(c);org.json.JSONObject out=new org.json.JSONObject();try{out.put("source",p.source).put("accent",String.format("#%08X",p.accent)).put("text",String.format("#%08X",p.text)).put("secondary",String.format("#%08X",p.secondary)).put("background",String.format("#%08X",p.background)).put("card",String.format("#%08X",p.card)).put("dark",p.dark).put("material",p.material).put("skin",p.skin).put("stroke",p.stroke).put("blur",p.blur).put("animationScale",p.animations).put("fontWeightAdjustment",c.getResources().getConfiguration().fontWeightAdjustment).put("fontVariation",systemInt(c,"font_variation_settings",0));}catch(org.json.JSONException ignored){}return out;}
  private ColorOsTheme(){}
 }

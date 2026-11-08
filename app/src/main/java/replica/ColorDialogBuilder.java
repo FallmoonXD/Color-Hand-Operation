@@ -255,7 +255,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    window.getDecorView().setClipToOutline(true);layoutWindow();refreshColors();observeOwner();
    if(sheet){poseSheet(0,Math.max(root.getHeight(),lastHeight));root.post(entrance);}
    else if(glass){motion=new ColorMotion(window);motion.enter();}
-   else{poseCenter(0,.96f);animatePanel(true,null);}
+   else{poseCenter(0,ColorMotion.CENTER_START_SCALE);animatePanel(true,null);}
   }
   private void observeOwner(){Activity owner=activity(getContext());if(owner==null||lifecycle!=null)return;lifecycle=new android.app.Application.ActivityLifecycleCallbacks(){
    public void onActivityCreated(Activity a,Bundle b){}public void onActivityStarted(Activity a){}public void onActivityResumed(Activity a){if(a==owner)paused=false;}
@@ -276,12 +276,11 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   }
   private void animatePanel(boolean enter,Runnable done){
    if(animator!=null){animator.removeAllUpdateListeners();animator.removeAllListeners();animator.cancel();animator=null;}
-   float start=reveal,end=enter?1:0,startScale=root.getScaleX(),endScale=enter?1:.97f;
+   float start=reveal,end=enter?1:0,startScale=root.getScaleX(),endScale=enter?1:startScale;
    int distance=Math.max(root.getHeight(),lastHeight);
    if(!animations()){if(sheet)poseSheet(end,distance);else poseCenter(end,endScale);if(done!=null)done.run();return;}
-   animator=android.animation.ValueAnimator.ofFloat(0,1);animator.setDuration(sheet?250:enter?220:140);
-   if(sheet)animator.setInterpolator(enter?new android.view.animation.PathInterpolator(.3f,0,.1f,1):new android.view.animation.PathInterpolator(.3f,0,1,1));
-   else animator.setInterpolator(ColorMotion.spring(.3,0));
+   animator=android.animation.ValueAnimator.ofFloat(0,1);animator.setDuration(sheet?ColorMotion.SHEET_MS:enter?ColorMotion.CENTER_IN_MS:ColorMotion.CENTER_OUT_MS);
+   animator.setInterpolator(enter?ColorMotion.ENTER:ColorMotion.EXIT);
    animator.addUpdateListener(animation->{float t=(float)animation.getAnimatedValue(),value=start+(end-start)*t;
     if(sheet)poseSheet(value,distance);else poseCenter(value,startScale+(endScale-startScale)*t);
    });

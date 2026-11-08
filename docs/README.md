@@ -4,6 +4,8 @@
 
 修改界面前先查[逐页、逐组件 COUI 选型](coui-ui-audit.md)，其中列出了每个入口的目标结构、COUI 参照和渲染方式。查现有绘制路径与实机证据，可看[ColorOS 17 渲染方案](coloros17-rendering-plan.md)。
 
+页面、浮窗、手势和控件的动画参数见 [ColorOS 17 动效对照](coloros17-motion.md)。
+
 ## 从哪里看代码
 
 | 模块 | 入口 | 相关笔记 |

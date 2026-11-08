@@ -72,7 +72,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
  void render(){
   if(closed)return;
   dismissEditors();
-  root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(5),dp(5),dp(5),dp(5));window.setContentView(root);PanelStyle.window(this,window,24);
+  root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(5),dp(5),dp(5),dp(5));window.setContentView(root);PanelStyle.window(this,window,24);
   bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);
   // Reclaim the old outer gutter for widgets while preserving saved popup height.
   canvas=new Page();

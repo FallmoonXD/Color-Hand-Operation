@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.edgeflow.motiontest">
+    <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="35"/>
+    <queries>
+        <package android:name="dev.edgeflow"/>
+        <package android:name="com.android.settings"/>
+        <package android:name="com.android.systemui"/>
+    </queries>
+    <application android:label="CHO motion check" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name="replica.MotionActivity" android:exported="false"/>
+    </application>
+    <instrumentation android:name="replica.MotionInstrumentation" android:targetPackage="dev.edgeflow.motiontest"/>
+</manifest>
