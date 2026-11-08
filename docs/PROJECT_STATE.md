@@ -1,6 +1,12 @@
 # 当前开发状态
 
-更新：2026-11-09。版本 `0.3.21` / versionCode `24`，包名 `dev.edgeflow`。
+更新：2026-11-09。版本 `0.3.22` / versionCode `25`，包名 `dev.edgeflow`。
+
+## 0.3.22 恢复原版退场
+
+EdgeFlow 0.1.0 的本地源码包和 CHO 0.3.15、0.3.19 的 `ColorMotion.exit` 都以 250 ms、`spring(.47,0)` 收回居中浮窗。弹簧控制窗口透明度，视图同时缩小到 88% 并下移 12 dp。本版直接恢复这套参数，保留先让当前窗口处理返回、退场完成后再执行快速工具动作的修复。
+
+PKR110 上点快速工具窗外，从九成到一成的画面对比度，0.3.19 录得 52 ms，恢复后录得 54 ms。可用 `python tools/verify_panel_exit.py --back-handle right --output verification/original-exit` 复测。脚本分别核对录屏中的可见变化和快速工具窗口从请求关闭到移除的完整时长。
 
 ## 0.3.21 浮窗收回速度
 

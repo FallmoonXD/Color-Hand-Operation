@@ -5,6 +5,7 @@ and CHO's accessibility service enabled. No gesture mappings are changed.
 """
 import argparse
 import json
+import re
 import subprocess
 import time
 import uuid
@@ -50,6 +51,12 @@ def measure(video):
             'frames': list(zip(times, (round(x, 3) for x in values)))}
 
 
+def tools_window_exit_ms(lines):
+    events = re.findall(r'^\s*([\d.]+)\s+.*?\bI\s+ReplicaTools\s*:\s*(close requested|removed)\s*$', lines, re.M)
+    assert [kind for _, kind in events[-2:]] == ['close requested', 'removed'], 'Expected an animated close'
+    return round(1000 * (float(events[-1][0]) - float(events[-2][0])))
+
+
 def record(title, action, path):
     d.panel_settings(title)
     # Android's three-button navigation also exposes a node named "返回".
@@ -75,7 +82,12 @@ def record(title, action, path):
     recorder = subprocess.Popen(d.A + ['shell', 'screenrecord', '--size',
         f'632x{round(height * 632 / width / 2) * 2}', '--bit-rate', '10000000',
         '--time-limit', '3', remote], stdout=subprocess.DEVNULL)
+    monitor = None
     try:
+        if title == '快速工具':
+            pid = d.sh('pidof', '-s', d.P).strip()
+            monitor = subprocess.Popen(d.A + ['logcat', '-T', '1', '--pid', pid, '-v', 'epoch',
+                '-s', 'ReplicaTools:I'], stdout=subprocess.PIPE, encoding='utf-8', errors='replace')
         time.sleep(1.25)
         if action == 'back':
             d.sh('input', 'keyevent', '4')
@@ -91,12 +103,16 @@ def record(title, action, path):
         assert recorder.wait(timeout=8) == 0, 'Screen recording failed'
         subprocess.run(d.A + ['pull', remote, str(path)], check=True, capture_output=True)
     finally:
+        if monitor is not None:
+            monitor.terminate()
+            log, _ = monitor.communicate()
         if recorder.poll() is None:
             recorder.terminate()
             recorder.wait()
         d.sh('rm', '-f', remote)
     assert not panel_visible(), 'Panel still open after dismissal: ' + title
     d.wait_node(preview)  # The same settings page must still be underneath.
+    return tools_window_exit_ms(log) if monitor is not None else None
 
 
 if __name__ == '__main__':
@@ -117,11 +133,17 @@ if __name__ == '__main__':
             cases += [(title, args.back_handle) for title in ('快速工具', '快速启动', '任务切换器')]
         for title, action in cases:
             path = out / f'{title}-{action}.mp4'
-            record(title, action, path)
+            window_exit_ms = record(title, action, path)
             result = measure(path)
+            if window_exit_ms is not None:
+                result['window_exit_ms'] = window_exit_ms
             path.with_suffix('.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
             print(title, action, result['visible_ms'], 'ms,', result['intermediate_frames'], 'frames')
-            assert 65 <= result['visible_ms'] <= 130, 'Visible panel exit was too short or too long'
-            assert result['intermediate_frames'] >= 4, 'Panel snapped shut'
+            # With the original 250 ms spring, 0.3.19 quick tools measured 52 ms
+            # (outside) and 63 ms (Back). Allow frame quantization and layout differences.
+            assert 25 <= result['visible_ms'] <= 85, 'Visible exit differs from the historical panel motion'
+            assert result['intermediate_frames'] >= 2, 'Panel snapped shut'
+            if 'window_exit_ms' in result:
+                assert 230 <= result['window_exit_ms'] <= 320, 'Window did not complete the original 250 ms exit'
     finally:
         d.main_home()

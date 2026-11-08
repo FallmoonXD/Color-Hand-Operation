@@ -7,9 +7,9 @@ import android.view.*;
 public final class ColorMotion {
  public static final TimeInterpolator VOLUME_IN=spring(.7,.2), VOLUME_OUT=spring(.7,0);
  public static final long VOLUME_IN_MS=700,VOLUME_OUT_MS=500;
- private static final long PANEL_OUT_MS=150;
- // Same easing as the COUI sheet, with a shorter exit for a compact floating panel.
- static final TimeInterpolator PANEL_EXIT=new android.view.animation.PathInterpolator(.3f,0,1,1);
+ // Original CHO center-panel exit (also used by the archived EdgeFlow builds).
+ private static final long PANEL_OUT_MS=250;
+ private static final TimeInterpolator PANEL_OUT=spring(.47,0);
  public static TimeInterpolator spring(double response,double bounce){
   final double w=2*Math.PI/response,z=1-bounce;
   return new TimeInterpolator(){
@@ -41,9 +41,7 @@ public final class ColorMotion {
  public void enter(){window.getDecorView().post(()->{if(!closing)NativeMaterial.whenReady(window.getDecorView(),()->{if(!closing)animate(1,edge==0?350:VOLUME_IN_MS,edge==0?spring(.3,0):VOLUME_IN,null);});});}
  public void exit(Runnable done){if(closing)return;closing=true;NativeMaterial.cancelEntrance(window.getDecorView());PanelOverlayDialog.beginWindowExit(window);
   if(fraction<=0||!ValueAnimator.areAnimatorsEnabled()){done.run();return;}
-  // If dismissed during entry, only animate the fraction that has appeared.
-  long duration=edge==0?Math.round(PANEL_OUT_MS*Math.min(1f,fraction)):VOLUME_OUT_MS;
-  animate(0,duration,edge==0?PANEL_EXIT:VOLUME_OUT,done);
+  animate(0,edge==0?PANEL_OUT_MS:VOLUME_OUT_MS,edge==0?PANEL_OUT:VOLUME_OUT,done);
  }
  private void animate(float end,long duration,TimeInterpolator curve,Runnable done){
   if(animator!=null){animator.removeAllListeners();animator.cancel();}
