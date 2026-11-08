@@ -19,7 +19,7 @@ public final class ToolsBackdrop extends Drawable implements Drawable.Callback {
     private final RectF box=new RectF();
     private final ArrayList<Hole> holes=new ArrayList<>();
     private boolean dirty=true;
-    private static final int SHADE_ALPHA=16;
+    private static final int SHADE_ALPHA=24; // 9.4% black in the spaces between controls.
     private static final class Hole {
         final View view;final float radius,height;final Rect bounds=new Rect();
         Hole(View v,float r,float h){view=v;radius=r;height=h;}

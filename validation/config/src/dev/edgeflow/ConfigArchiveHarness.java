@@ -50,6 +50,27 @@ public final class ConfigArchiveHarness {
   ConfigArchive.restore(restored, new JSONObject(ConfigArchive.export(old).toString()));
   check(saved.equals(restored.prefs("edgeflow_shortcuts").getString("app:com.example",null)), "legacy shortcut name roundtrips in full without preventing backup");
  }
+ static void quickToolActionAccent() throws Exception {
+  String key=AppPrefs.QUICK_TOOLS_ACTION_ACCENT;
+  Memory original=seeded("tool-accent"),restored=seeded("tool-accent-restore");
+  check(!AppPrefs.get(original).getBoolean(key,false),"existing settings default to glass commands");
+  for(boolean enabled:new boolean[]{true,false}){
+   AppPrefs.get(original).edit().putBoolean(key,enabled).apply();
+   ConfigArchive.restore(restored,ConfigArchive.export(original));
+   check(AppPrefs.get(restored).contains(key)&&AppPrefs.get(restored).getBoolean(key,!enabled)==enabled,
+     "quick tool action accent round trips: "+enabled);
+  }
+  AppPrefs.get(restored).edit().putBoolean(key,true).apply();
+  ConfigArchive.restore(restored,archive(2));
+  check(!AppPrefs.get(restored).getBoolean(key,false),"restoring a full older backup restores default glass");
+  JSONObject invalid=archive(2);invalid.getJSONObject("preferences").put(key,"true");
+  rejectUnchanged(restored,invalid,"invalid quick tool action accent cannot partially import");
+  for(int i=0;i<replica.ToolsConfig.TITLES.length;i++){
+   boolean expected=Arrays.asList(4,5,6,9,10,11,18).contains(i);
+   check(replica.ToolsConfig.builtin(i).isOneShot()==expected,"one-shot appearance eligibility: "+i);
+  }
+  check(!new replica.ToolsConfig.Item("app:com.example/.Main","Example").isOneShot(),"application tiles keep their own icons and glass");
+ }
  static void appMappings()throws Exception{
   Memory c=seeded("app-mapping");SharedPreferences p=c.prefs("edgeflow");
   String slot="action_left_straight_short",key=GestureMapping.scoped("com.sample.reader",slot);
@@ -79,6 +100,7 @@ public final class ConfigArchiveHarness {
  public static void main(String[] args)throws Exception{
   dir=Files.createTempDirectory("edgeflow-config-test-");AppWidgetProviderInfo provider=new AppWidgetProviderInfo();provider.provider=new ComponentName("com.example.widget","com.example.widget.Provider");AppWidgetManager.INSTANCE.providers.put(93,provider);appMappings();
   legacyOpacityAndShortcutNames();
+  quickToolActionAccent();
   Memory v1=seeded("v1");Map<String,?> launcherBefore=v1.prefs("edgeflow_launcher").getAll(),shortcutsBefore=v1.prefs("edgeflow_shortcuts").getAll();ConfigArchive.restore(v1,archive(1));check(!AppPrefs.get(v1).getBoolean("enabled",true)&&AppPrefs.get(v1).getFloat("trigger_dp",0)==45.5f,"v1 imports typed preferences");check(launcherBefore.equals(v1.prefs("edgeflow_launcher").getAll())&&shortcutsBefore.equals(v1.prefs("edgeflow_shortcuts").getAll()),"v1 preserves newer panel settings");check(new File(v1.files,"tools-layout-v1.json").isFile()&&replica.ToolsConfig.load(v1).size()==2,"tools use actual tools-layout-v1.json path");
   Memory v2=seeded("v2");Map<String,?> widgetsBefore=v2.prefs("replica_widgets").getAll();ConfigArchive.restore(v2,archive(2));JSONObject exported=ConfigArchive.export(v2);check(v2.prefs("edgeflow_launcher").getInt("columns",0)==5&&v2.prefs("edgeflow_launcher").getInt("recent_limit",0)==20,"v2 restores launcher and task switcher settings");check(v2.prefs("edgeflow_shortcuts").contains("app:com.example")&&!v2.prefs("edgeflow_shortcuts").contains("app:com.old"),"v2 replaces shortcuts namespace");JSONObject widget=exported.getJSONObject("widgets").getJSONArray("items").getJSONObject(0);check(widget.getString("component").equals("com.example.widget/com.example.widget.Provider")&&widget.getInt("sourceId")==93&&!widget.has("id"),"widget export maps provider and excludes live ID field");check(exported.getJSONObject("widgets").getInt("height")==400&&exported.getJSONObject("widgets").getInt("pages")==2,"widget export reads replica_widgets/layout_v3 and height_v4");
   Memory target=seeded("target");target.prefs("edgeflow").edit().putFloat("left_handle_start_fraction",.8f).putFloat("left_handle_end_fraction",.9f).apply();ConfigArchive.restore(target,new JSONObject(exported.toString()));check(!target.prefs("edgeflow").contains("left_handle_start_fraction"),"v2 clears target-only gesture overrides");check(state(v2).equals(state(target)),"v2 serialize-import-export roundtrip");check(widgetsBefore.equals(target.prefs("replica_widgets").getAll()),"portable import never changes installed widget IDs");

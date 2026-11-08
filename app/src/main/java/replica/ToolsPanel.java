@@ -12,6 +12,7 @@ import android.os.*;
 import android.provider.Settings;
 import android.view.*;
 import android.widget.*;
+import dev.edgeflow.AppPrefs;
 import java.util.concurrent.*;
 
 /** Compact panel with the exact saved OHO tool order, using native Android actions. */
@@ -124,15 +125,16 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         if(liveVolume!=null&&!liveVolume.isPressed())liveVolume.setProgress(audio.getStreamVolume(3));
         if(autoIcon!=null){boolean on=Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1;autoIcon.setSelected(on);if(!Boolean.valueOf(on).equals(autoIcon.getTag())){autoIcon.setBackground(PanelStyle.toolButton(this,on));autoIcon.setTag(on);}autoIcon.setColorFilter(Color.WHITE);}
 
+        boolean accentActions=AppPrefs.get(this).getBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,false);
         for(ToolsConfig.Item item:tiles){
             ImageView tile=toolViews.get(item.key);if(tile==null)continue;
             Boolean state=readState(item);boolean on=Boolean.TRUE.equals(state);
-            Object tag=state==null?"command":state;
             boolean available=ToolsConfig.available(this,item.builtin());
+            boolean highlighted=on||(accentActions&&available&&item.isOneShot());
             tile.setEnabled(available);tile.setAlpha(available?1f:.45f);
             tile.setStateDescription(!available?"此设备不支持":state==null?null:on?"已开启":"已关闭");
-            if(!tag.equals(tile.getTag())){
-                tile.setBackground(PanelStyle.toolButton(this,on));tile.setTag(tag);tile.setElevation(0);
+            if(!Boolean.valueOf(highlighted).equals(tile.getTag())){
+                tile.setBackground(PanelStyle.toolButton(this,highlighted));tile.setTag(highlighted);tile.setElevation(0);
                 if(item.component()==null)tile.setImageDrawable(SystemIcons.tile(this,item.builtin(),on,audio.getRingerMode()));
             }
         }

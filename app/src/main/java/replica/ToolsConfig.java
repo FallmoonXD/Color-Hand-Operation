@@ -11,6 +11,12 @@ public final class ToolsConfig {
   public final String key,label;
   public Item(String key,String label){this.key=key;this.label=label;}
   public int builtin(){try{return Integer.parseInt(key);}catch(Exception e){return -1;}}
+  public boolean isOneShot(){
+   return switch(builtin()){
+    case 4,5,6,9,10,11,18 -> true; // Notifications, recording, screenshot, lock, timeout, close and Settings.
+    default -> false;
+   };
+  }
   public ComponentName component(){return key.startsWith("app:")?ComponentName.unflattenFromString(key.substring(4)):null;}
  }
  public static Item builtin(int id){return new Item(Integer.toString(id),TITLES[id]);}

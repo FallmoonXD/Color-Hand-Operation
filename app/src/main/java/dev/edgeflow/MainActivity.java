@@ -91,6 +91,7 @@ public final class MainActivity extends Activity {
   if(screen.equals("actions")||screen.equals("app_gestures")||isHandlePage(screen)||screen.equals("home"))
    return getSharedPreferences("edgeflow_launcher",0).getString("layout_v2","");
   if(screen.equals("widgets"))return Boolean.toString(getSharedPreferences("replica_widgets",0).getBoolean("loop",false));
+  if(screen.equals("tools"))return Boolean.toString(prefs.getBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,false));
   if(screen.equals("launcher")){android.content.SharedPreferences store=getSharedPreferences("edgeflow_launcher",0);return LauncherLayout.load(store).recent+":"+store.getInt("columns",4);}
   if(screen.equals("tasks"))return Integer.toString(getSharedPreferences("edgeflow_launcher",0).getInt("recent_limit",10));
   if(screen.equals("navigation"))return Arrays.toString(NavigationConfig.load(this))+NavigationConfig.size(this);
@@ -621,7 +622,13 @@ public final class MainActivity extends Activity {
    editor.setMirrored(angleMirrored);editors.add(editor);box.addView(editor,new LinearLayout.LayoutParams(-1,-2));
   }
  }
- private void toolsSettings(){LinearLayout g=card();link(g,"编辑按钮","调整三排按钮顺序，添加系统开关和应用",()->open(new Intent(this,replica.ToolsSettingsActivity.class)));link(g,"预览快速工具",null,()->preview("quick_tools"));}
+ private void toolsSettings(){
+  LinearLayout g=card();
+  link(g,"编辑按钮","调整三排按钮顺序，添加系统开关和应用",()->open(new Intent(this,replica.ToolsSettingsActivity.class)));
+  storeToggle(g,"一次性动作使用强调色","用于通知栏、截屏、锁屏等按钮",prefs.getBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,false),
+    on->prefs.edit().putBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,on).apply());
+  link(g,"预览快速工具",null,()->preview("quick_tools"));
+ }
  private void widgetSettings(){android.content.SharedPreferences store=getSharedPreferences("replica_widgets",0);LinearLayout g=card();storeToggle(g,"循环翻页","从最后一页继续翻到第一页",store.getBoolean("loop",false),on->store.edit().putBoolean("loop",on).apply());g=card();link(g,"打开小组件面板","长按编辑页面和组件",()->preview("widgets"));}
  private interface BooleanEdit{void save(boolean value);}
  private void storeToggle(LinearLayout box,String title,String detail,boolean checked,BooleanEdit edit){LinearLayout r=row(box,title,detail);ColorSwitch sw=new ColorSwitch(this);sw.setChecked(checked);sw.setContentDescription(title);r.addView(sw);sw.setOnCheckedChangeListener((v,on)->{edit.save(on);renderedPageData=pageData();});r.setOnClickListener(v->sw.setChecked(!sw.isChecked()));}
