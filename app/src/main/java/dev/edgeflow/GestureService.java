@@ -51,7 +51,7 @@ public final class GestureService extends AccessibilityService implements Shared
     private boolean pendingWindowState,pendingConfiguration,pendingGeometry;
     private final Runnable applyPreferences=this::applyPreferenceChanges;
     private final BroadcastReceiver changes=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent intent){
-        String a=intent.getAction();if(Intent.ACTION_SCREEN_OFF.equals(a)){screenOn=false;cancelGesture();removeHandlePreviews();dismissPanels();replica.WidgetOverlay.dismissAll();}
+        String a=intent.getAction();if(Intent.ACTION_SCREEN_OFF.equals(a)){screenOn=false;cancelGesture();removeHandlePreviews();dismissPanels();}
         else if(Intent.ACTION_SCREEN_ON.equals(a)||Intent.ACTION_USER_PRESENT.equals(a))screenOn=true;
         if((getPackageName()+".RELOAD_GESTURES").equals(a))schedulePreferences(true);else updateVisibility();
     }};
@@ -201,6 +201,17 @@ public final class GestureService extends AccessibilityService implements Shared
     boolean canStartGesture(String id){return handleEnabled(id)&&canStartGesture();}
     boolean canStartGesture(String id,String pkg){return canStartGesture(id)&&!excluded(pkg);}
     private EdgeHandleView[] handleViews(){return new EdgeHandleView[]{left,right,extraLeft,extraRight,extra2Left,extra2Right};}
+    /** A touch-modal panel can receive the physical edge contact before the handle window. */
+    public EdgeHandleView handleAt(float x,float y){
+        EdgeHandleView[] handles=handleViews();
+        for(int i=handles.length-1;i>=0;i--){
+            EdgeHandleView h=handles[i];
+            if(h==null||!h.isShown())continue;
+            WindowManager.LayoutParams p=(WindowManager.LayoutParams)h.getLayoutParams();
+            if(x>=p.x&&x<p.x+p.width&&y>=p.y&&y<p.y+p.height)return h;
+        }
+        return null;
+    }
     int visibleHandleWidth(boolean leftSide){
         int width=0;
         EdgeHandleView[] views=handleViews();
@@ -235,6 +246,8 @@ public final class GestureService extends AccessibilityService implements Shared
             extraLeft=addHandle("extra_left");extraRight=addHandle("extra_right");
             extra2Left=addHandle("extra2_left");extra2Right=addHandle("extra2_right");
             updateVisibility();
+            int dpi=getResources().getDisplayMetrics().densityDpi;
+            NavigationOverlay.displayChanged(handleArea,dpi);TouchpadOverlay.displayChanged(handleArea,dpi);MagnificationOverlay.displayChanged(handleArea);
             updateHandlePreviews();
         }catch(Exception e){Log.e(TAG,"Cannot attach gesture surfaces",e);removeWindows();}
     }
@@ -284,16 +297,20 @@ public final class GestureService extends AccessibilityService implements Shared
     private void removeGestureWindows(){cancelGesture();remove(left);remove(right);remove(extraLeft);remove(extraRight);remove(extra2Left);remove(extra2Right);remove(leftWave);remove(rightWave);left=right=extraLeft=extraRight=extra2Left=extra2Right=null;wave=leftWave=rightWave=null;handlesVisible=false;}
     private void removeWindows(){removeGestureWindows();removeHandlePreviews();}
     private void remove(View v){if(v!=null)try{windows.removeViewImmediate(v);}catch(IllegalArgumentException ignored){}}
-    @Override public void onSharedPreferenceChanged(SharedPreferences p,String key){schedulePreferences(key==null||key.equals("hide_home")||key.equals("hide_notifications")||key.equals("hide_keyboard")||key.equals("hide_when_keyboard")||key.equals("disabled_apps")||key.equals("excluded_packages"));}
-    @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);cancelGesture();Point size=new Point();windows.getDefaultDisplay().getRealSize(size);if(size.x!=screenWidth||size.y!=screenHeight||screenDensity!=getResources().getDisplayMetrics().density)dismissPanels();replica.WidgetOverlay.configurationChanged();pendingConfiguration=true;schedulePreferences(true);}
+    @Override public void onSharedPreferenceChanged(SharedPreferences p,String key){
+        if("enabled".equals(key)&&!p.getBoolean("enabled",true)){dismissPanels();}
+        schedulePreferences(key==null||key.equals("hide_home")||key.equals("hide_notifications")||key.equals("hide_keyboard")||key.equals("hide_when_keyboard")||key.equals("disabled_apps")||key.equals("excluded_packages"));
+    }
+    @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);cancelGesture();Point size=new Point();windows.getDefaultDisplay().getRealSize(size);if(size.x!=screenWidth||size.y!=screenHeight||screenDensity!=getResources().getDisplayMetrics().density)dismissTransientPanels();replica.WidgetOverlay.configurationChanged();pendingConfiguration=true;schedulePreferences(true);}
     @Override public void onInterrupt(){cancelGesture();removeHandlePreviews();}
     @Override public void onTaskRemoved(Intent rootIntent){super.onTaskRemoved(rootIntent);Log.i(TAG,"Settings task removed; accessibility binding retained");}
-    private void dismissPanels(){replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();TouchpadOverlay.dismissAll();NavigationOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();}
+    private void dismissTransientPanels(){replica.ToolsOverlay.dismissAll();replica.VolumeOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();ScreenMoveOverlay.dismissAll();}
+    private void dismissPanels(){dismissTransientPanels();TouchpadOverlay.dismissAll();NavigationOverlay.dismissAll();MagnificationOverlay.dismissAll();replica.WidgetOverlay.dismissAll();}
     private void disconnect(){
         RecentTaskList.release(this);
         connected=false;if(running==this)running=null;main.removeCallbacksAndMessages(null);pendingConfiguration=pendingWindowState=pendingGeometry=false;
         if(receiverRegistered){try{unregisterReceiver(changes);}catch(IllegalArgumentException ignored){}receiverRegistered=false;}
-        removeWindows();dismissPanels();replica.WidgetOverlay.dismissAll();ActionExecutor.release(this);stopForeground(STOP_FOREGROUND_REMOVE);
+        removeWindows();dismissPanels();ActionExecutor.release(this);stopForeground(STOP_FOREGROUND_REMOVE);
         sendBroadcast(new Intent(getPackageName()+".SERVICE_STATE").setPackage(getPackageName()));
     }
     @Override public boolean onUnbind(Intent intent){disconnect();stopSelf();return super.onUnbind(intent);}

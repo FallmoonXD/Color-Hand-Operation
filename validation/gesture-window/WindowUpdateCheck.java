@@ -16,9 +16,12 @@ public final class WindowUpdateCheck {
         check(left.getVisibility()==View.GONE&&left.cancels==1,"disabling handle hides and cancels only that gesture");
         check(s.rootReads==roots,"ordinary enable toggle does not query accessibility roots");
         change(s,"enabled",false);s.main.flush();check(right.getVisibility()==View.GONE,"master disable hides enabled handles");
+        check(s.panelDismissals==1&&s.handleAt(right.params.x+1,right.params.y+1)==null,"master disable clears tools and removes edge hit targets");
         change(s,"enabled",true);s.main.flush();check(right.getVisibility()==View.VISIBLE&&left.getVisibility()==View.GONE,"master reenable preserves individual disabled state");
         change(s,"extra2_right_enabled",true);s.main.flush();check(s.extra2Right.getVisibility()==View.VISIBLE&&wm.order.get(7)==s.extra2Right,"enabling extra2 preserves topmost input identity");
         check(wm.adds==0&&wm.removes==0,"all enable changes reuse existing windows");
+        check(s.handleAt(s.extra2Right.params.x+1,s.extra2Right.params.y+1)==s.extra2Right,"outside swipe selects the topmost visible handle");
+        check(s.handleAt(630,1200)==null,"ordinary outside click is not a handle contact");
 
         change(s,"left_handle_start_fraction",.2f);change(s,"left_handle_end_fraction",.5f);s.main.flush();
         check(wm.updates==1&&s.left==left&&s.leftWave==wave,"geometry updates only changed layout and keeps window identity");
@@ -48,6 +51,9 @@ public final class WindowUpdateCheck {
         System.out.println("PASS "+checks+" production window update assertions");
     }
 }
+class NavigationOverlay {static void displayChanged(GestureHandleConfig.Area area,int dpi){}}
+class TouchpadOverlay {static void displayChanged(GestureHandleConfig.Area area,int dpi){}}
+class MagnificationOverlay {static void displayChanged(GestureHandleConfig.Area area){}}
 class SharedPreferences extends HashMap<String,Object> {
     boolean getBoolean(String key,boolean fallback){Object value=get(key);return value==null?fallback:(Boolean)value;}
     float getFloat(String key,float fallback){Object value=get(key);return value==null?fallback:(Float)value;}
@@ -56,7 +62,7 @@ class SharedPreferences extends HashMap<String,Object> {
 }
 class Looper {static final Looper main=new Looper();static Looper myLooper(){return main;}}
 class Handler {final ArrayList<Runnable> tasks=new ArrayList<>();Looper getLooper(){return Looper.main;}void removeCallbacks(Runnable task){tasks.remove(task);}void post(Runnable task){tasks.add(task);}void postDelayed(Runnable task,long delay){tasks.add(task);}void flush(){ArrayList<Runnable> copy=new ArrayList<>(tasks);tasks.clear();for(Runnable task:copy)task.run();}}
-class View {static final int VISIBLE=0,GONE=8;int visibility=VISIBLE;WindowManager.LayoutParams params;int getVisibility(){return visibility;}void setVisibility(int value){visibility=value;}Object getLayoutParams(){return params;}}
+class View {static final int VISIBLE=0,GONE=8;int visibility=VISIBLE;WindowManager.LayoutParams params;int getVisibility(){return visibility;}boolean isShown(){return visibility==VISIBLE&&params!=null;}void setVisibility(int value){visibility=value;}Object getLayoutParams(){return params;}}
 class EdgeHandleView extends View {
     final GestureService service;final String id;int cancels,paints,lastColor;
     EdgeHandleView(GestureService service,String id){this.service=service;this.id=id;refreshAppearance();}
@@ -64,7 +70,7 @@ class EdgeHandleView extends View {
 }
 class GestureWaveView extends View {interface Listener {Object apply(View v,Object insets);}GestureWaveView(GestureService service){}void clear(){}void setOnApplyWindowInsetsListener(Listener listener){}}
 class HandleDisplayArea {static GestureHandleConfig.Area value=GestureHandleConfig.safeArea(1264,2780,0,140,0,154);static GestureHandleConfig.Area current(GestureService service){return value;}}
-class Resources {static class Metrics {float density=3.5f;}Metrics getDisplayMetrics(){return new Metrics();}}
+class Resources {static class Metrics {float density=3.5f;int densityDpi=560;}Metrics getDisplayMetrics(){return new Metrics();}}
 class Point {int x,y;}
 class WindowManager {
     static class LayoutParams {

@@ -51,7 +51,7 @@ public final class KeyboardShortcutsOverlay {
  }
  private void manage(Entry item,View source){
   int at=entries.indexOf(item);if(closed||hasChildUi()||at<0||!source.isAttachedToWindow())return;closePopup();ArrayList<String> choices=new ArrayList<>();choices.add("修改");if(at>0)choices.add("前移一位");if(at+1<entries.size())choices.add("后移一位");choices.add("删除");
-  replica.ColorPopupMenu next=new replica.ColorPopupMenu(source).setFocusable(false).setWindowLayoutType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY).setTitle(item.name).setItems(choices.toArray(new String[0]),which->{
+  replica.ColorPopupMenu next=new replica.ColorPopupMenu(source).setWindowLayoutType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY).setTitle(item.name).setItems(choices.toArray(new String[0]),which->{
    if(closed)return;int index=entries.indexOf(item);if(index<0)return;String action=choices.get(which);if(action.equals("修改")){edit(item);return;}
    if(action.equals("删除"))entries.remove(index);else{int destination=index+(action.equals("前移一位")?-1:1);if(destination<0||destination>=entries.size())return;Collections.swap(entries,index,destination);}save();renderMenu();
   }).setDividerBefore(choices.size()-1).setDestructive(choices.size()-1);

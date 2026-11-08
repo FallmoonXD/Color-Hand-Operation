@@ -21,15 +21,16 @@ package dev.edgeflow;
 public final class GestureService {
  static final String TAG="test";final WindowManager windows=new WindowManager();final SharedPreferences prefs=new SharedPreferences();final Handler main=new Handler();
  EdgeHandleView left,right,extraLeft,extraRight,extra2Left,extra2Right;GestureWaveView wave,leftWave,rightWave;
- boolean connected=true,handlesVisible,pendingWindowState,pendingConfiguration,pendingGeometry,allowed=true;int screenWidth,screenHeight,rootReads;float screenDensity;
+ boolean connected=true,handlesVisible,pendingWindowState,pendingConfiguration,pendingGeometry,allowed=true;int screenWidth,screenHeight,rootReads,panelDismissals;float screenDensity;
  GestureHandleConfig.Area handleArea;
  final java.util.HashMap<String,View> handlePreviews=new java.util.HashMap<>();final java.util.HashMap<String,float[]> handlePreviewRegions=new java.util.HashMap<>();
  private final Runnable applyPreferences=this::applyPreferenceChanges;
  boolean canStartGesture(){return allowed&&prefs.getBoolean("enabled",true);}void refreshWindowState(){rootReads++;}
  Resources getResources(){return new Resources();}String getString(int id){return "Test";}void removeHandlePreviews(){}
+ void dismissPanels(){panelDismissals++;}
  void boot(){rebuild();}void queue(){schedulePreferences(false);}void configure(){pendingConfiguration=true;schedulePreferences(true);}void visibility(){updateVisibility();}
 '@
-foreach ($signature in @('private void schedulePreferences(','private void applyPreferenceChanges(','private void scheduleGeometryRefresh(','private void updateHandlePreviews(','private void updateWaveLayout(','private boolean handleEnabled(','private EdgeHandleView[] handleViews(','private void updateVisibility(','private float number(','private void rebuild(','private int[] handleBounds(','private EdgeHandleView addHandle(','private void updateHandleLayout(','private WindowManager.LayoutParams parameters(','private void cancelGesture(','private void removeWindows(','private void removeGestureWindows(','private void remove(View','public void onSharedPreferenceChanged(')) { $code += (Extract-ServiceMethod $signature) }
+foreach ($signature in @('private void schedulePreferences(','private void applyPreferenceChanges(','private void scheduleGeometryRefresh(','private void updateHandlePreviews(','private void updateWaveLayout(','private boolean handleEnabled(','private EdgeHandleView[] handleViews(','public EdgeHandleView handleAt(','private void updateVisibility(','private float number(','private void rebuild(','private int[] handleBounds(','private EdgeHandleView addHandle(','private void updateHandleLayout(','private WindowManager.LayoutParams parameters(','private void cancelGesture(','private void removeWindows(','private void removeGestureWindows(','private void remove(View','public void onSharedPreferenceChanged(')) { $code += (Extract-ServiceMethod $signature) }
 $code += '}'
 $extracted = Join-Path $checks 'GestureService.java'
 [System.IO.File]::WriteAllText($extracted,$code,[System.Text.UTF8Encoding]::new($false))

@@ -24,14 +24,27 @@ public final class NavigationOverlay {
  private final AccessibilityService service;
  private final Dialog dialog;
  private final float[] anchor;
+ private final GestureHandleConfig.Area displayArea;
+ private final int density;
  private ColorMotion motion;
  private boolean removed,closing;
  public static void show(AccessibilityService service,float[] anchor){dismissAll();NavigationOverlay next=new NavigationOverlay(service,anchor);if(!next.removed)current=next;}
  public static void dismissAll(){if(current!=null)current.remove();}
+ static void displayChanged(GestureHandleConfig.Area next,int dpi){
+  NavigationOverlay old=current;
+  if(old==null||old.closing)return;
+  GestureHandleConfig.Area was=old.displayArea;
+  if(next.displayWidth==was.displayWidth&&next.displayHeight==was.displayHeight&&dpi==old.density)return;
+  WindowManager.LayoutParams lp=old.dialog.getWindow().getAttributes();
+  float fraction=(lp.y+lp.height*.5f-was.top)/was.height();
+  float y=next.top+fraction*next.height();
+  float x=old.anchor[0]<was.displayWidth/2f?next.left:next.right-1;
+  show(old.service,new float[]{x,y,x,y});
+ }
  private int dp(float v){return PanelStyle.dp(service,v);}
  private NavigationOverlay(AccessibilityService service,float[] anchor){
   this.service=service;this.anchor=anchor.clone();
-  GestureHandleConfig.Area area=HandleDisplayArea.current(service);boolean left=anchor[0]<area.displayWidth/2f;
+  GestureHandleConfig.Area area=displayArea=HandleDisplayArea.current(service);density=service.getResources().getDisplayMetrics().densityDpi;boolean left=anchor[0]<area.displayWidth/2f;
   String[] actions=NavigationConfig.load(service);int gripGap=dp(7),gripHeight=dp(32),gutter=dp(3);
   // OHO+ soft keys center the column on the gesture DOWN and reserve navigation-bar
   // height at both ends. Respect any larger physical cutout or system-bar inset.
@@ -46,7 +59,7 @@ public final class NavigationOverlay {
   int height=2*gutter+gripHeight+gripGap+actions.length*size;
   final int topLimit=minY,bottomLimit=Math.max(minY,maxY-height);
   int theme=service.getResources().getIdentifier(PanelStyle.dark(service)?"ReplicaGlassDark":"ReplicaGlass","style",service.getPackageName());
-  dialog=new Dialog(service,theme){@Override public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){NavigationOverlay.this.dismiss();return true;}return super.onTouchEvent(e);}};
+  dialog=new Dialog(service,theme);
   dialog.setOnDismissListener(d->remove());
   Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
   Rail rail=new Rail(service);rail.setPadding(0,gutter,0,gutter);dialog.setContentView(rail);
@@ -60,7 +73,7 @@ public final class NavigationOverlay {
    if(action.equals("home"))button.setOnLongClickListener(v->{ActionExecutor.execute(service,"assistant",this.anchor.clone());return true;});
   }
   dialog.setCanceledOnTouchOutside(false);
-  w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
+  w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
   w.getDecorView().setPadding(0,0,0,0);
   WindowManager.LayoutParams lp=w.getAttributes();lp.gravity=Gravity.TOP|Gravity.LEFT;lp.x=left?area.left+inset:area.right-size-inset;
   lp.y=Math.max(topLimit,Math.min(bottomLimit,Math.round(anchor[1]-height/2f)));lp.width=size;lp.height=height;

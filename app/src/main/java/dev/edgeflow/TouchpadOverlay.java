@@ -20,6 +20,8 @@ public final class TouchpadOverlay {
  private final WindowManager wm;
  private final Handler main=new Handler(Looper.getMainLooper());
  private final Point screen;
+ private final int density;
+ private final float[] anchor;
  private final Dialog dialog;
  private final Cursor cursor;
  private final WindowManager.LayoutParams cursorParams;
@@ -32,12 +34,24 @@ public final class TouchpadOverlay {
 
  public static void show(AccessibilityService c,float[] anchor){dismissAll();TouchpadOverlay next=new TouchpadOverlay(c,anchor);if(!next.removed)current=next;}
  public static void dismissAll(){if(current!=null)current.remove();}
+ static void displayChanged(GestureHandleConfig.Area next,int dpi){
+  TouchpadOverlay old=current;
+  if(old==null||old.closing||(next.displayWidth==old.screen.x&&next.displayHeight==old.screen.y&&dpi==old.density))return;
+  float sx=(float)next.displayWidth/old.screen.x,sy=(float)next.displayHeight/old.screen.y;
+  float[] a=old.anchor;
+  show(old.service,new float[]{a[0]*sx,a[1]*sy,a[2]*sx,a[3]*sy});
+  if(current!=null){
+   current.pointerX=old.pointerX*sx;current.pointerY=old.pointerY*sy;current.positionCursor();
+   current.setScrollMode(old.scrollMode);
+  }
+ }
  private int dp(float n){return PanelStyle.dp(service,n);}
  private TouchpadOverlay(AccessibilityService c,float[] anchor){
-  service=c;wm=(WindowManager)c.getSystemService(android.content.Context.WINDOW_SERVICE);screen=PanelGeometry.screen(c);pointerX=screen.x*.5f;pointerY=screen.y*.35f;
+  service=c;this.anchor=anchor.clone();density=c.getResources().getDisplayMetrics().densityDpi;
+  wm=(WindowManager)c.getSystemService(android.content.Context.WINDOW_SERVICE);screen=PanelGeometry.screen(c);pointerX=screen.x*.5f;pointerY=screen.y*.35f;
   cursor=new Cursor(c);cursorParams=new WindowManager.LayoutParams(dp(30),dp(30),WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE|WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.TRANSLUCENT);cursorParams.gravity=Gravity.TOP|Gravity.LEFT;cursorParams.setTitle(service.getString(dev.edgeflow.R.string.app_name)+" 触控板光标");PanelGeometry.screenCoordinates(cursorParams);
   int theme=c.getResources().getIdentifier(PanelStyle.dark(c)?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());
-  dialog=new Dialog(c,theme){@Override public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){if(!injecting)TouchpadOverlay.this.dismiss();return true;}return super.onTouchEvent(e);}};
+  dialog=new Dialog(c,theme);
   dialog.setOnDismissListener(d->remove());
   LinearLayout root=new LinearLayout(c);root.setOrientation(1);root.setPadding(dp(10),dp(8),dp(10),dp(10));
   FrameLayout title=new FrameLayout(c);root.addView(title,new LinearLayout.LayoutParams(-1,dp(36)));
@@ -47,8 +61,8 @@ public final class TouchpadOverlay {
   hint=text("",11);refreshPointerSpeed();root.addView(hint,new LinearLayout.LayoutParams(-1,dp(30)));
   Pad pad=new Pad(c);pad.setContentDescription("触控板：滑动移动光标，轻点点击，双指滑动滚动");pad.setBackground(PanelStyle.mediaSurface(c));root.addView(pad,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout keys=row();root.addView(keys,new LinearLayout.LayoutParams(-1,dp(42)));keys.addView(button("单击",()->click(1,false)),new LinearLayout.LayoutParams(0,-1,1));keys.addView(button("双击",()->click(2,false)),new LinearLayout.LayoutParams(0,-1,1));keys.addView(button("长按",()->click(1,true)),new LinearLayout.LayoutParams(0,-1,1));
-  LinearLayout options=row();root.addView(options,new LinearLayout.LayoutParams(-1,dp(40)));scrollButton=button("滚动：关",()->{scrollMode=!scrollMode;scrollButton.setText(scrollMode?"滚动：开":"滚动：关");scrollButton.setBackground(PanelStyle.toolButton(c,scrollMode));});options.addView(scrollButton,new LinearLayout.LayoutParams(0,-1,1));options.addView(button("光标居中",()->{pointerX=screen.x/2f;pointerY=screen.y*.35f;positionCursor();}),new LinearLayout.LayoutParams(0,-1,1));options.addView(button("返回",()->service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)),new LinearLayout.LayoutParams(0,-1,1));
-  dialog.setContentView(root);dialog.setCanceledOnTouchOutside(false);Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);w.setWindowAnimations(0);
+  LinearLayout options=row();root.addView(options,new LinearLayout.LayoutParams(-1,dp(40)));scrollButton=button("滚动：关",()->setScrollMode(!scrollMode));options.addView(scrollButton,new LinearLayout.LayoutParams(0,-1,1));options.addView(button("光标居中",()->{pointerX=screen.x/2f;pointerY=screen.y*.35f;positionCursor();}),new LinearLayout.LayoutParams(0,-1,1));options.addView(button("返回",()->service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)),new LinearLayout.LayoutParams(0,-1,1));
+  dialog.setContentView(root);dialog.setCanceledOnTouchOutside(false);Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);w.setWindowAnimations(0);
   replica.ToolsBackdrop backdrop=PanelStyle.controlsWindow(c,w,24,false);
   backdrop.preserve(close,dp(22),0);backdrop.preserve(pad,dp(22),0);
   for(LinearLayout group:new LinearLayout[]{keys,options}){
@@ -69,6 +83,7 @@ public final class TouchpadOverlay {
   try{dialog.show();w.setLayout(width,height);positionCursor();wm.addView(cursor,cursorParams);cursorAdded=true;motion=new ColorMotion(w);motion.enter();}catch(Exception e){android.util.Log.e("EdgeTouchpad","Cannot attach",e);remove();}
  }
  private LinearLayout row(){LinearLayout v=new LinearLayout(service);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
+ private void setScrollMode(boolean enabled){scrollMode=enabled;String label=enabled?"滚动：开":"滚动：关";scrollButton.setText(label);scrollButton.setContentDescription(label);scrollButton.setBackground(PanelStyle.toolButton(service,enabled));}
  private TextView text(String value,int sp){TextView t=new TextView(service);t.setText(value);t.setTextSize(sp);t.setTextColor(Color.WHITE);t.setIncludeFontPadding(false);Runnable font=()->t.setTypeface(replica.ColorOsTheme.typeface(t.getContext(),t.getTextSize()/t.getResources().getDisplayMetrics().scaledDensity>=18?600:500));font.run();replica.ColorOsTheme.watch(t,font);t.setGravity(Gravity.CENTER);return t;}
  private TextView button(String value,Runnable action){TextView t=text(value,12);t.setContentDescription(value);t.setBackground(PanelStyle.toolButton(service,false));t.setOnClickListener(v->{if(!injecting)action.run();});return t;}
  private void refreshPointerSpeed(){Object raw=service.getSharedPreferences("edgeflow",0).getAll().get("touchpad_speed");float speed=raw instanceof Number?((Number)raw).floatValue():1.7f;pointerSpeed=Float.isFinite(speed)?Math.max(.5f,Math.min(3f,speed)):1.7f;hint.setText(String.format(java.util.Locale.getDefault(),"光标 %.1f× · 轻点单击 · 双指滚动",pointerSpeed));}

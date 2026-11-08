@@ -9,7 +9,7 @@ import android.view.*;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.*;
 
-/** A non-focusable volume window. Outside taps continue to the foreground app. */
+/** A temporary volume window with the same outside-touch behavior as quick tools. */
 public final class VolumeOverlay {
  private static VolumeOverlay current;
  private final Handler handler=new Handler();
@@ -40,14 +40,19 @@ public final class VolumeOverlay {
  private VolumeOverlay(Context c,float[] anchor){
   context=c;manager=(WindowManager)c.getSystemService(Context.WINDOW_SERVICE);
   AudioManager audio=(AudioManager)c.getSystemService(Context.AUDIO_SERVICE);
-  view=new LinearLayout(c);view.setOrientation(1);view.setElevation(PanelStyle.dp(c,8));
+  view=new LinearLayout(c){
+   private final PanelOutsideTouch outside=new PanelOutsideTouch();
+   @Override public boolean dispatchTouchEvent(MotionEvent event){
+    return closing||(dialog==null&&outside.consume(this,event,close))||super.dispatchTouchEvent(event);
+   }
+  };view.setOrientation(1);view.setElevation(PanelStyle.dp(c,8));
   ImageView plus=button("ic_expand_less_rounded","音量增加"),minus=button("ic_expand_more_rounded","音量减小");
   view.addView(plus,new LinearLayout.LayoutParams(-1,PanelStyle.dp(c,70)));
   view.addView(minus,new LinearLayout.LayoutParams(-1,PanelStyle.dp(c,70)));
   up=new RepeatPress(plus,()->{if(!closing){audio.adjustStreamVolume(3,1,AudioManager.FLAG_SHOW_UI);arm();}});
   down=new RepeatPress(minus,()->{if(!closing){audio.adjustStreamVolume(3,-1,AudioManager.FLAG_SHOW_UI);arm();}});
   view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){public void onViewAttachedToWindow(View v){}public void onViewDetachedFromWindow(View v){if(mounted)remove();}});
-  int flags=WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+  int flags=WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM;
   params=new WindowManager.LayoutParams(PanelStyle.dp(c,60),-2,c instanceof android.accessibilityservice.AccessibilityService?2032:2038,flags,android.graphics.PixelFormat.TRANSLUCENT);
   float[] g=anchor;android.graphics.Point screen=PanelGeometry.screen(c);
   params.gravity=Gravity.TOP|Gravity.LEFT;
@@ -57,8 +62,7 @@ public final class VolumeOverlay {
   PanelGeometry.screenCoordinates(params);
   params.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 音量控制");
   try{
-   int theme=c.getResources().getIdentifier(PanelStyle.dark(c)?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());
-   dialog=new Dialog(c,theme){@Override public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){VolumeOverlay.this.dismiss();return true;}return super.onTouchEvent(e);}};
+   dialog=new PanelOverlayDialog(c,close,close);
    dialog.setCanceledOnTouchOutside(false);dialog.setOnDismissListener(d->{if(mounted)remove();});dialog.setContentView(view);
    Window window=dialog.getWindow();window.setType(params.type);window.setAttributes(params);
    window.setWindowAnimations(0);window.setBackgroundDrawable(new ColorOsSurface(c,22,2).attach(window));
@@ -70,7 +74,6 @@ public final class VolumeOverlay {
    if(view.getParent() instanceof ViewGroup)((ViewGroup)view.getParent()).removeView(view);
    view.setBackground(new ColorOsSurface(c,22,2).attach(view));
    PanelGeometry.reserveShadow(params,(int)Math.ceil(view.getElevation()*4));
-   view.setOnTouchListener((v,event)->{if(event.getActionMasked()==MotionEvent.ACTION_OUTSIDE){dismiss();return true;}return false;});
    try{manager.addView(view,params);mounted=true;view.post(this::enter);arm();}catch(Exception ignored){}
   }
  }
@@ -82,8 +85,8 @@ public final class VolumeOverlay {
   if(removed)return;poseAlpha=alpha;poseX=sx;poseY=sy;poseOffset=offset;
   try{
    View target=view;
-   if(dialog!=null){Window w=dialog.getWindow();WindowManager.LayoutParams p=w.getAttributes();p.alpha=alpha;if(closing)p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;w.setAttributes(p);target=w.getDecorView();}
-   else{params.alpha=alpha;if(closing)params.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;manager.updateViewLayout(view,params);}
+   if(dialog!=null){Window w=dialog.getWindow();WindowManager.LayoutParams p=w.getAttributes();p.alpha=alpha;w.setAttributes(p);target=w.getDecorView();}
+   else{params.alpha=alpha;manager.updateViewLayout(view,params);}
    target.setPivotX(edgeDirection<0?0:target.getWidth());target.setPivotY(target.getHeight()/2f);target.setScaleX(sx);target.setScaleY(sy);target.setTranslationX(offset);
   }catch(Exception ignored){remove();}
  }
@@ -101,6 +104,7 @@ public final class VolumeOverlay {
  private void dismiss(){
   if(closing||removed)return;
   closing=true;handler.removeCallbacks(close);up.stop();down.stop();
+  if(dialog!=null)PanelOverlayDialog.beginWindowExit(dialog.getWindow());
   NativeMaterial.cancelEntrance(dialog!=null?dialog.getWindow().getDecorView():view);
   if(enterAnimation!=null)enterAnimation.cancel();
   final float startAlpha=poseAlpha,startX=poseX,startY=poseY,startOffset=poseOffset;

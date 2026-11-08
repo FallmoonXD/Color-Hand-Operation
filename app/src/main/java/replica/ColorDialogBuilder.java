@@ -99,6 +99,9 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
  }
 
  private final class ColorDialog extends AlertDialog {
+  private final PanelOutsideTouch overlayTouch=new PanelOutsideTouch();
+  private final Runnable outsideCancel=this::cancelFromOutside;
+  private void cancelFromOutside(){if(allowCancel&&outsideDismiss)cancel();}
   private final boolean sheet=items!=null||adapter!=null||content!=null;
   private LinearLayout root,header,actions;private FrameLayout viewport;private View body;private ListView list;
   private SettingsSurface surface;
@@ -243,7 +246,10 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
 
   @Override protected void onStart(){
    super.onStart();Context c=getContext();Window window=getWindow();window.setWindowAnimations(0);window.setDimAmount(glass?.12f:.24f);
-   if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
+   if(window.getAttributes().type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY){
+    if((window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0&&!containsTextEditor(root))window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+    PanelOutsideTouch.makeModal(window);
+   }else if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
    if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
    window.getDecorView().setClipToOutline(true);layoutWindow();refreshColors();observeOwner();
    if(sheet){poseSheet(0,Math.max(root.getHeight(),lastHeight));root.post(entrance);}
@@ -289,7 +295,12 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   }
   @Override public Button getButton(int which){return buttons.get(which);}
   @Override public ListView getListView(){return list;}
-  @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){return closing||finished||super.dispatchTouchEvent(event);}
+  @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){
+   if(closing||finished)return true;
+   Window w=getWindow();
+   return (w.getAttributes().type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+       &&overlayTouch.consume(w.getDecorView(),event,outsideCancel))||super.dispatchTouchEvent(event);
+  }
   @Override public boolean onTouchEvent(android.view.MotionEvent event){if(event.getActionMasked()==android.view.MotionEvent.ACTION_OUTSIDE&&allowCancel&&outsideDismiss){cancel();return true;}return super.onTouchEvent(event);}
   private void dismissThen(Runnable after){if(closing||finished)return;pendingAction=after;dismiss();}
   @Override public void dismiss(){

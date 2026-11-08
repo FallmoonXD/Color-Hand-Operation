@@ -181,7 +181,7 @@ def main_home():
   if cancel is not None:tap(cancel);time.sleep(.25);continue
   if any(n.get('content-desc')=='更多选项' and visible(n) for n in tree.iter('node')):
    heading=next((n for n in tree.iter('node') if (n.get('text')=='Color Hand Operation' or n.get('content-desc')=='Color Hand Operation') and visible(n)),None)
-   if heading is not None:tap(heading);time.sleep(.3) # Harmless outside touch dismisses an old nonfocusable peer panel.
+   if heading is not None:tap(heading);time.sleep(.3) # Dismiss a temporary panel covering the home page.
    return
   sh('input','keyevent','4');time.sleep(.25)
  raise AssertionError('Could not return to Color Hand Operation home through its back stack')

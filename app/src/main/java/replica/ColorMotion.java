@@ -36,7 +36,7 @@ public final class ColorMotion {
   WindowManager.LayoutParams p=window.getAttributes();p.alpha=Math.max(0,Math.min(1,f));window.setAttributes(p);
  }
  public void enter(){window.getDecorView().post(()->{if(!closing)NativeMaterial.whenReady(window.getDecorView(),()->{if(!closing)animate(1,edge==0?350:VOLUME_IN_MS,edge==0?spring(.3,0):VOLUME_IN,null);});});}
- public void exit(Runnable done){if(closing)return;closing=true;NativeMaterial.cancelEntrance(window.getDecorView());WindowManager.LayoutParams p=window.getAttributes();p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;window.setAttributes(p);
+ public void exit(Runnable done){if(closing)return;closing=true;NativeMaterial.cancelEntrance(window.getDecorView());PanelOverlayDialog.beginWindowExit(window);
   if(edge!=0&&fraction<=0){done.run();return;}
   animate(0,edge==0?250:VOLUME_OUT_MS,edge==0?spring(.47,0):VOLUME_OUT,done);
  }
