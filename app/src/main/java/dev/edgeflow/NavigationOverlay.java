@@ -96,7 +96,8 @@ public final class NavigationOverlay {
    button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x33808080),null,mask));
    // RippleDrawable takes padding from its mask. Size the glyph after installing it.
    if(button instanceof ImageView){
-    int padding=grip?PanelStyle.dp(getContext(),8):Math.round(slotSize*.25f)+gripInset;
+    boolean nativeSize=((ImageView)button).getScaleType()==ImageView.ScaleType.CENTER_INSIDE;
+    int padding=grip||nativeSize?PanelStyle.dp(getContext(),8):Math.round(slotSize*.25f)+gripInset;
     button.setPadding(padding,padding,padding,padding);
    }else{int x=sideInset+gripInset;button.setPadding(x,sideInset,x,sideInset);}
   }
@@ -138,10 +139,26 @@ public final class NavigationOverlay {
   };
   style.run();replica.ColorOsTheme.watch(image,style);return image;
  }
+ private ImageView navigationKey(String resource,String title){
+  ImageView image=new ImageView(service);
+  image.setContentDescription(title);image.setTooltipText(title);
+  image.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+  Runnable style=()->{
+   image.setImageDrawable(SystemIcons.raw(service,resource));
+   image.setColorFilter(foreground()==Color.WHITE?Color.WHITE:Color.BLACK);
+  };
+  style.run();replica.ColorOsTheme.watch(image,style);return image;
+ }
  private View actionButton(String action){
-  String name=null;switch(action){case "back":name="status_bar_qs_back_arrow";break;case "home":name="ic_sysbar_home";break;case "recents":name="ic_sysbar_recent";break;case "volume_up":name="ic_expand_less_rounded";break;case "volume_down":name="ic_expand_more_rounded";break;case "media_previous":name="ic_oplus_media_panel_action_pre";break;case "media_play_pause":name="ic_oplus_media_panel_action_play";break;case "media_next":name="ic_oplus_media_panel_action_next";break;case "quick_tools":name="status_bar_qs_footer_more_icon_no_theme";break;case "quick_launcher":case "app_launcher":name="ic_apps_expressive";break;}
+  String title=ActionExecutor.title(action);
+  switch(action){
+   case "back":return navigationKey("ic_sysbar_back",title);
+   case "home":return navigationKey("ic_sysbar_home",title);
+   case "recents":return navigationKey("ic_sysbar_recent",title);
+  }
+  String name=null;switch(action){case "volume_up":name="ic_expand_less_rounded";break;case "volume_down":name="ic_expand_more_rounded";break;case "media_previous":name="ic_oplus_media_panel_action_pre";break;case "media_play_pause":name="ic_oplus_media_panel_action_play";break;case "media_next":name="ic_oplus_media_panel_action_next";break;case "quick_tools":name="status_bar_qs_footer_more_icon_no_theme";break;case "quick_launcher":case "app_launcher":name="ic_apps_expressive";break;}
   String[] tileActions={"wifi","sound_mode","bluetooth","rotation","notifications","screen_record","screenshot","flashlight","dark_mode","screen_off","screen_timeout","close_app","mobile_data","airplane","battery_saver","location","dnd","nfc","settings","auto_brightness"};for(int i=0;i<tileActions.length;i++)if(tileActions[i].equals(action)){name=SystemIcons.tileName(i,false,2);break;}
-  String title=ActionExecutor.title(action);View button;
+  View button;
   if(name!=null)button=icon(name,title);
   else{TextView label=text(title,12);label.setMaxLines(2);label.setEllipsize(android.text.TextUtils.TruncateAt.END);label.setAutoSizeTextTypeUniformWithConfiguration(9,13,1,android.util.TypedValue.COMPLEX_UNIT_SP);button=label;}
   button.setContentDescription(title);button.setTooltipText(title);return button;

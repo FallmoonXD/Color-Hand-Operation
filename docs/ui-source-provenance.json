@@ -19,6 +19,27 @@
   ],
   "vectors": [
     {
+      "file": "src/main/res/drawable/cos_coui_back_arrow.xml",
+      "sha256": "6c76b5304ceb48471d99e14c2593c9f96f7eca9d727b0dfb5c1d9a343c38bdce",
+      "source": "com.android.settings / res/drawable/coui_back_arrow_normal.xml",
+      "adaptation": "Theme-independent toolbar tint with the selector’s RTL mirroring."
+    },
+    {
+      "file": "src/main/res/drawable/cos_ic_sysbar_back.xml",
+      "sha256": "08563eae65ea1d56d5cee18ccdfa61cb60818f31b251cdd77a52650871285a78",
+      "source": "com.android.systemui / res/drawable/ic_sysbar_back.xml"
+    },
+    {
+      "file": "src/main/res/drawable/cos_ic_sysbar_home.xml",
+      "sha256": "05c144c566f298b2b9ac36433e12992a572d4ee1ff6ff7ed5deffa5e24f512a7",
+      "source": "com.android.systemui / res/drawable/ic_sysbar_home.xml"
+    },
+    {
+      "file": "src/main/res/drawable/cos_ic_sysbar_recent.xml",
+      "sha256": "b7a47527aa66fa81270eb8f1d3d26da980c99ec7b65d25015aec4baa490db3c0",
+      "source": "com.android.systemui / res/drawable/ic_sysbar_recent.xml"
+    },
+    {
       "file": "src\\main\\res\\drawable\\cos_darkmode_off_status_bar.xml",
       "sha256": "bb90a29dc8eac131bce07fddf1d2aac67b7b84f3267c5f9099e599ba4b4e9022"
     },

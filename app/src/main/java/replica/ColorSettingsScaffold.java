@@ -195,9 +195,9 @@ public final class ColorSettingsScaffold {
         target.setFocusable(true);target.setContentDescription(description);target.setOnClickListener(click);
         ImageView icon=new ImageView(activity);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         if(more)icon.setImageResource(dev.edgeflow.R.drawable.cos_settings_more);
-        else icon.setImageDrawable(SystemIcons.raw(activity,"status_bar_qs_back_arrow"));
+        else icon.setImageDrawable(SystemIcons.raw(activity,"com.android.settings:coui_back_arrow"));
         icon.setColorFilter(ColorOsTheme.text(activity));icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        int pad=dp(more?8:10);icon.setPadding(pad,pad,pad,pad);icon.setDuplicateParentStateEnabled(true);
+        int pad=dp(8);icon.setPadding(pad,pad,pad,pad);icon.setDuplicateParentStateEnabled(true);
         target.addView(icon,new FrameLayout.LayoutParams(dp(40),dp(40),Gravity.CENTER));
         ToolbarShadow.allowToolbarOverflow(icon,target,bar);
         SettingsSurface surface=new SettingsSurface(icon,SettingsSurface.Kind.TOOLBAR,20,null);
