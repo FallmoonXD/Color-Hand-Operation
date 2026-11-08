@@ -7,14 +7,15 @@ import android.graphics.drawable.Drawable;
 /** Soft directional reflection: the edge fades instead of forming a solid ring. */
 public final class LightSurface extends Drawable {
  private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.DITHER_FLAG);
- private final RectF box=new RectF(),opaqueBox=new RectF();private final float radius,edge;private final int kind;private boolean dark,blur,stroke,managed;
+ private final RectF box=new RectF(),opaqueBox=new RectF();private final float radius,edge;private final int kind;private boolean dark,blur,stroke,managed,opaqueBase;
  private final Context context;private final MaterialThemeBinding theme;
  private final Path clip=new Path();private Shader fill,reflection,rim,innerLight;private int opacity=255;
  private int opaquePanel=0xff333333,opaqueControl=0x33ffffff;
  public LightSurface(Context c,float corner,int style){context=c;radius=PanelStyle.dp(c,corner);edge=c.getResources().getDisplayMetrics().density*.35f;kind=style;dark=ColorOsTheme.dark(c);blur=ColorOsTheme.materialBlur(c);stroke=ColorOsTheme.materialStroke(c);theme=new MaterialThemeBinding(this,this::refreshTheme,()->{});if(!blur)readOpaquePalette();}
+ void useOpaqueBase(){opaqueBase=true;readOpaquePalette();}
  void managedByParent(){managed=true;}
- void refreshTheme(){themeChanged();if(!blur)readOpaquePalette();invalidateSelf();}
- void themeChanged(){boolean nextDark=ColorOsTheme.dark(context),nextBlur=ColorOsTheme.materialBlur(context),nextStroke=ColorOsTheme.materialStroke(context);if(dark!=nextDark||blur!=nextBlur||stroke!=nextStroke){dark=nextDark;blur=nextBlur;stroke=nextStroke;if(!blur)readOpaquePalette();onBoundsChange(getBounds());invalidateSelf();}}
+ void refreshTheme(){themeChanged();if(!blur||opaqueBase)readOpaquePalette();invalidateSelf();}
+ void themeChanged(){boolean nextDark=ColorOsTheme.dark(context),nextBlur=ColorOsTheme.materialBlur(context),nextStroke=ColorOsTheme.materialStroke(context);if(dark!=nextDark||blur!=nextBlur||stroke!=nextStroke){dark=nextDark;blur=nextBlur;stroke=nextStroke;if(!blur||opaqueBase)readOpaquePalette();onBoundsChange(getBounds());invalidateSelf();}}
  private void readOpaquePalette(){
   // VolumeBlurManager's fallback is inverse (white content) in both night modes.
   // Settings dialogs (kind 3) instead use ColorOsTheme.text/card as a matched pair.
@@ -40,7 +41,7 @@ public final class LightSurface extends Drawable {
  }
  @Override public void draw(Canvas c){
   if(!managed)theme.track();boolean changed=dark!=ColorOsTheme.dark(context)||blur!=ColorOsTheme.materialBlur(context)||stroke!=ColorOsTheme.materialStroke(context);if(changed)themeChanged();
-  if(!blur){paint.setAlpha(opacity);paint.setStyle(Paint.Style.FILL);paint.setShader(null);paint.setColor(opaqueColor(kind,opaquePanel,opaqueControl,ColorOsTheme.accent(context),ColorOsTheme.card(context)));paint.setAlpha(opacity);c.drawRoundRect(opaqueBox,radius,radius,paint);if(!stroke)return;}
+  if(!blur||opaqueBase){paint.setAlpha(opacity);paint.setStyle(Paint.Style.FILL);paint.setShader(null);paint.setColor(opaqueColor(kind,opaquePanel,opaqueControl,ColorOsTheme.accent(context),ColorOsTheme.card(context)));paint.setAlpha(opacity);c.drawRoundRect(opaqueBox,radius,radius,paint);if(!stroke)return;}
   else{
   paint.setAlpha(opacity);paint.setStyle(Paint.Style.FILL);paint.setShader(fill);c.drawRoundRect(box,radius,radius,paint);
   }

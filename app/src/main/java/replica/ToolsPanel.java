@@ -61,8 +61,8 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         cameras=(CameraManager)getSystemService(CAMERA_SERVICE);
         try{for(String id:cameras.getCameraIdList())if(Boolean.TRUE.equals(cameras.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE))){cameraId=id;break;}}catch(Exception ignored){}
         if(cameraId!=null)cameras.registerTorchCallback(torchCallback,new Handler());
-        LinearLayout panel=new LinearLayout(this){private boolean blocked;@Override public boolean dispatchTouchEvent(MotionEvent event){int action=event.getActionMasked();if(action==MotionEvent.ACTION_DOWN)blocked=hasChildDialogs();boolean consume=blocked;if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL)blocked=false;return consume||super.dispatchTouchEvent(event);}};panel.setOrientation(1);panel.setPadding(dp(14),dp(14),dp(14),dp(14));setContentView(panel);PanelStyle.toolsWindow(this,window);
-        ToolsBackdrop backdrop=new ToolsBackdrop(this,window);window.setBackgroundDrawable(backdrop);
+        LinearLayout panel=new LinearLayout(this){private boolean blocked;@Override public boolean dispatchTouchEvent(MotionEvent event){int action=event.getActionMasked();if(action==MotionEvent.ACTION_DOWN)blocked=hasChildDialogs();boolean consume=blocked;if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL)blocked=false;return consume||super.dispatchTouchEvent(event);}};panel.setOrientation(1);panel.setPadding(dp(14),dp(14),dp(14),dp(14));setContentView(panel);
+        ToolsBackdrop backdrop=PanelStyle.controlsWindow(this,window,24,false);
         position();
         LinearLayout brightness=row();brightness.setPadding(dp(7),0,dp(7),0);panel.addView(brightness);
         ImageView sun=icon("brightness_icon",PanelStyle.accent(this));autoIcon=sun;sun.setContentDescription("自动亮度");sun.setOnClickListener(v->command("settings put system screen_brightness_mode "+(Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1?0:1)));brightness.addView(sun,new LinearLayout.LayoutParams(dp(35),dp(34)));

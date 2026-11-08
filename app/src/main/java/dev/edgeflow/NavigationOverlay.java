@@ -9,6 +9,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -47,21 +48,20 @@ public final class NavigationOverlay {
   int theme=service.getResources().getIdentifier(PanelStyle.dark(service)?"ReplicaGlassDark":"ReplicaGlass","style",service.getPackageName());
   dialog=new Dialog(service,theme){@Override public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){NavigationOverlay.this.dismiss();return true;}return super.onTouchEvent(e);}};
   dialog.setOnDismissListener(d->remove());
-  Rail rail=new Rail(service);rail.setPadding(0,gutter,0,gutter);
+  Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+  Rail rail=new Rail(service);rail.setPadding(0,gutter,0,gutter);dialog.setContentView(rail);
+  replica.ToolsBackdrop backdrop=PanelStyle.controlsWindow(service,w,Math.min(24,Math.round(size/(2f*service.getResources().getDisplayMetrics().density))),true);
   ImageView grip=new NavigationGlyph(service,null,"关闭虚拟导航键",true);
-  grip.setTooltipText("点按关闭，拖动调整高度");grip.setOnClickListener(v->dismiss());rail.feedback(grip,true,size);
-  rail.addView(grip,new LinearLayout.LayoutParams(-1,gripHeight));
+  grip.setTooltipText("点按关闭，拖动调整高度");grip.setOnClickListener(v->dismiss());
+  rail.addKey(grip,true,size,gripHeight,0,backdrop);
   for(String action:actions){
-   View button=actionButton(action);rail.feedback(button,false,size);
-   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,size);lp.topMargin=rail.getChildCount()==1?gripGap:0;rail.addView(button,lp);
+   View button=actionButton(action);rail.addKey(button,false,size,size,rail.getChildCount()==1?gripGap:0,backdrop);
    button.setOnClickListener(v->ActionExecutor.execute(service,action,this.anchor.clone()));
    if(action.equals("home"))button.setOnLongClickListener(v->{ActionExecutor.execute(service,"assistant",this.anchor.clone());return true;});
   }
-  dialog.setContentView(rail);dialog.setCanceledOnTouchOutside(false);Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+  dialog.setCanceledOnTouchOutside(false);
   w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
-  w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);w.setBackgroundDrawableResource(android.R.color.transparent);w.getDecorView().setPadding(0,0,0,0);
-  w.setElevation(0);w.getDecorView().setClipToOutline(false);
-  rail.glass.attach(w);
+  w.getDecorView().setPadding(0,0,0,0);
   WindowManager.LayoutParams lp=w.getAttributes();lp.gravity=Gravity.TOP|Gravity.LEFT;lp.x=left?area.left+inset:area.right-size-inset;
   lp.y=Math.max(topLimit,Math.min(bottomLimit,Math.round(anchor[1]-height/2f)));lp.width=size;lp.height=height;
   lp.setTitle(service.getString(R.string.app_name)+" 虚拟导航键");PanelGeometry.screenCoordinates(lp);w.setAttributes(lp);
@@ -78,22 +78,28 @@ public final class NavigationOverlay {
     }
    }
   });
-  try{dialog.show();w.setLayout(size,height);motion=new ColorMotion(w);motion.enter();}catch(RuntimeException e){android.util.Log.e("EdgeNavigation","Cannot attach",e);remove();}
+  motion=ColorMotion.fromEdge(w,left,anchor[1]-lp.y);
+  try{dialog.show();w.setLayout(size,height);motion.enter();}catch(RuntimeException e){android.util.Log.e("EdgeNavigation","Cannot attach",e);remove();}
  }
- /** Touch targets fill each slot. Only the inset shapes cast a shadow and sample the backdrop. */
+ /** One window blurs the page. The inset controls use the same optical layer as quick tools. */
  private static final class Rail extends LinearLayout {
-  final replica.ColorOsSurface glass;
   android.graphics.Bitmap shadowBitmap;
   final android.graphics.Paint shadow=new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
   final int sideInset,gripInset;
   android.graphics.Rect[] shapes={};
   Rail(android.content.Context c){
    super(c);setOrientation(VERTICAL);sideInset=PanelStyle.dp(c,6);gripInset=PanelStyle.dp(c,3);
-   glass=new replica.ColorOsSurface(c,0,2);glass.setPillBounds(shapes);setBackground(glass);
    shadow.setColor(0x44000000);shadow.setMaskFilter(new android.graphics.BlurMaskFilter(PanelStyle.dp(c,2),android.graphics.BlurMaskFilter.Blur.OUTER));
   }
-  void feedback(View button,boolean grip,int slotSize){
+  void addKey(View button,boolean grip,int slotSize,int height,int margin,replica.ToolsBackdrop backdrop){
    int y=grip?gripInset:sideInset;
+   FrameLayout slot=new FrameLayout(getContext());
+   View lens=new View(getContext());lens.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+   lens.setBackground(new replica.ColorOsSurface(getContext(),80,0));
+   FrameLayout.LayoutParams glass=new FrameLayout.LayoutParams(-1,-1);glass.setMargins(sideInset,y,sideInset,y);
+   slot.addView(lens,glass);slot.addView(button,new FrameLayout.LayoutParams(-1,-1));
+   LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(-1,height);row.topMargin=margin;addView(slot,row);
+   backdrop.preserve(lens,PanelStyle.dp(getContext(),80),0);
    android.graphics.drawable.Drawable mask=new android.graphics.drawable.InsetDrawable(PanelStyle.shape(getContext(),Color.WHITE,80),sideInset,y,sideInset,y);
    button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x33808080),null,mask));
    // RippleDrawable takes padding from its mask. Size the glyph after installing it.
@@ -110,7 +116,7 @@ public final class NavigationOverlay {
     s.inset(Math.min(sideInset,Math.max(0,(s.width()-1)/2)),Math.min(i==0?gripInset:sideInset,Math.max(0,(s.height()-1)/2)));
    }
    if(java.util.Arrays.equals(shapes,next)&&shadowBitmap!=null&&shadowBitmap.getWidth()==getWidth()&&shadowBitmap.getHeight()==getHeight())return;
-   shapes=next;glass.setPillBounds(shapes);
+   shapes=next;
    if(getWidth()==0||getHeight()==0){shadowBitmap=null;return;}
    // Cache only the soft outer shadow. A black shape punched out with clipOutPath leaves
    // dark stair steps where it intersects the partially transparent glass rim.

@@ -7,8 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import java.util.ArrayList;
 
-/** Darken only the space between controls. Controls see the unchanged test19 base,
- * rather than receiving extra white to compensate for a darkened parent. */
+/** One rounded glass window. Its shade covers only the spaces between registered controls. */
 public final class ToolsBackdrop extends Drawable implements Drawable.Callback {
     private final ColorOsSurface base;
     private final ViewGroup decor;
@@ -24,9 +23,12 @@ public final class ToolsBackdrop extends Drawable implements Drawable.Callback {
         final View view;final float radius,height;final Rect bounds=new Rect();
         Hole(View v,float r,float h){view=v;radius=r;height=h;}
     }
-    public ToolsBackdrop(Context c,android.view.Window window){
+    ToolsBackdrop(Context c,android.view.Window window,int radius,boolean opaqueFallback){
         ViewGroup host=(ViewGroup)window.getDecorView();
-        decor=host;corner=PanelStyle.dp(c,24);rim=3*c.getResources().getDisplayMetrics().density/3.5f;base=new ColorOsSurface(c,24,2).attach(window);base.setCallback(this);
+        decor=host;corner=PanelStyle.dp(c,radius);rim=3*c.getResources().getDisplayMetrics().density/3.5f;
+        base=new ColorOsSurface(c,radius,2);
+        if(opaqueFallback)base.useOpaqueFallback();
+        base.attach(window);base.setCallback(this);
         shade.setColor(SHADE_ALPHA<<24);
     }
     public void preserve(View view,float radius,float trackHeight){

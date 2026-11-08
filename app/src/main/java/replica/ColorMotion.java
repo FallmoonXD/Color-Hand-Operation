@@ -18,16 +18,28 @@ public final class ColorMotion {
    public float getInterpolation(float t){return (float)(raw(Math.max(0,t))/raw(1));}
   };
  }
- private final Window window;private ValueAnimator animator;private boolean closing;
+ private final Window window;private final int edge;private final float edgePivotY;
+ private ValueAnimator animator;private boolean closing;
  private float fraction;
- public ColorMotion(Window w){window=w;w.setWindowAnimations(0);pose(0);}
+ public ColorMotion(Window w){this(w,0,0);}
+ public static ColorMotion fromEdge(Window w,boolean left,float pivotY){return new ColorMotion(w,left?-1:1,pivotY);}
+ private ColorMotion(Window w,int edge,float pivotY){window=w;this.edge=edge;edgePivotY=pivotY;w.setWindowAnimations(0);pose(0);}
  private void pose(float f){
-  fraction=f;View v=window.getDecorView();v.setPivotX(v.getWidth()/2f);v.setPivotY(v.getHeight()/2f);
-  v.setScaleX(.88f+.12f*f);v.setScaleY(.88f+.12f*f);v.setTranslationY(PanelStyle.dp(v.getContext(),12)*(1-f));
+  fraction=f;View v=window.getDecorView();
+  if(edge!=0){
+   v.setPivotX(edge<0?0:v.getWidth());v.setPivotY(Math.max(0,Math.min(v.getHeight(),edgePivotY)));
+   v.setScaleX(.5f+.5f*f);v.setScaleY(.5f+.5f*f);v.setTranslationX(edge*PanelStyle.dp(v.getContext(),14)*(1-f));
+  }else{
+   v.setPivotX(v.getWidth()/2f);v.setPivotY(v.getHeight()/2f);
+   v.setScaleX(.88f+.12f*f);v.setScaleY(.88f+.12f*f);v.setTranslationY(PanelStyle.dp(v.getContext(),12)*(1-f));
+  }
   WindowManager.LayoutParams p=window.getAttributes();p.alpha=Math.max(0,Math.min(1,f));window.setAttributes(p);
  }
- public void enter(){window.getDecorView().post(()->{if(!closing)NativeMaterial.whenReady(window.getDecorView(),()->{if(!closing)animate(1,350,spring(.3,0),null);});});}
- public void exit(Runnable done){if(closing)return;closing=true;NativeMaterial.cancelEntrance(window.getDecorView());WindowManager.LayoutParams p=window.getAttributes();p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;window.setAttributes(p);animate(0,250,spring(.47,0),done);}
+ public void enter(){window.getDecorView().post(()->{if(!closing)NativeMaterial.whenReady(window.getDecorView(),()->{if(!closing)animate(1,edge==0?350:VOLUME_IN_MS,edge==0?spring(.3,0):VOLUME_IN,null);});});}
+ public void exit(Runnable done){if(closing)return;closing=true;NativeMaterial.cancelEntrance(window.getDecorView());WindowManager.LayoutParams p=window.getAttributes();p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;window.setAttributes(p);
+  if(edge!=0&&fraction<=0){done.run();return;}
+  animate(0,edge==0?250:VOLUME_OUT_MS,edge==0?spring(.47,0):VOLUME_OUT,done);
+ }
  private void animate(float end,long duration,TimeInterpolator curve,Runnable done){
   if(animator!=null){animator.removeAllListeners();animator.cancel();}
   animator=ValueAnimator.ofFloat(fraction,end);animator.setDuration(duration);animator.setInterpolator(curve);

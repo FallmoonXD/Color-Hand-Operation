@@ -18,7 +18,8 @@ public final class PanelStyle {
  }
  public static GradientDrawable glass(Context c,int radius){GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,dark(c)?new int[]{0x20505a68,0x18202632}:new int[]{0x16708096,0x1258667c});d.setDither(true);d.setCornerRadius(dp(c,radius));d.setStroke(Math.max(1,dp(c,.6f)),0x30ffffff);return d;}
  public static void window(android.app.Activity a,int radius){window(a,a.getWindow(),radius);}
- public static void window(Context a,android.view.Window w,int radius){w.setBackgroundDrawable(new ColorOsSurface(a,radius,2).attach(w));w.getDecorView().setClipToOutline(true);try{w.getClass().getMethod("setBackgroundBlurRadius",int.class).invoke(w,blurRadius(a));}catch(Exception ignored){}w.setDimAmount(0);w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);}
+ public static void window(Context a,android.view.Window w,int radius){glassWindow(a,w,new ColorOsSurface(a,radius,2).attach(w));}
+ private static void glassWindow(Context a,android.view.Window w,Drawable background){w.setBackgroundDrawable(background);w.getDecorView().setClipToOutline(true);try{w.getClass().getMethod("setBackgroundBlurRadius",int.class).invoke(w,blurRadius(a));}catch(Exception ignored){}w.setDimAmount(0);w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);}
  public static GradientDrawable shape(Context c,int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(c,radius));return d;}
  public static void inputSurface(android.view.View view,int radius){
   Context c=view.getContext();Runnable update=()->view.setBackground(shape(c,ColorOsTheme.dark(c)?0xff2d333b:0xff53606d,radius));
@@ -40,8 +41,9 @@ public final class PanelStyle {
  }
  public static Drawable button(Context c,boolean active){return new RippleDrawable(ColorStateList.valueOf(0x33808080),active?new AccentShape(c,18):new ColorOsSurface(c,18,0),shape(c,0xffffffff,18));}
  /** Quick-settings lighting is shared by tiles and the complete media capsule. */
- public static void toolsWindow(android.app.Activity a){toolsWindow(a,a.getWindow());}
- public static void toolsWindow(Context a,android.view.Window w){window(a,w,24);}
+ public static ToolsBackdrop controlsWindow(Context c,android.view.Window w,int radius,boolean opaqueFallback){
+  ToolsBackdrop backdrop=new ToolsBackdrop(c,w,radius,opaqueFallback);glassWindow(c,w,backdrop);return backdrop;
+ }
  public static Drawable mediaSurface(Context c){return new ColorOsSurface(c,22,0);}
  public static Drawable toolButton(Context c,boolean active){return new RippleDrawable(ColorStateList.valueOf(0x28ffffff),active?new AccentShape(c,22):new ColorOsSurface(c,22,0),shape(c,0xffffffff,22));}
 }

@@ -2,6 +2,7 @@ package dev.edgeflow;
 import android.accessibilityservice.AccessibilityService;import android.app.Dialog;import android.content.*;import android.graphics.Color;import android.os.Handler;import android.os.Looper;import android.view.*;import android.widget.*;import org.json.*;import java.io.*;import java.util.concurrent.*;
 /** Real Android recent tasks, not a list of arbitrary installed applications. */
 public final class TaskSwitcherOverlay {
+ private final LinearLayout.LayoutParams viewport=new LinearLayout.LayoutParams(-1,0,1);
  private static TaskSwitcherOverlay current;private static final ExecutorService WORK=Executors.newSingleThreadExecutor();private static final Handler MAIN=new Handler(Looper.getMainLooper());
  private final AccessibilityService service;private final Context context;private final float[] anchor;private final Dialog dialog;private final LinearLayout root,list;private final int cardColumns,panelWidth,heightLimit;private final java.util.ArrayList<Dialog> children=new java.util.ArrayList<>();private replica.ColorMotion motion;private volatile boolean closed;private boolean loading;private RecentTaskList.Request recentRequest;private volatile Process previewProcess;private volatile int previewGeneration;private final java.util.LinkedHashMap<Integer,ImageView> previewViews=new java.util.LinkedHashMap<>();private final java.util.ArrayList<android.graphics.Bitmap> previewBitmaps=new java.util.ArrayList<>();
  public static void show(AccessibilityService s,float[] anchor){dismissAll();QuickLauncherOverlay.dismissAll();try{current=new TaskSwitcherOverlay(s,anchor);}catch(Exception e){android.util.Log.e("EdgeTasks","show",e);Toast.makeText(s,"任务切换器暂不可用",0).show();}}
@@ -13,7 +14,9 @@ public final class TaskSwitcherOverlay {
   cardColumns=screen.x>screen.y&&screen.x>=dp(520)?2:1;
   panelWidth=Math.min(dp(cardColumns==2?510:330),screen.x-dp(28));
   heightLimit=Math.min(dp(475),screen.y-replica.PanelGeometry.inset(context,"status_bar_height")-replica.PanelGeometry.inset(context,"navigation_bar_height")-dp(12));
-  ScrollView scroll=new replica.ColorSettingsScrollView(context);list=new LinearLayout(context);list.setOrientation(1);scroll.addView(list);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));TextView more=label("系统最近任务",14);more.setGravity(Gravity.CENTER);replica.PanelStyle.contentCard(more,16,true);more.setOnClickListener(v->{if(!children.isEmpty())return;dismiss();ActionExecutor.execute(service,"recents",anchor);});root.addView(more,new LinearLayout.LayoutParams(-1,dp(42)));dialog.show();replica.PanelGeometry.position(context,w,panelWidth,heightLimit,false,anchor);motion=new replica.ColorMotion(w);motion.enter();load(false);
+  ScrollView scroll=new replica.ColorSettingsScrollView(context);list=new LinearLayout(context);list.setOrientation(1);scroll.addView(list);
+  viewport.topMargin=dp(8);viewport.bottomMargin=dp(8);root.addView(scroll,viewport);
+  TextView more=label("系统最近任务",14);more.setGravity(Gravity.CENTER);replica.PanelStyle.contentCard(more,16,true);more.setOnClickListener(v->{if(!children.isEmpty())return;dismiss();ActionExecutor.execute(service,"recents",anchor);});root.addView(more,new LinearLayout.LayoutParams(-1,dp(42)));dialog.show();replica.PanelGeometry.position(context,w,panelWidth,heightLimit,false,anchor);motion=new replica.ColorMotion(w);motion.enter();load(false);
  }
  private int dp(float n){return replica.PanelStyle.dp(context,n);}private TextView label(String text,int size){TextView t=new TextView(context);t.setText(text);t.setTextSize(size);t.setTextColor(replica.ColorOsTheme.text(context));t.setIncludeFontPadding(false);Runnable font=()->{t.setTextColor(replica.ColorOsTheme.text(context));t.setTypeface(replica.ColorOsTheme.typeface(t.getContext(),t.getTextSize()/t.getResources().getDisplayMetrics().scaledDensity>=18?600:500));};font.run();replica.ColorOsTheme.watch(t,font);t.setGravity(Gravity.CENTER_VERTICAL);return t;}
  private String command(String args){return "CLASSPATH='"+service.getApplicationInfo().sourceDir.replace("'","'\\''")+"' app_process /system/bin dev.edgeflow.RecentTasksBridge "+args;}
@@ -28,7 +31,7 @@ public final class TaskSwitcherOverlay {
   if(closed)return;list.removeAllViews();
   if(tasks==null){
    TextView failure=label((error==null?"读取失败":error)+" · 点按重试",14);failure.setMinHeight(dp(56));
-   failure.setBackground(replica.ColorDialogBuilder.touchBackground(context,replica.ColorOsTheme.card(context),14));failure.setOnClickListener(v->load());list.addView(failure);fitCards(0);return;
+   failure.setBackground(replica.ColorDialogBuilder.touchBackground(context,replica.ColorOsTheme.card(context),14));failure.setOnClickListener(v->load());list.addView(failure);fitCards();return;
   }
   int max=service.getSharedPreferences("edgeflow_launcher",Context.MODE_PRIVATE).getInt("recent_limit",10),count=0;
   LinearLayout line=null;
@@ -52,13 +55,16 @@ public final class TaskSwitcherOverlay {
    card.setOnClickListener(v->{if(!children.isEmpty())return;dismiss();ActionExecutor.root(service,command("launch "+task),"切换任务");});
    LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(2),0,dp(2),dp(6));line.addView(card,lp);count++;
   }
-  if(count==0){list.addView(label("没有最近任务",14),new LinearLayout.LayoutParams(-1,dp(80)));fitCards(0);return;}
+  if(count==0){list.addView(label("没有最近任务",14),new LinearLayout.LayoutParams(-1,dp(80)));fitCards();return;}
   if(cardColumns==2&&count%2!=0)line.addView(new View(context),new LinearLayout.LayoutParams(0,0,1));
-  fitCards(count);loadPreviews();
+  fitCards();loadPreviews();
  }
- private void fitCards(int count){
-  int rows=(count+cardColumns-1)/cardColumns;
-  int wanted=count==0?dp(200):dp(120)+rows*dp(cardColumns==1?286:178);
+ private void fitCards(){
+  // Measure the list at its final width. Include the two margins outside the scrolling area,
+  // so the first card and the footer keep their spacing even when the list is short.
+  int width=panelWidth-root.getPaddingLeft()-root.getPaddingRight();
+  list.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.UNSPECIFIED);
+  int wanted=root.getPaddingTop()+root.getPaddingBottom()+dp(46)+dp(42)+viewport.topMargin+viewport.bottomMargin+list.getMeasuredHeight();
   replica.PanelGeometry.position(context,dialog.getWindow(),panelWidth,Math.min(heightLimit,wanted),false,anchor);
  }
  private void clearPreviews(){for(ImageView view:previewViews.values())view.setImageDrawable(null);previewViews.clear();for(android.graphics.Bitmap bitmap:previewBitmaps)if(!bitmap.isRecycled())bitmap.recycle();previewBitmaps.clear();}

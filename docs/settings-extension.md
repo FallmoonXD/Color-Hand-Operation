@@ -13,7 +13,7 @@ Implemented in the independent Settings-style `MainActivity`; existing material 
 | Navigation button touch target | `navigation_button_size_dp` float | 58 dp by default, range 40–76 dp. The glass disc sits 6 dp inside each edge of the target. |
 | Navigation order | `navigation_actions` JSON string | `["back","home","recents"]`; 1–5 unique supported actions, excluding `none` and `navigation_panel` |
 
-虚拟导航键的初始位置参考 OHO+ 9.3.13 的 `r5.f.t` 和 `m6.j.b`：用起手点确定触发侧和整列的垂直中心，上下端按导航栏高度限位。CHO 另外避开当前可见的手势触钮和屏幕缺口；手动拖动时只调整高度。改名后手势和备份仍使用 `navigation_panel`。
+虚拟导航键的初始位置参考 OHO+ 9.3.13 的 `r5.f.t` 和 `m6.j.b`：用起手点确定触发侧和整列的垂直中心，上下端按导航栏高度限位。CHO 另外避开当前可见的手势触钮和屏幕缺口；入退场沿触发侧使用系统音量条的弹簧，手动拖动时只调整高度。改名后手势和备份仍使用 `navigation_panel`。
 
 The main settings page exposes each additional handle separately. Navigation settings support adding, replacing, moving and removing buttons, plus preview. Touchpad settings expose speed and preview. Enabling an extra handle does not rewrite either primary handle's action map.
 
