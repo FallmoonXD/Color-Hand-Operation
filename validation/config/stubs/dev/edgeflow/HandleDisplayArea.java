@@ -7,4 +7,5 @@ final class HandleDisplayArea {
  static GestureHandleConfig.Area display=reference;
  static final class Snapshot {final GestureHandleConfig.Area current,portrait;Snapshot(GestureHandleConfig.Area a){current=display;portrait=a;}}
  static Snapshot read(Context c){reads++;return new Snapshot(reference);}
+ static FactoryHandleDefaults factoryDefaults(Context c){return new FactoryHandleDefaults(reference,3.5f,490,361,37);}
 }

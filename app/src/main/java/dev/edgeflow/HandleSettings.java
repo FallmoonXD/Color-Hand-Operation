@@ -170,6 +170,23 @@ final class HandleSettings {
         if (p.getBoolean("extra2_left_enabled", false) || p.getBoolean("extra2_right_enabled", false)) count = 3;
         return count;
     }
+    static boolean hasLongGestures(SharedPreferences prefs){
+        int count=pairCount(prefs);
+        for(int i=0;i<count*2;i++)if(prefs.getBoolean(GestureHandleConfig.IDS[i]+"_long_enabled",true))return true;
+        return false;
+    }
+    static void addPair(SharedPreferences prefs){
+        int count=pairCount(prefs);
+        if(count>=3)return;
+        SharedPreferences.Editor editor=prefs.edit().putInt("handle_pair_count",count+1);
+        if(prefs.getInt("schema",1)>=GestureHandleConfig.FACTORY_SCHEMA){
+            for(int i=count*2;i<count*2+2;i++){
+                String key=GestureHandleConfig.IDS[i]+"_enabled";
+                if(!prefs.contains(key))editor.putBoolean(key,true);
+            }
+        }
+        editor.apply();
+    }
     /** Saved page regions plus an optional uncommitted geometry draft; never writes preferences. */
     static java.util.HashMap<String,float[]> previewRegions(SharedPreferences prefs,String page,String changed,boolean both,Geometry draft){
         java.util.HashMap<String,float[]> regions=new java.util.HashMap<>();

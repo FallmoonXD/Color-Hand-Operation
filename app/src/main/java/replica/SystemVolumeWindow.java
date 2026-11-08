@@ -87,7 +87,8 @@ final class SystemVolumeWindow {
     private boolean eligible(AccessibilityWindowInfo w,int display) {
         if (w.getType() != AccessibilityWindowInfo.TYPE_SYSTEM || w.getDisplayId() != display) return false;
         w.getBoundsInScreen(bounds);
-        transitionTime = w.getTransitionTimeMillis();
+        // Android 13 provides window bounds but has no transition timestamp.
+        transitionTime = android.os.Build.VERSION.SDK_INT >= 34 ? w.getTransitionTimeMillis() : 0;
         return !bounds.isEmpty();
     }
 

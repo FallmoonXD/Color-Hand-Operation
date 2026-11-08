@@ -101,6 +101,7 @@ public final class ConfigArchiveHarness {
   dir=Files.createTempDirectory("edgeflow-config-test-");AppWidgetProviderInfo provider=new AppWidgetProviderInfo();provider.provider=new ComponentName("com.example.widget","com.example.widget.Provider");AppWidgetManager.INSTANCE.providers.put(93,provider);appMappings();
   legacyOpacityAndShortcutNames();
   quickToolActionAccent();
+  factorySettings();
   Memory v1=seeded("v1");Map<String,?> launcherBefore=v1.prefs("edgeflow_launcher").getAll(),shortcutsBefore=v1.prefs("edgeflow_shortcuts").getAll();ConfigArchive.restore(v1,archive(1));check(!AppPrefs.get(v1).getBoolean("enabled",true)&&AppPrefs.get(v1).getFloat("trigger_dp",0)==45.5f,"v1 imports typed preferences");check(launcherBefore.equals(v1.prefs("edgeflow_launcher").getAll())&&shortcutsBefore.equals(v1.prefs("edgeflow_shortcuts").getAll()),"v1 preserves newer panel settings");check(new File(v1.files,"tools-layout-v1.json").isFile()&&replica.ToolsConfig.load(v1).size()==2,"tools use actual tools-layout-v1.json path");
   Memory v2=seeded("v2");Map<String,?> widgetsBefore=v2.prefs("replica_widgets").getAll();ConfigArchive.restore(v2,archive(2));JSONObject exported=ConfigArchive.export(v2);check(v2.prefs("edgeflow_launcher").getInt("columns",0)==5&&v2.prefs("edgeflow_launcher").getInt("recent_limit",0)==20,"v2 restores launcher and task switcher settings");check(v2.prefs("edgeflow_shortcuts").contains("app:com.example")&&!v2.prefs("edgeflow_shortcuts").contains("app:com.old"),"v2 replaces shortcuts namespace");JSONObject widget=exported.getJSONObject("widgets").getJSONArray("items").getJSONObject(0);check(widget.getString("component").equals("com.example.widget/com.example.widget.Provider")&&widget.getInt("sourceId")==93&&!widget.has("id"),"widget export maps provider and excludes live ID field");check(exported.getJSONObject("widgets").getInt("height")==400&&exported.getJSONObject("widgets").getInt("pages")==2,"widget export reads replica_widgets/layout_v3 and height_v4");
   Memory target=seeded("target");target.prefs("edgeflow").edit().putFloat("left_handle_start_fraction",.8f).putFloat("left_handle_end_fraction",.9f).apply();ConfigArchive.restore(target,new JSONObject(exported.toString()));check(!target.prefs("edgeflow").contains("left_handle_start_fraction"),"v2 clears target-only gesture overrides");check(state(v2).equals(state(target)),"v2 serialize-import-export roundtrip");check(widgetsBefore.equals(target.prefs("replica_widgets").getAll()),"portable import never changes installed widget IDs");
@@ -126,7 +127,7 @@ public final class ConfigArchiveHarness {
  static void safeAreaMigrationTests()throws Exception{
   GestureHandleConfig.Area area=GestureHandleConfig.safeArea(1264,2780,0,140,0,154);
   Memory c=seeded("safe-area-defaults");Prefs p=c.prefs("edgeflow");check(p.getAll().get(HandleSettings.VERSION_KEY) instanceof Integer&&p.getInt(HandleSettings.VERSION_KEY,0)==2,"fresh defaults explicitly use safe-area version2 integer");
-  p.edit().remove(HandleSettings.VERSION_KEY).putFloat("left_handle_width_dp",20.284f).putFloat("right_handle_width_dp",20.284f).putFloat("left_handle_start_fraction",.04987502f).putFloat("left_handle_end_fraction",.950125f).putFloat("right_handle_start_fraction",.04987502f).putFloat("right_handle_end_fraction",.950125f).putString("action_left_up_short","screenshot").putInt("left_color",0xff123456).apply();
+  p.edit().remove(HandleSettings.VERSION_KEY).putBoolean("extra_left_enabled",false).putFloat("left_handle_width_dp",20.284f).putFloat("right_handle_width_dp",20.284f).putFloat("left_handle_start_fraction",.04987502f).putFloat("left_handle_end_fraction",.950125f).putFloat("right_handle_start_fraction",.04987502f).putFloat("right_handle_end_fraction",.950125f).putString("action_left_up_short","screenshot").putInt("left_color",0xff123456).apply();
   int commits=p.commits;check(HandleSettings.migrate(p,area)&&p.commits==commits+1,"legacy geometry migrates in one preferences commit");
   HandleSettings.Geometry left=HandleSettings.read(p,"left"),right=HandleSettings.read(p,"right");check(left.start==0&&left.end==1&&right.start==0&&right.end==1&&left.width==20.284f,"actual old139..2642 region becomes exact safe140..2626 at same width");
   check(p.getString("action_left_up_short","").equals("screenshot")&&p.getInt("left_color",0)==0xff123456&&!p.getBoolean("extra_left_enabled",true),"migration preserves actions colors and disabled extras");
@@ -229,7 +230,7 @@ public final class ConfigArchiveHarness {
  }
  static void handleColorTests()throws Exception{
   Memory c=seeded("handle-colors");SharedPreferences p=AppPrefs.get(c);Map<String,?> original=p.getAll();
-  check(AppPrefs.handleColor(p,"left")==0xff188dff&&(AppPrefs.visibleHandleColor(p,"left")>>>24)==0&&original.equals(p.getAll()),"handle color preserves original blue and invisible default without migration writes");
+  check(AppPrefs.handleColor(p,"left")==0xffffffff&&(AppPrefs.visibleHandleColor(p,"left")>>>24)==0&&original.equals(p.getAll()),"handle color uses transparent white stock preset without migration writes");
   p.edit().putInt("handle_color",0xffabcdef).putInt("handle_opacity",50).apply();
   check(AppPrefs.handleColor(p,"right")==0xffabcdef&&AppPrefs.visibleHandleColor(p,"right")==0x80abcdef,"global handle color fallback uses existing percent opacity");
   int index=0;for(String id:GestureHandleConfig.IDS)p.edit().putInt(id+"_color",0x80112233+index++).apply();
@@ -246,7 +247,7 @@ public final class ConfigArchiveHarness {
   HandleSettings.Geometry left=HandleSettings.read(p,"left");
   check(HandleSettings.pairCount(p)==1&&HandleSettings.linked(p,"left")&&original.equals(p.getAll()),"menu reads one aligned pair without mutating old preferences");
   Map<String,Object> actions=new HashMap<>();for(Map.Entry<String,?> entry:p.getAll().entrySet())if(entry.getKey().startsWith("action_"))actions.put(entry.getKey(),entry.getValue());
-  p.edit().putFloat("left_handle_width_dp",9).putFloat("right_handle_width_dp",15).putFloat("handle_center_fraction",.6f).putFloat("handle_height_fraction",.4f).apply();
+  p.edit().remove("handles_linked").putFloat("left_handle_width_dp",9).putFloat("right_handle_width_dp",15).putFloat("handle_center_fraction",.6f).putFloat("handle_height_fraction",.4f).apply();
   check(!HandleSettings.linked(p,"left")&&Math.abs(HandleSettings.read(p,"left").start-.4f)<.0001,"legacy effective geometry and independent width are displayed faithfully");
   HandleSettings.write(p,"left",HandleSettings.read(p,"left").moved(0),false);
   check(!p.contains("handle_center_fraction")&&!p.contains("handle_height_fraction")&&Math.abs(HandleSettings.read(p,"right").start-.4f)<.0001&&Math.abs(HandleSettings.read(p,"right").end-.8f)<.0001&&p.getFloat("right_handle_width_dp",0)==15,"editing one handle migrates legacy override and preserves peer geometry");
@@ -337,8 +338,49 @@ public final class ConfigArchiveHarness {
   Memory c=seeded("action-target-archive");AppPrefs.importPrefs(c,new JSONObject().put(appKey,app).put(shortcutKey,shortcut));Memory destination=new Memory("action-target-restored");ConfigArchive.restore(destination,ConfigArchive.export(c));check(ActionTarget.get(AppPrefs.get(destination),gesture,false).equals(app)&&ActionTarget.get(AppPrefs.get(destination),gesture,true).equals(shortcut),"external targets survive portable archive roundtrip");
  }
 
+ static String toolKeys(Memory c){
+  return replica.ToolsConfig.load(c).stream().map(item->item.key).collect(java.util.stream.Collectors.joining(","));
+ }
+ static void factorySettings()throws Exception{
+  Memory fresh=new Memory("factory");AppPrefs.defaults(fresh);Prefs p=fresh.prefs("edgeflow");
+  check(!p.getBoolean("enabled",true)&&HandleSettings.pairCount(p)==1&&p.getBoolean("left_enabled",false)&&p.getBoolean("right_enabled",false),"first launch: master off, one configured pair");
+  for(String id:GestureHandleConfig.IDS){
+   check(!p.getBoolean(id+"_long_enabled",true)&&HandleSettings.linked(p,id),"long disabled and geometry linked: "+id);
+   for(String direction:new String[]{"straight","up","down"})for(boolean longer:new boolean[]{false,true})
+    check(GestureHandleConfig.defaultAction(id,direction,longer).equals(AppPrefs.action(fresh,id,direction,longer)),"seeded slot "+GestureHandleConfig.actionKey(id,direction,longer));
+  }
+  check(p.getFloat("trigger_dp",0)==81/3.5f&&p.getFloat("long_trigger_dp",0)==306/3.5f
+        &&p.getFloat("left_handle_width_dp",0)==22,"pixel thresholds and touch width converted using actual display density");
+  GestureHandleConfig.Area portrait=HandleDisplayArea.reference;
+  int[] modern=GestureHandleConfig.bounds("left",22,HandleSettings.read(p,"left").start,HandleSettings.read(p,"left").end,3.5f,portrait);
+  check(Arrays.equals(modern,new int[]{0,757,77,1536}),"API 36+ primary span uses 50/35 in stable portrait insets");
+  HandleSettings.Geometry oldAndroid=new FactoryHandleDefaults(portrait,3.5f,490,361,35).geometry("right");
+  check(Arrays.equals(GestureHandleConfig.bounds("right",oldAndroid.width,oldAndroid.start,oldAndroid.end,3.5f,portrait),new int[]{1187,629,77,1787}),"pre-36 primary span uses 60/30");
+  check(HandleSettings.read(p,"extra_left").start==0&&HandleSettings.read(p,"extra2_right").end==1,"additional pairs occupy opposite ends");
+  check(GestureAngles.read(p.getAll(),false).upInner==25&&GestureAngles.read(p.getAll(),false).downInner==45&&GestureAngles.read(p.getAll(),true).upInner==20,"distinct short and long angles");
+  check(toolKeys(fresh).equals("0,1,2,3,4,6,9,7,8,5,10,11"),"fresh quick tools follow phone preset");
+  HandleSettings.addPair(p);check(HandleSettings.pairCount(p)==2&&p.getBoolean("extra_right_enabled",false)&&p.getBoolean("extra_left_enabled",false),"explicit add activates both new handles");
+  p.edit().putBoolean("extra_left_long_enabled",true).apply();
+  check(HandleSettings.hasLongGestures(p),"extra pair can independently expose long settings");
+  String saved=state(fresh);AppPrefs.defaults(fresh);check(state(fresh).equals(saved),"subsequent launch preserves all choices");
+  Memory dest=new Memory("factory-roundtrip");ConfigArchive.restore(dest,ConfigArchive.export(fresh));AppPrefs.defaults(dest);check(state(dest).equals(saved),"schema 2 backup survives restore and restart");
+  Memory legacy=new Memory("factory-legacy");Prefs old=legacy.prefs("edgeflow");
+  old.edit().putInt("schema",1).putInt(HandleSettings.VERSION_KEY,2).putBoolean("enabled",true).putFloat("trigger_dp",39.43f)
+     .putString("action_right_down_long","screen_off").putString("action_left_straight_long","one_hand").apply();
+  Map<String,?> before=old.getAll();AppPrefs.defaults(legacy);
+  check(old.getAll().equals(before)&&AppPrefs.action(legacy,"right","down",true).equals("screen_off")&&AppPrefs.action(legacy,"left","straight",false).equals("recents")&&HandleSettings.hasLongGestures(old),"old install: custom values and missing-slot semantics unchanged");
+  String legacyOrder=toolKeys(legacy);
+  check(legacyOrder.equals("0,1,2,3,4,5,6,7,8,9,10,11"),"old install without a layout file keeps its tile order");
+  JSONObject backup=ConfigArchive.export(legacy);backup.getJSONObject("preferences").remove("schema");
+  ConfigArchive.restore(dest,backup);AppPrefs.defaults(dest);
+  check(AppPrefs.action(dest,"left","straight",false).equals("recents")&&AppPrefs.action(dest,"right","down",true).equals("screen_off")&&toolKeys(dest).equals(legacyOrder),"unversioned full backup survives restart with legacy fallback");
+  AppPrefs.resetGestures(legacy);
+  check(AppPrefs.action(legacy,"left","straight",false).equals("back")&&!HandleSettings.hasLongGestures(old)&&toolKeys(legacy).equals(legacyOrder),"explicit reset switches gestures but preserves unsaved old tile order");
+  replica.ToolsConfig.save(fresh,Arrays.asList(replica.ToolsConfig.builtin(9),replica.ToolsConfig.builtin(2)));
+  AppPrefs.resetGestures(fresh);check(toolKeys(fresh).equals("9,2"),"gesture reset preserves a custom quick tools file");
+ }
  static void extendedSettingsTests()throws Exception{
-  Memory c=seeded("extended-settings");SharedPreferences p=AppPrefs.get(c);check(!p.getBoolean("extra_left_enabled",true)&&!p.getBoolean("extra_right_enabled",true)&&AppPrefs.action(c,"extra_left","up",false).equals("none")&&AppPrefs.action(c,"left","straight",false).equals("recents"),"extra handles default off without changing primary mappings");check(!p.getBoolean("extra2_left_enabled",true)&&!p.getBoolean("extra2_right_enabled",true)&&p.getFloat("extra2_left_handle_start_fraction",0)==.35f&&p.getFloat("extra2_left_handle_end_fraction",0)==.55f&&AppPrefs.action(c,"extra2_right","down",false).equals("none"),"second extra pair defaults off with independent middle range");check(p.getFloat("touchpad_speed",0)==1.7f&&p.getFloat("navigation_button_size_dp",0)==58f&&Arrays.equals(NavigationConfig.load(c),new String[]{"back","home","recents"}),"touchpad and navigation accepted defaults remain unchanged");
+  Memory c=seeded("extended-settings");SharedPreferences p=AppPrefs.get(c);check(p.getFloat("touchpad_speed",0)==1.7f&&p.getFloat("navigation_button_size_dp",0)==58f&&Arrays.equals(NavigationConfig.load(c),new String[]{"back","home","recents"}),"touchpad and navigation accepted defaults remain unchanged");
   String shortcut=ShortcutEntry.create(0,"com.example","conversation:你好");JSONObject a=archive(2);a.getJSONObject("preferences").put("extra_left_enabled",true).put("extra_left_handle_start_fraction",.1).put("extra_left_handle_end_fraction",.4).put("extra_left_handle_width_dp",10).put("action_extra_left_up_long",shortcut).put("extra2_right_enabled",true).put("extra2_right_handle_start_fraction",.35).put("extra2_right_handle_end_fraction",.55).put("extra2_right_handle_width_dp",14).put("action_extra2_right_down_short","screenshot").put("touchpad_speed",2.35).put("navigation_button_size_dp",68).put("navigation_actions","[\"home\",\"back\",\"quick_tools\",\"virtual_touchpad\",\"screenshot\"]");JSONObject layout=layout();layout.getJSONArray("items").put(shortcut);a.getJSONObject("launcher").put("layout_v2",layout.toString()).put("shortcut_labels",new JSONObject().put(shortcut,"会话").toString());ConfigArchive.restore(c,a);JSONObject exported=ConfigArchive.export(c);Memory target=new Memory("extended-target");ConfigArchive.restore(target,new JSONObject(exported.toString()));p=AppPrefs.get(target);check(p.getBoolean("extra_left_enabled",false)&&p.getFloat("extra_left_handle_width_dp",0)==10f&&AppPrefs.action(target,"extra_left","up",true).equals(shortcut),"extra-handle geometry and system shortcut action roundtrip");check(p.getBoolean("extra2_right_enabled",false)&&p.getFloat("extra2_right_handle_width_dp",0)==14f&&AppPrefs.action(target,"extra2_right","down",false).equals("screenshot"),"second extra pair action and geometry roundtrip");check(Math.abs(p.getFloat("touchpad_speed",0)-2.35f)<.0001&&p.getFloat("navigation_button_size_dp",0)==68f&&Arrays.equals(NavigationConfig.load(target),new String[]{"home","back","quick_tools","virtual_touchpad","screenshot"}),"touchpad speed and five-key navigation order roundtrip");check(new JSONObject(target.prefs("edgeflow_launcher").getString("shortcut_labels","{}")).getString(shortcut).equals("会话")&&LauncherLayout.load(target.prefs("edgeflow_launcher")).items.contains(shortcut),"portable launcher shortcut identity and display label roundtrip");
   JSONObject bad=copy(a);bad.getJSONObject("preferences").put("extra_left_handle_start_fraction",.6).put("extra_left_handle_end_fraction",.61);rejectUnchanged(target,bad,"reject too-small extra handle span");bad=copy(a);bad.getJSONObject("preferences").put("action_extra_right_down_short","not_an_action");rejectUnchanged(target,bad,"reject unknown extra handle action");
   for(String key:new String[]{"extra_left_handle_width_dp","touchpad_speed","navigation_button_size_dp"}){bad=copy(a);bad.getJSONObject("preferences").put(key,key.equals("extra_left_handle_width_dp")?31:key.equals("touchpad_speed")?.49:77);rejectUnchanged(target,bad,"reject out-of-range "+key);}

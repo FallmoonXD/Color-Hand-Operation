@@ -183,7 +183,7 @@ public final class MainActivity extends Activity {
    body=new LinearLayout(MainActivity.this);body.setOrientation(1);content.addView(body,new LinearLayout.LayoutParams(-1,-2));
    pairsHost=new LinearLayout(MainActivity.this);pairsHost.setOrientation(1);body.addView(pairsHost,new LinearLayout.LayoutParams(-1,-2));
    LinearLayout controls=new LinearLayout(MainActivity.this);LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(48));cp.bottomMargin=dp(20);body.addView(controls,cp);
-   add=button("添加触钮",()->{int n=HandleSettings.pairCount(prefs);if(n>=3)return;endGeometryPreview();prefs.edit().putInt("handle_pair_count",n+1).apply();refresh(true);reload();});
+   add=button("添加触钮",()->{int n=HandleSettings.pairCount(prefs);if(n>=3)return;endGeometryPreview();HandleSettings.addPair(prefs);refresh(true);reload();});
    remove=button("移除触钮",MainActivity.this::removePair);controls.addView(add,new LinearLayout.LayoutParams(0,-1,1));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,-1,1);rp.leftMargin=dp(12);controls.addView(remove,rp);
    LinearLayout settings=card(body);
    link(settings,"触钮范围",null,()->page(HandleSettings.pairCount(prefs)==1&&HandleSettings.linked(prefs,"left")?"range_left":"ranges"));
@@ -224,7 +224,7 @@ public final class MainActivity extends Activity {
    }).show();
  }
  private void moreMenu(View anchor){dismissMenu();openMenu=new ColorPopupMenu(anchor).setItems(new String[]{"权限与后台运行","备份与恢复","恢复默认设置","关于"},n->{switch(n){case 0:page("permissions");break;case 1:page("backup");break;case 2:resetSettings();break;case 3:page("about");break;}}).setDividerBefore(3).show();}
- private void resetSettings(){new ColorDialogBuilder(this).setTitle("恢复默认设置？").setMessage("重置触钮、手势动作和识别设置。面板布局、应用快捷方式和已绑定的小组件保留。").setNegativeButton("取消",null).setPositiveDestructive("恢复",(d,n)->{prefs.edit().clear().commit();AppPrefs.defaults(this);history.clear();screen="home";scrollPositions.clear();reload();render();}).show();}
+ private void resetSettings(){new ColorDialogBuilder(this).setTitle("恢复默认设置？").setMessage("重置触钮、手势动作和识别设置。面板布局、应用快捷方式和已绑定的小组件保留。").setNegativeButton("取消",null).setPositiveDestructive("恢复",(d,n)->{AppPrefs.resetGestures(this);history.clear();screen="home";scrollPositions.clear();reload();render();}).show();}
  private String permissionState(String permission){return checkSelfPermission(permission)==PackageManager.PERMISSION_GRANTED?"已允许":"未允许";}
  private void permissionRow(LinearLayout box,String name,String use,String permission){
   link(box,name,permissionState(permission)+" · "+use,()->{
@@ -588,7 +588,7 @@ public final class MainActivity extends Activity {
  private void gestureSettings(){
   trialLink(null);
   LinearLayout g=group("短距离滑动");toggle(g,"快捷操作","开始操作后再从屏幕上松开手指","quick_action_short",false);link(g,"手势角度",null,()->page("angle"));slider(g,"滑动距离","trigger_dp",15,100,39.43f,false,"dp",null,"短","长");
-  if(prefs.getBoolean("left_long_enabled",true)||prefs.getBoolean("right_long_enabled",true)){g=group("长距离滑动");toggle(g,"快捷操作",null,"quick_action_long",true);slider(g,"滑动距离","long_trigger_dp",40,180,87.43f,false,"dp",null,"短","长");valueSlider(g,"长距离滑动持续时间",prefs.getBoolean("long_immediate",false)?0:prefs.getInt("long_delay_ms",300),0,1000,"ms","短","长",v->prefs.edit().putInt("long_delay_ms",Math.round(v)).putBoolean("long_immediate",false).apply());}
+  if(HandleSettings.hasLongGestures(prefs)){g=group("长距离滑动");toggle(g,"快捷操作",null,"quick_action_long",true);slider(g,"滑动距离","long_trigger_dp",40,180,87.43f,false,"dp",null,"短","长");valueSlider(g,"长距离滑动持续时间",prefs.getBoolean("long_immediate",false)?0:prefs.getInt("long_delay_ms",300),0,1000,"ms","短","长",v->prefs.edit().putInt("long_delay_ms",Math.round(v)).putBoolean("long_immediate",false).apply());}
   vibrationSettings(group("振动"));
  }
  private android.content.SharedPreferences.Editor hapticEdit(){

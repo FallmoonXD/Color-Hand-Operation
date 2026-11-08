@@ -23,7 +23,8 @@ final class GestureMapping {
     }
     static String resolve(SharedPreferences prefs,String pkg,String handle,String direction,boolean longer){
         String slot=GestureHandleConfig.actionKey(handle,direction,longer);
-        String global=prefs.getString(slot,GestureHandleConfig.defaultAction(handle,direction,longer));
+        String fallback=prefs.getInt("schema",1)>=GestureHandleConfig.FACTORY_SCHEMA?GestureHandleConfig.defaultAction(handle,direction,longer):GestureHandleConfig.legacyAction(handle,direction,longer);
+        String global=prefs.getString(slot,fallback);
         return validPackage(pkg)?prefs.getString(scoped(pkg,slot),global):global;
     }
     static String global(SharedPreferences prefs,String slot){

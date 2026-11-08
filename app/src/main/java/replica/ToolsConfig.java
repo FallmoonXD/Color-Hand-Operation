@@ -20,7 +20,14 @@ public final class ToolsConfig {
   public ComponentName component(){return key.startsWith("app:")?ComponentName.unflattenFromString(key.substring(4)):null;}
  }
  public static Item builtin(int id){return new Item(Integer.toString(id),TITLES[id]);}
- public static ArrayList<Item> defaults(){ArrayList<Item> list=new ArrayList<>();for(int i=0;i<LIMIT;i++)list.add(builtin(i));return list;}
+ public static ArrayList<Item> defaults(){
+  int[] order={0,1,2,3,4,6,9,7,8,5,10,11};
+  ArrayList<Item> list=new ArrayList<>();for(int id:order)list.add(builtin(id));return list;
+ }
+ private static ArrayList<Item> unsavedLayout(Context c){
+  if(dev.edgeflow.AppPrefs.get(c).getBoolean(dev.edgeflow.AppPrefs.FACTORY_TOOL_ORDER,false))return defaults();
+  ArrayList<Item> legacy=new ArrayList<>();for(int id=0;id<LIMIT;id++)legacy.add(builtin(id));return legacy;
+ }
  public static ArrayList<Item> parse(String raw)throws JSONException {
   JSONObject root=new JSONObject(raw);if(root.getInt("version")!=1)throw new JSONException("Unsupported layout version");JSONArray data=root.getJSONArray("items");ArrayList<Item> list=new ArrayList<>();HashSet<String> seen=new HashSet<>();
   for(int i=0;i<data.length()&&list.size()<LIMIT;i++){JSONObject o=data.optJSONObject(i);if(o==null)continue;String key=o.optString("key");if(!seen.add(key))continue;
@@ -30,7 +37,7 @@ public final class ToolsConfig {
  }
  public static String encode(List<Item> items)throws JSONException {JSONArray a=new JSONArray();for(Item i:items)a.put(new JSONObject().put("key",i.key).put("label",i.label));return new JSONObject().put("version",1).put("items",a).toString();}
  private static AtomicFile file(Context c){return new AtomicFile(new File(c.getFilesDir(),"tools-layout-v1.json"));}
- public static ArrayList<Item> load(Context c){try{return parse(new String(file(c).readFully(),"UTF-8"));}catch(FileNotFoundException e){return defaults();}catch(Exception e){android.util.Log.w("ReplicaTools","Invalid layout; using defaults",e);return defaults();}}
+ public static ArrayList<Item> load(Context c){try{return parse(new String(file(c).readFully(),"UTF-8"));}catch(FileNotFoundException e){return unsavedLayout(c);}catch(Exception e){android.util.Log.w("ReplicaTools","Invalid layout; using defaults",e);return unsavedLayout(c);}}
  public static void save(Context c,List<Item> items)throws Exception {String data=encode(items);if(parse(data).size()!=items.size()||items.size()>LIMIT)throw new IllegalArgumentException("Invalid tile selection");AtomicFile f=file(c);FileOutputStream out=null;try{out=f.startWrite();out.write(data.getBytes("UTF-8"));f.finishWrite(out);}catch(Exception e){if(out!=null)f.failWrite(out);throw e;}}
  public static boolean available(Context c,int id){return id!=17||c.getPackageManager().hasSystemFeature(PackageManager.FEATURE_NFC);}
  public static Drawable icon(Context c,Item item){if(item.component()!=null)try{return c.getPackageManager().getActivityIcon(item.component());}catch(Exception ignored){return c.getPackageManager().getDefaultActivityIcon();}return SystemIcons.tile(c,item.builtin(),false,2);}

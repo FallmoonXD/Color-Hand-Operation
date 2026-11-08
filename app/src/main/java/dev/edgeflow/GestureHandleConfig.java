@@ -2,6 +2,7 @@ package dev.edgeflow;
 
 /** Stable identities keep extra handles separate from the migrated primary mappings. */
 public final class GestureHandleConfig {
+    static final int FACTORY_SCHEMA=2;
     public static final String[] IDS={"left","right","extra_left","extra_right","extra2_left","extra2_right"};
     public static boolean isExtra(String id){checkId(id);return id.startsWith("extra");}
     public static boolean isLeft(String id){checkId(id);return id.equals("left")||id.endsWith("_left");}
@@ -13,6 +14,20 @@ public final class GestureHandleConfig {
         return "action_"+id+"_"+direction+"_"+(longer?"long":"short");
     }
     public static String defaultAction(String id,String direction,boolean longer){
+        actionKey(id,direction,longer);
+        if(id.startsWith("extra2_")){
+            if(longer)return direction.equals("straight")?"flashlight":"none";
+            return direction.equals("straight")?"task_switcher":direction.equals("up")?"quick_tools":"none";
+        }
+        if(isExtra(id)){
+            if(longer)return direction.equals("straight")?"flashlight":"none";
+            return direction.equals("straight")?"screenshot":direction.equals("down")?"screen_off":"none";
+        }
+        if(longer)return direction.equals("straight")?"quick_tools":direction.equals("up")?"quick_launcher":"task_switcher";
+        return direction.equals("up")?"recents":"back";
+    }
+    /** Missing slots in backups made through 0.3.17 inherit that release's defaults. */
+    public static String legacyAction(String id,String direction,boolean longer){
         actionKey(id,direction,longer);if(isExtra(id))return "none";
         if(longer)return direction.equals("up")?"widgets":direction.equals("down")?"quick_tools":isLeft(id)?"one_hand":"sidebar";
         return direction.equals("up")?"volume_up":direction.equals("down")?"volume_down":isLeft(id)?"recents":"back";

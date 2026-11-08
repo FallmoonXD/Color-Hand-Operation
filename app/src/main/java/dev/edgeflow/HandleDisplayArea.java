@@ -19,6 +19,22 @@ final class HandleDisplayArea {
         Snapshot(GestureHandleConfig.Area current,GestureHandleConfig.Area portrait){this.current=current;this.portrait=portrait;}
     }
     static Snapshot read(Context context){return read(context,true);}
+    static FactoryHandleDefaults factoryDefaults(Context context){
+        Resources resources=context.getResources();
+        android.util.DisplayMetrics metrics=resources.getDisplayMetrics();
+        GestureHandleConfig.Area portrait;
+        try{
+            portrait=read(context).portrait;
+        }catch(IllegalStateException|UnsupportedOperationException unavailable){
+            // A service can initialize preferences before its window context is attached.
+            int width=Math.min(metrics.widthPixels,metrics.heightPixels);
+            int height=Math.max(metrics.widthPixels,metrics.heightPixels);
+            portrait=GestureHandleConfig.safeArea(width,height,0,dimension(resources,"status_bar_height"),
+                    0,dimension(resources,"navigation_bar_height"));
+        }
+        return new FactoryHandleDefaults(portrait,metrics.density,metrics.xdpi,
+                resources.getConfiguration().smallestScreenWidthDp,android.os.Build.VERSION.SDK_INT);
+    }
     static GestureHandleConfig.Area current(Context context){return read(context,false).current;}
     private static Snapshot read(Context context,boolean portraitRequired){
         WindowManager manager=(WindowManager)context.getSystemService(Context.WINDOW_SERVICE);

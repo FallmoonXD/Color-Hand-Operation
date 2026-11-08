@@ -11,11 +11,13 @@ public final class GestureHandleConfigCheck {
     }
     public static void main(String[] ignored){
         String[] directions={"up","straight","down"};
-        String[][] primary={{"volume_up","recents","volume_down","widgets","one_hand","quick_tools"},{"volume_up","back","volume_down","widgets","sidebar","quick_tools"}};
+        String[][] factory={{"recents","back","back","quick_launcher","quick_tools","task_switcher"},
+                            {"none","screenshot","screen_off","none","flashlight","none"},
+                            {"quick_tools","task_switcher","none","none","flashlight","none"}};
         HashSet<String> keys=new HashSet<>();
         for(String id:GestureHandleConfig.IDS)for(boolean longer:new boolean[]{false,true})for(int direction=0;direction<3;direction++){
             String key=GestureHandleConfig.actionKey(id,directions[direction],longer);keys.add(key);
-            String expected=GestureHandleConfig.isExtra(id)?"none":primary[GestureHandleConfig.isLeft(id)?0:1][(longer?3:0)+direction];
+            String expected=factory[id.startsWith("extra2_")?2:GestureHandleConfig.isExtra(id)?1:0][(longer?3:0)+direction];
             check(expected.equals(GestureHandleConfig.defaultAction(id,directions[direction],longer)),"default mapping "+key);
         }
         check(keys.size()==36,"all six six-direction profiles have distinct preference keys");

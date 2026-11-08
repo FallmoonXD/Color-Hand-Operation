@@ -3,11 +3,44 @@ import android.content.*;import java.util.*;import org.json.*;
 public final class AppPrefs {
  public static final String QUICK_TOOLS_ACTION_ACCENT="quick_tools_action_accent";
  public static SharedPreferences get(Context c){return c.getSharedPreferences("edgeflow",0);}
- public static synchronized void defaults(Context c){SharedPreferences p=get(c);if(p.contains("schema")){HandleSettings.ensureSafeArea(c,p);return;}SharedPreferences.Editor e=p.edit();e.putInt("schema",1).putInt(HandleSettings.VERSION_KEY,HandleSettings.VERSION).putBoolean("enabled",true).putBoolean("left_enabled",true).putBoolean("right_enabled",true).putFloat("handle_width_dp",12.3f).putFloat("handle_start_fraction",.13084841f).putFloat("handle_end_fraction",1f).putFloat("trigger_dp",39.43f).putFloat("long_trigger_dp",87.43f).putInt("long_delay_ms",300).putBoolean("vibration",true).putInt("vibration_strength",0).putBoolean("hide_keyboard",false).putBoolean("hide_home",false).putBoolean("hide_notifications",false).putBoolean("quick_action_short",false).putBoolean("quick_action_long",true).putBoolean("extra_left_enabled",false).putBoolean("extra_right_enabled",false).putBoolean("extra2_left_enabled",false).putBoolean("extra2_right_enabled",false).putFloat("touchpad_speed",1.7f).putFloat("navigation_button_size_dp",58f);
-  for(String side:new String[]{"left","right"}){e.putString("action_"+side+"_straight_short",side.equals("left")?"recents":"back").putString("action_"+side+"_up_short","volume_up").putString("action_"+side+"_down_short","volume_down").putString("action_"+side+"_straight_long",side.equals("left")?"one_hand":"sidebar").putString("action_"+side+"_up_long","widgets").putString("action_"+side+"_down_long","quick_tools");}
-  for(String side:GestureHandleConfig.IDS){if(!GestureHandleConfig.isExtra(side))continue;e.putFloat(side+"_handle_width_dp",12.3f).putFloat(side+"_handle_start_fraction",GestureHandleConfig.defaultStart(side)).putFloat(side+"_handle_end_fraction",GestureHandleConfig.defaultEnd(side));for(String direction:new String[]{"up","straight","down"})for(String kind:new String[]{"short","long"})e.putString("action_"+side+"_"+direction+"_"+kind,"none");}e.apply();
+ public static final String FACTORY_TOOL_ORDER="factory_tool_order";
+ public static synchronized void defaults(Context c){
+  SharedPreferences prefs=get(c);
+  if(!prefs.getAll().isEmpty()){
+   if(!prefs.contains("schema"))prefs.edit().putInt("schema",1).apply();
+   HandleSettings.ensureSafeArea(c,prefs);
+   return;
+  }
+  writeFactoryDefaults(c,true);
  }
- public static String action(Context c,String side,String direction,boolean hold){return get(c).getString("action_"+side+"_"+direction+"_"+(hold?"long":"short"),GestureHandleConfig.defaultAction(side,direction,hold));}
+ static synchronized void resetGestures(Context c){
+  writeFactoryDefaults(c,get(c).getBoolean(FACTORY_TOOL_ORDER,false));
+ }
+ private static void writeFactoryDefaults(Context c,boolean factoryToolOrder){
+  FactoryHandleDefaults factory=HandleDisplayArea.factoryDefaults(c);
+  SharedPreferences.Editor e=get(c).edit().clear();
+  e.putInt("schema",GestureHandleConfig.FACTORY_SCHEMA).putInt(HandleSettings.VERSION_KEY,HandleSettings.VERSION)
+   .putBoolean(FACTORY_TOOL_ORDER,factoryToolOrder).putBoolean("enabled",false).putInt("handle_pair_count",1)
+   .putBoolean("left_enabled",true).putBoolean("right_enabled",true)
+   .putInt("handle_color",0xffffffff).putInt("handle_opacity",0)
+   .putFloat("trigger_dp",factory.shortDistanceDp).putFloat("long_trigger_dp",factory.longDistanceDp)
+   .putInt("long_delay_ms",300).putBoolean("quick_action_short",false).putBoolean("quick_action_long",true)
+   .putBoolean("quick_vibration",true).putBoolean("vibration",true).putInt("vibration_strength",0)
+   .putBoolean("hide_keyboard",false).putBoolean("hide_home",false).putBoolean("hide_notifications",false)
+   .putFloat("touchpad_speed",1.7f).putFloat("navigation_button_size_dp",58f);
+  float[][] angles={{75,25,45,75},{75,20,30,75}};
+  for(int kind=0;kind<angles.length;kind++)
+   for(int index=0;index<angles[kind].length;index++)e.putFloat(GestureAngles.key(kind==1,index),angles[kind][index]);
+  for(String id:GestureHandleConfig.IDS){
+   HandleSettings.Geometry g=factory.geometry(id);
+   e.putBoolean(HandleSettings.linkedKey(id),true).putBoolean(id+"_long_enabled",false)
+    .putFloat(id+"_handle_width_dp",g.width).putFloat(id+"_handle_start_fraction",g.start).putFloat(id+"_handle_end_fraction",g.end);
+   for(String direction:new String[]{"straight","up","down"})for(boolean longer:new boolean[]{false,true})
+    e.putString(GestureHandleConfig.actionKey(id,direction,longer),GestureHandleConfig.defaultAction(id,direction,longer));
+  }
+  e.apply();
+ }
+ public static String action(Context c,String side,String direction,boolean hold){return GestureMapping.resolve(get(c),null,side,direction,hold);}
  public static int handleColor(SharedPreferences p,String id){return p.getInt(id+"_color",p.getInt("handle_color",0xff188dff));}
  /** Older stores used a floating fraction; current UI and archives use integer percent. */
  private static int opacityPercent(Object value) {
@@ -28,7 +61,7 @@ public final class AppPrefs {
  public static JSONObject export(Context c)throws Exception{JSONObject o=new JSONObject();for(Map.Entry<String,?> e:get(c).getAll().entrySet()){Object v=e.getValue();if(e.getKey().equals("handle_opacity"))v=opacityPercent(v);o.put(e.getKey(),v instanceof Set?new JSONArray((Set<?>)v):v);}return o;}
  /** Validate every field before writing any preference. Imported JSON never controls storage types. */
  public static JSONObject validate(JSONObject input)throws Exception{
-  JSONObject out=new JSONObject();Set<String> booleans=new HashSet<>(Arrays.asList("enabled","left_enabled","right_enabled","vibration","haptics","quick_vibration","custom_vibration","long_immediate","hide_landscape","hide_keyboard","hide_when_keyboard","landscape_enabled","navigation_vertical","hide_home","hide_notifications","quick_action_short","quick_action_long","extra_left_enabled","extra_right_enabled","extra2_left_enabled","extra2_right_enabled",QUICK_TOOLS_ACTION_ACCENT));
+  JSONObject out=new JSONObject();Set<String> booleans=new HashSet<>(Arrays.asList("enabled","left_enabled","right_enabled","vibration","haptics","quick_vibration","custom_vibration","long_immediate","hide_landscape","hide_keyboard","hide_when_keyboard","landscape_enabled","navigation_vertical","hide_home","hide_notifications","quick_action_short","quick_action_long","extra_left_enabled","extra_right_enabled","extra2_left_enabled","extra2_right_enabled",QUICK_TOOLS_ACTION_ACCENT,FACTORY_TOOL_ORDER));
   for(Iterator<String> it=input.keys();it.hasNext();){String key=it.next();Object value=input.get(key);
    if(booleans.contains(key)||key.matches("(extra2?_)?(left|right)_long_enabled")||key.matches("(extra2?_)?handles_linked")){if(!(value instanceof Boolean))throw new JSONException(key+" 必须为布尔值");out.put(key,value);continue;}
    if(ActionTarget.isKey(key)){out.put(key,ActionTarget.validate(key,value));continue;}
@@ -44,7 +77,7 @@ public final class AppPrefs {
    if(key.equals("disabled_apps")){if(!(value instanceof JSONArray))throw new JSONException("disabled_apps 必须为数组");JSONArray list=(JSONArray)value;HashSet<String> seen=new HashSet<>();JSONArray clean=new JSONArray();for(int i=0;i<list.length();i++){Object item=list.get(i);if(!(item instanceof String)||!((String)item).matches("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+"))throw new JSONException("无效的停用应用包名");if(seen.add((String)item))clean.put(item);}out.put(key,clean);continue;}
    if(key.equals("excluded_packages")){if(!(value instanceof String))throw new JSONException("excluded_packages 必须为字符串");out.put(key,value);continue;}
    double min,max;boolean integer=false;
-   if(key.equals("schema")){min=max=1;integer=true;}
+   if(key.equals("schema")){min=1;max=GestureHandleConfig.FACTORY_SCHEMA;integer=true;}
    else if(key.equals(HandleSettings.VERSION_KEY)){min=1;max=HandleSettings.VERSION;integer=true;}
    else if(key.equals("handle_pair_count")){min=1;max=3;integer=true;}
    else if(key.equals("long_delay_ms")){min=0;max=1000;integer=true;}
@@ -81,6 +114,11 @@ public final class AppPrefs {
  private static JSONObject prepare(Context c,JSONObject old,JSONObject incoming,boolean replace)throws Exception{
   Map<String,Object> existing=fields(old),values=fields(incoming);GestureHandleConfig.Area portrait=HandleSettings.needsReference(existing,values,replace)?HandleDisplayArea.read(c).portrait:null;
   Map<String,Object> prepared;try{prepared=HandleSettings.prepareImport(existing,values,replace,portrait);}catch(IllegalArgumentException bad){throw new JSONException(bad.getMessage());}
+  prepared.putIfAbsent("schema",1);
+  if(((Number)prepared.get("schema")).intValue()>=GestureHandleConfig.FACTORY_SCHEMA){
+   prepared.putIfAbsent("enabled",false);
+   for(String id:GestureHandleConfig.IDS)prepared.putIfAbsent(id+"_long_enabled",false);
+  }
   JSONObject result=new JSONObject();for(Map.Entry<String,Object> entry:prepared.entrySet())result.put(entry.getKey(),entry.getValue());
   if(result.optDouble("long_trigger_dp",87.43)<result.optDouble("trigger_dp",39.43))throw new JSONException("长滑距离不能小于短滑距离");return result;
  }

@@ -1,11 +1,11 @@
 # Portable OHO settings integration
 
-Implemented in the independent Settings-style `MainActivity`; existing material constants and primary gesture defaults are unchanged. The new settings use the existing `edgeflow` preference file and therefore participate in `ConfigArchive` v2 validation, export/import and rollback.
+The settings live in `MainActivity`. Fresh installs use the OHO+ 9.3.13 phone presets. The new settings use the existing `edgeflow` preference file and therefore participate in `ConfigArchive` v2 validation, export/import and rollback.
 
 | Setting | Key / representation | Default and accepted range |
 | --- | --- | --- |
-| First additional pair | `extra_left`, `extra_right` handle IDs | Disabled; width 12.3 dp; vertical range 0.70–0.90; all actions `none` |
-| Second additional pair | `extra2_left`, `extra2_right` handle IDs | Disabled; width 12.3 dp; vertical range 0.35–0.55; all actions `none` |
+| First additional pair | `extra_left`, `extra_right` handle IDs | Added on demand at the top. Short straight/up/down: screenshot, none, lock. Long straight: flashlight |
+| Second additional pair | `extra2_left`, `extra2_right` handle IDs | Added on demand at the bottom. Short straight/up/down: task switcher, quick tools, none. Long straight: flashlight |
 | Per-handle controls | `<id>_enabled`, `<id>_handle_width_dp`, `<id>_handle_start_fraction`, `<id>_handle_end_fraction` | Boolean; width 2–30 dp; start 0–0.95; end 0.05–1; minimum height 0.05 |
 | Per-handle actions | `action_<id>_<up/straight/down>_<short/long>` | Existing stable action IDs, application component, or a validated system shortcut identity |
 | Touchpad speed | `touchpad_speed` float | 1.7; range 0.5–3.0 |
