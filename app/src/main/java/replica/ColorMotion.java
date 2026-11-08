@@ -7,6 +7,8 @@ import android.view.*;
 public final class ColorMotion {
  public static final TimeInterpolator VOLUME_IN=spring(.7,.2), VOLUME_OUT=spring(.7,0);
  public static final long VOLUME_IN_MS=700,VOLUME_OUT_MS=500;
+ // The COUI sheet exit keeps opacity and scale changing through the visible part of dismissal.
+ static final TimeInterpolator PANEL_EXIT=new android.view.animation.PathInterpolator(.3f,0,1,1);
  public static TimeInterpolator spring(double response,double bounce){
   final double w=2*Math.PI/response,z=1-bounce;
   return new TimeInterpolator(){
@@ -37,8 +39,8 @@ public final class ColorMotion {
  }
  public void enter(){window.getDecorView().post(()->{if(!closing)NativeMaterial.whenReady(window.getDecorView(),()->{if(!closing)animate(1,edge==0?350:VOLUME_IN_MS,edge==0?spring(.3,0):VOLUME_IN,null);});});}
  public void exit(Runnable done){if(closing)return;closing=true;NativeMaterial.cancelEntrance(window.getDecorView());PanelOverlayDialog.beginWindowExit(window);
-  if(edge!=0&&fraction<=0){done.run();return;}
-  animate(0,edge==0?250:VOLUME_OUT_MS,edge==0?spring(.47,0):VOLUME_OUT,done);
+  if(fraction<=0||!ValueAnimator.areAnimatorsEnabled()){done.run();return;}
+  animate(0,edge==0?250:VOLUME_OUT_MS,edge==0?PANEL_EXIT:VOLUME_OUT,done);
  }
  private void animate(float end,long duration,TimeInterpolator curve,Runnable done){
   if(animator!=null){animator.removeAllListeners();animator.cancel();}

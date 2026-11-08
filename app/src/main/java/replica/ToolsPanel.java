@@ -29,7 +29,19 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     public boolean overlay(){return !(getBaseContext() instanceof Activity);}
     private Window getWindow(){return window;}
     private void setContentView(View v){window.setContentView(v);}
-    private void finish(){close.run();}
+    private void closeThen(Runnable action){
+        if(overlay())ToolsOverlay.closeThen(action);
+        else{close.run();action.run();}
+    }
+    private void commandAfterClose(String command){
+        closeThen(()->dev.edgeflow.ActionExecutor.root(this,command,"快速工具"));
+    }
+    private void launchAfterClose(Intent intent){
+        closeThen(()->{
+            try{startActivity(intent);}
+            catch(ActivityNotFoundException|SecurityException unavailable){Toast.makeText(this,"无法打开应用",Toast.LENGTH_SHORT).show();}
+        });
+    }
     private void runOnUiThread(Runnable r){liveHandler.post(()->{if(!closed)r.run();});}
     public void position(){PanelGeometry.position(this,window,dp(260),dp(360),true,gesture);}
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
@@ -209,7 +221,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private final CameraManager.TorchCallback torchCallback=new CameraManager.TorchCallback(){@Override public void onTorchModeChanged(String id,boolean enabled){if(id.equals(cameraId)){torch=enabled;refresh();}}};
     private void act(ToolsConfig.Item item){
         if(closed||hasChildDialogs())return;int id=item.builtin();
-        if(id<0){Intent intent=ToolsConfig.launchIntent(this,item);if(intent==null){Toast.makeText(this,"应用不可用，请在快速工具设置中重新选择",Toast.LENGTH_SHORT).show();return;}try{finish();startActivity(intent);}catch(Exception e){Toast.makeText(this,"无法打开应用",Toast.LENGTH_SHORT).show();}return;}
+        if(id<0){Intent intent=ToolsConfig.launchIntent(this,item);if(intent==null){Toast.makeText(this,"应用不可用，请在快速工具设置中重新选择",Toast.LENGTH_SHORT).show();return;}launchAfterClose(intent);return;}
         android.util.Log.i("ReplicaTools","tool="+id);
         switch(id){
             case 12:command("svc data "+(active(item)?"disable":"enable"));break;
@@ -218,18 +230,18 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
             case 15:command("cmd location set-location-enabled "+(!active(item)));break;
             case 16:command("cmd notification set_dnd "+(active(item)?"all":"priority"));break;
             case 17:command("cmd nfc "+(active(item)?"disable-nfc persist":"enable-nfc"));break;
-            case 18:finish();startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));break;
+            case 18:launchAfterClose(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));break;
             case 19:command("settings put system screen_brightness_mode "+(active(item)?0:1));break;
             case 0:command("if [ \"$(settings get global wifi_on)\" = 1 ]; then svc wifi disable; else svc wifi enable; fi");break;
             case 1:command("CLASSPATH='"+getApplicationInfo().sourceDir.replace("'","'\\''")+"' app_process /system/bin replica.OplusBridge ringer "+((audio.getRingerMode()+1)%3));break;
             case 2:command("if [ \"$(settings get global bluetooth_on)\" = 1 ]; then svc bluetooth disable; else svc bluetooth enable; fi");break;
             case 3:command("settings put system accelerometer_rotation "+(Settings.System.getInt(getContentResolver(),"accelerometer_rotation",0)==0?1:0));break;
-            case 4:finish();command("cmd statusbar expand-notifications");break;
-            case 5:finish();command("am start -n com.oplus.screenrecorder/com.oplus.screenrecorder.MainActivity --es recorder_entrance SystemUIScreenAssistant");break;
-            case 6:finish();command("sleep 0.3; input keyevent 120");break;
+            case 4:commandAfterClose("cmd statusbar expand-notifications");break;
+            case 5:commandAfterClose("am start -n com.oplus.screenrecorder/com.oplus.screenrecorder.MainActivity --es recorder_entrance SystemUIScreenAssistant");break;
+            case 6:commandAfterClose("input keyevent 120");break;
             case 7:try{if(cameraId!=null)cameras.setTorchMode(cameraId,!torch);}catch(Exception e){Toast.makeText(this,"手电筒不可用",Toast.LENGTH_SHORT).show();}break;
             case 8:command("cmd uimode night "+((getResources().getConfiguration().uiMode&48)==32?"no":"yes"));break;
-            case 9:finish();command("input keyevent 26");break;
+            case 9:commandAfterClose("input keyevent 26");break;
             case 10:
                 final int[] seconds={15,30,60,120,300,600};
                 String[] labels={"15 秒","30 秒","1 分钟","2 分钟","5 分钟","10 分钟"};
@@ -239,8 +251,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
                     command("settings put system screen_off_timeout "+(seconds[which]*1000));dialog.dismiss();
                 }).setNegativeButton("取消",null).create());break;
             case 11:
-                Runnable stop=()->dev.edgeflow.ActionExecutor.closeCurrentApp(dev.edgeflow.GestureService.instance(),closeTarget);
-                if(overlay())ToolsOverlay.closeThen(stop);else{finish();stop.run();}
+                closeThen(()->dev.edgeflow.ActionExecutor.closeCurrentApp(dev.edgeflow.GestureService.instance(),closeTarget));
                 break;
         }
     }

@@ -280,8 +280,8 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    int distance=Math.max(root.getHeight(),lastHeight);
    if(!animations()){if(sheet)poseSheet(end,distance);else poseCenter(end,endScale);if(done!=null)done.run();return;}
    animator=android.animation.ValueAnimator.ofFloat(0,1);animator.setDuration(sheet?250:enter?220:140);
-   if(sheet)animator.setInterpolator(enter?new android.view.animation.PathInterpolator(.3f,0,.1f,1):new android.view.animation.PathInterpolator(.3f,0,1,1));
-   else animator.setInterpolator(ColorMotion.spring(.3,0));
+   if(!enter)animator.setInterpolator(ColorMotion.PANEL_EXIT);
+   else animator.setInterpolator(sheet?new android.view.animation.PathInterpolator(.3f,0,.1f,1):ColorMotion.spring(.3,0));
    animator.addUpdateListener(animation->{float t=(float)animation.getAnimatedValue(),value=start+(end-start)*t;
     if(sheet)poseSheet(value,distance);else poseCenter(value,startScale+(endScale-startScale)*t);
    });

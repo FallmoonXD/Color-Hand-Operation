@@ -59,21 +59,25 @@ public final class ActionExecutor {
   if(c==null||id==null||id.equals("none"))return;
   float[] points=anchor==null?replica.NativeState.defaultGesture(c):anchor.clone();
   if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->execute(c,id,points));return;}
-  if(id.equals("back")&&(replica.WidgetOverlay.handleBack()||replica.ToolsOverlay.handleBack()))return;
-  boolean folder=LauncherLayout.isFolderAction(id);
-  preparePanel(folder?"quick_launcher":id);
-  if(!id.equals("quick_launcher"))QuickLauncherOverlay.dismissAll();
-  if(!id.equals("task_switcher"))TaskSwitcherOverlay.dismissAll();
-  if(!id.equals("keyboard_shortcuts"))KeyboardShortcutsOverlay.dismissAll();
-  dismissDialogs();
   try{
+   // The focused window must still exist when Android delivers Back.
+   if(id.equals("back")){
+    if(!replica.WidgetOverlay.handleBack()&&!replica.ToolsOverlay.handleBack())
+     global(c,AccessibilityService.GLOBAL_ACTION_BACK,"input keyevent 4");
+    return;
+   }
+   boolean folder=LauncherLayout.isFolderAction(id);
+   preparePanel(folder?"quick_launcher":id);
+   if(!id.equals("quick_launcher"))QuickLauncherOverlay.dismissAll();
+   if(!id.equals("task_switcher"))TaskSwitcherOverlay.dismissAll();
+   if(!id.equals("keyboard_shortcuts"))KeyboardShortcutsOverlay.dismissAll();
+   dismissDialogs();
    if(folder){QuickLauncherOverlay.showFolder(c,points,id.substring(7));return;}
    if(id.startsWith(ShortcutEntry.PREFIX)){ShortcutPicker.start(c,id);return;}
    if(id.startsWith("app:")){launchApp(c,id.substring(4));return;}
    if(id.startsWith("shortcut:")){Intent in=Intent.parseUri(id.substring(9),Intent.URI_INTENT_SCHEME);in.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);start(c,in);return;}
    AudioManager audio=(AudioManager)c.getSystemService(Context.AUDIO_SERVICE);
    switch(id){
-    case "back":global(c,AccessibilityService.GLOBAL_ACTION_BACK,"input keyevent 4");break;
     case "home":global(c,AccessibilityService.GLOBAL_ACTION_HOME,"input keyevent 3");break;
     case "recents":global(c,AccessibilityService.GLOBAL_ACTION_RECENTS,"input keyevent 187");break;
     case "previous_app":root(c,"input keyevent 187; sleep 0.15; input keyevent 187",title(id));break;
