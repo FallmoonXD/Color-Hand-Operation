@@ -26,9 +26,19 @@ The saved primary ranges were approximately `.04987502..950125` of the old full 
 
 `HandleDisplayArea` reads maximum WindowMetrics for the display and the union of `statusBars | navigationBars | displayCutout` using `getInsetsIgnoringVisibility`. Insets are not added together. IME, mandatory gesture margins and transient bar visibility are excluded from the percentage denominator.
 
-`GestureHandleConfig.Area` is the immutable display-coordinate rectangle consumed by both real input bounds and global preview bounds. A `0..1` span is exactly its top-to-bottom extent. Right-side x is derived from its right boundary, including landscape side navigation/cutout insets. Width remains dp-based.
+A saved `0..1` span runs from the stable top inset to the stable bottom inset in either orientation. Portrait handles use the safe left and right edges. In landscape the input strips, trial/range previews and gesture arrows use x=0 or the physical display width as their outside edge. Revealing the side navigation bar leaves this geometry in place. Floating panels still use the safe rectangle.
 
-Insets changes use `updateViewLayout` while retaining input/preview windows. A real display-size change rebuilds the eight gesture windows, preserves the current preview ownership/draft, and updates the preview to the same new rectangle. Narrow wave windows move horizontally with the safe input edges; their fixed black curve and animation parameters are unchanged. Keyboard visibility still follows the existing `hide_keyboard` preference; it does not resize the handle percentages.
+`HandleStripView` subtracts intersections with the actual display cutout rectangles from the window’s touchable region, gesture exclusions and drawn shape. On PKR110 the landscape camera cutout covers y=594..670; the rest of that edge is usable. Extra handles use the same calculation.
+
+Each handle may have a `<handle>_landscape_handle_width_dp` override. Absence inherits its existing width, including after restoring an older complete backup. Width is in dp, with the same 2..30 range as the base setting. Editing width does not change swipe thresholds. Range edits and trial previews resolve the width for the current orientation.
+
+Insets changes update the existing windows. Rotation rebuilds them and repositions the active preview. The actual width, outside taps and immersive bar behavior were checked in both landscape directions on PKR110. Local results are in `verification/landscape-edge/`.
+
+## Landscape input on PKR110
+
+With a start 10dp from the edge, an 8dp strip left the tap to the test activity. A 12dp strip consumed the tap and recognized the inward swipe once. This held on the left and right in both rotations with three-button and gesture navigation. On the side with a hidden three-button navigation bar, the same swipe also revealed the bar. Assigning “None” to that swipe still revealed the bar, so the reveal did not depend on CHO issuing Back. A cancelled contact dispatched no action.
+
+The landscape cutout splits the test phone's input strip at y=594 and y=670. Hits immediately above and below that interval were recognized. The trial preview showed the same gap. There is no tap replay inside a handle.
 
 ## Version 2 migration and archives
 
@@ -48,7 +58,7 @@ When migration first runs upright in portrait, it uses the actual WindowMetrics 
 
 Public SDK APIs cannot query the real insets of an arbitrary rotation that has not occurred. The resource-derived first-landscape reference is therefore a compatibility rule for this phone, not proof for every foldable, naturally landscape display, external screen or vendor navigation mode. Those device classes require further actual rotation measurements. Normal runtime bounds always use the actual current WindowMetrics, not the portrait migration reference.
 
-## Verification
+## Original migration checks (2026-11-06)
 
 - `validation/handle-safe-area/run.ps1`: **1562 assertions** covering full-span edges, all four rotated layouts, cutout inverse rotation, left/right symmetry, tiny/invalid ranges, and randomized legacy endpoint preservation.
 - `validation/gesture-window/run.ps1`: **40 assertions** against extracted production Service methods. Includes unchanged window identities on inset changes, exact preview/input rectangle equality, no layout movement for unchanged stable insets, rotation, and wave/input edge alignment.
@@ -56,4 +66,4 @@ Public SDK APIs cannot query the real insets of an arbitrary rotation that has n
 - Existing `validation/gesture/run.ps1`: **339 assertions** across gesture state, direction, long-duration boundaries, input timers/cancel and handle identities.
 - All production Java sources compiled against API 35. Total: **2152 assertions**. The config harness uses the documented Gradle mockable Android jar, because the ordinary SDK stub jar intentionally throws at runtime.
 
-ADB checks here read system state and resources. Migration after installation, WindowManager rectangles, rotation and IME behavior require separate device tests.
+The original migration checks read device state and resources. The later landscape tests compared actual WindowManager frames, InputDispatcher regions and input delivered to an immersive test activity.

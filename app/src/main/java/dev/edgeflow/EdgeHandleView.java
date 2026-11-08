@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -13,11 +12,9 @@ import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
-import android.view.View;
-import java.util.Collections;
 
 /** The narrow touch surface owns a complete gesture, even after leaving its bounds. */
-public final class EdgeHandleView extends View {
+public final class EdgeHandleView extends HandleStripView {
     private final GestureService service;
     private final boolean left;
     private final String handleId;
@@ -37,13 +34,12 @@ public final class EdgeHandleView extends View {
     }};
     public EdgeHandleView(GestureService service,boolean left){this(service,left?"left":"right");}
     public EdgeHandleView(GestureService service,String handleId){
-        super(service);this.service=service;this.handleId=handleId;this.left=GestureHandleConfig.isLeft(handleId);setFocusable(false);setClickable(true);
+        super(service,true);this.service=service;this.handleId=handleId;this.left=GestureHandleConfig.isLeft(handleId);setFocusable(false);setClickable(true);
         setContentDescription((handleId.startsWith("extra2_")?"额外第二组":GestureHandleConfig.isExtra(handleId)?"额外":"")+(left?"左侧手势区域":"右侧手势区域"));
         refreshAppearance();
     }
     /** Repaint only when effective ARGB changes; preference updates keep this input window. */
     void refreshAppearance(){SharedPreferences p=service.getSharedPreferences("edgeflow",Context.MODE_PRIVATE);int color=AppPrefs.visibleHandleColor(p,handleId);boolean changed=paint.getColor()!=color;paint.setColor(color);visibility=paint.getAlpha()/255f;if(changed)invalidate();}
-    @Override protected void onSizeChanged(int w,int h,int oldw,int oldh){super.onSizeChanged(w,h,oldw,oldh);setSystemGestureExclusionRects(Collections.singletonList(new Rect(0,0,w,h)));}
     @Override protected void onDraw(Canvas canvas){if(visibility>0){float radius=getWidth()/2f;canvas.drawRoundRect(0,0,getWidth(),getHeight(),radius,radius,paint);}}
     @Override public boolean onTouchEvent(MotionEvent event){
         int action=event.getActionMasked();

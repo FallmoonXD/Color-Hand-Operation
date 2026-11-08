@@ -317,11 +317,22 @@ public final class MainActivity extends Activity {
   GeometryControls(String id,boolean linked){this.id=id;this.linked=linked;}
   void show(HandleSettings.Geometry value){for(GeometryDisplay display:displays)display.show(value);}
   void restore(){show(HandleSettings.read(prefs,id));refreshGeometryPreview();}
-  void commit(HandleSettings.Geometry value){HandleSettings.write(prefs,id,value,linked);show(HandleSettings.read(prefs,id));reload();refreshGeometryPreview();}
+  void commit(HandleSettings.Geometry value,int property){
+   if(property==3)HandleSettings.writeLandscapeWidth(prefs,id,value,linked);else HandleSettings.write(prefs,id,value,linked);
+   show(HandleSettings.read(prefs,id));reload();refreshGeometryPreview();
+  }
  }
  private void geometry(LinearLayout box,String id,boolean linked){
   GeometryControls controls=new GeometryControls(id,linked);
   if(!GestureHandleConfig.isExtra(id))geometrySlider(box,"触摸宽度","小","大",controls,0);
+  LinearLayout modeRow=row(box,"单独设置横屏宽度","关闭时沿用触摸宽度");ColorSwitch separate=new ColorSwitch(this);
+  separate.setContentDescription("单独设置横屏宽度");separate.setChecked(HandleSettings.read(prefs,id).landscapeWidth>0);modeRow.addView(separate);
+  LinearLayout landscape=new LinearLayout(this);landscape.setOrientation(LinearLayout.VERTICAL);box.addView(landscape);
+  geometrySlider(landscape,"横屏触摸宽度","小","大",controls,3);
+  GeometryDisplay visibility=g->landscape.setVisibility(g.landscapeWidth>0?View.VISIBLE:View.GONE);
+  controls.displays.add(visibility);visibility.show(HandleSettings.read(prefs,id));
+  separate.setOnCheckedChangeListener((v,on)->{HandleSettings.Geometry g=HandleSettings.read(prefs,id);controls.commit(g.withLandscapeWidth(on?g.width:0),3);});
+  modeRow.setOnClickListener(v->separate.setChecked(!separate.isChecked()));
   geometrySlider(box,"大小","小","大",controls,1);
   geometrySlider(box,"位置","低","高",controls,2);
   LinearLayout colorRow=row(box,"触钮颜色",null);ColorSwatch swatch=new ColorSwatch(handleColor(id));colorSwatches.put(id,swatch);colorRow.addView(swatch,new LinearLayout.LayoutParams(dp(30),dp(30)));colorRow.setContentDescription("触钮颜色");colorRow.setBackground(ColorDialogBuilder.touchBackground(this,Color.TRANSPARENT,16));colorRow.setOnClickListener(v->showColorPalette(id,linked));
@@ -334,15 +345,15 @@ public final class MainActivity extends Activity {
  private void geometrySlider(LinearLayout box,String title,String low,String high,GeometryControls controls,int property){
   String id=controls.id;boolean linked=controls.linked;
   LinearLayout wrap=sliderBody(box,title,null);TextView number=sliderEndpoints(wrap,title,low,high,"");
-  ColorSlider seek=new ColorSlider(this);seek.setMax(1000);seek.setContentDescription(title);wrap.addView(seek,settingsSliderLayout());
+  ColorSlider seek=new ColorSlider(this);seek.setMax(property==3?28:1000);seek.setContentDescription(title);wrap.addView(seek,settingsSliderLayout());
   HandleSettings.Geometry initial=HandleSettings.read(prefs,id);seek.setProgress(initial.sliderProgress(property));
   final boolean[] cancelled={false},tracking={false};final HandleSettings.Geometry[] baseline={initial},draft={initial};
-  GeometryDisplay display=value->{if(!tracking[0])seek.setProgress(value.sliderProgress(property));sliderNumber(number,seek,property==0?format(value.width,"dp",false):property==1?format(value.size(),"%",false):format(value.sliderProgress(2)/1000f,"%",false));};controls.displays.add(display);
+  GeometryDisplay display=value->{if(!tracking[0])seek.setProgress(value.sliderProgress(property));sliderNumber(number,seek,property==3?format(value.effectiveLandscapeWidth(),"dp",false):property==0?format(value.width,"dp",false):property==1?format(value.size(),"%",false):format(value.sliderProgress(2)/1000f,"%",false));};controls.displays.add(display);
   seek.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN)cancelled[0]=false;if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)cancelled[0]=true;return false;});
   seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-   public void onProgressChanged(SeekBar bar,int progress,boolean user){if(!user)return;HandleSettings.Geometry start=tracking[0]?baseline[0]:HandleSettings.read(prefs,id);draft[0]=start.withSliderProgress(property,progress);if(tracking[0]){controls.show(draft[0]);showGeometryPreview(id,linked,draft[0]);}else controls.commit(draft[0]);}
+   public void onProgressChanged(SeekBar bar,int progress,boolean user){if(!user)return;HandleSettings.Geometry start=tracking[0]?baseline[0]:HandleSettings.read(prefs,id);draft[0]=start.withSliderProgress(property,progress);if(tracking[0]){controls.show(draft[0]);showGeometryPreview(id,linked,draft[0]);}else controls.commit(draft[0],property);}
    public void onStartTrackingTouch(SeekBar bar){tracking[0]=true;cancelled[0]=false;baseline[0]=HandleSettings.read(prefs,id);draft[0]=baseline[0];showGeometryPreview(id,linked,draft[0]);}
-   public void onStopTrackingTouch(SeekBar bar){tracking[0]=false;if(!sliderCancelled(bar,cancelled[0]))controls.commit(draft[0]);else controls.restore();}
+   public void onStopTrackingTouch(SeekBar bar){tracking[0]=false;if(!sliderCancelled(bar,cancelled[0]))controls.commit(draft[0],property);else controls.restore();}
   });
   display.show(initial);
  }
@@ -754,7 +765,9 @@ public final class MainActivity extends Activity {
  private void trialPage(){
   boolean service=GestureService.instance()!=null;
   if(!service)link(card(),"开启无障碍服务","试划使用实际边缘触钮",()->open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
-  else note(prefs.getBoolean("enabled",true)?"从屏幕边缘的触钮向内滑动。此页只显示判定结果。":"手势总开关已关闭。");
+  else if(!prefs.getBoolean("enabled",true))note("手势总开关已关闭。");
+  else if(getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE&&HandleSettings.hideInLandscape(prefs))note("横屏触钮已隐藏。可在「高级设置 → 隐藏触钮」中关闭「横屏模式」。");
+  else note("屏幕边缘的色条是触摸范围。从色条内起手，向内滑动查看判定结果。");
   LinearLayout box=group(trialPackage==null?"全局配置":packageTitle(trialPackage));box.setPadding(dp(18),dp(18),dp(18),dp(18));
   TextView result=text("等待手势",18,fg),details=text("",14,secondary);
   result.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);details.setPadding(0,dp(10),0,0);box.addView(result);box.addView(details);

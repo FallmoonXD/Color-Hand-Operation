@@ -63,7 +63,7 @@ public final class AppPrefs {
    else if(key.equals("long_trigger_dp")){min=40;max=180;}
    else if(key.equals("direction_angle_degrees")){min=15;max=60;}
    else if(GestureAngles.isKey(key)){min=key.contains("_outer_")?75:5;max=key.contains("_outer_")?85:70;}
-   else if(key.matches("((extra2?_)?(left|right)_)?handle_width_dp")){min=2;max=30;}
+   else if(key.matches("((extra2?_)?(left|right)_)?handle_width_dp")||key.matches("(extra2?_)?(left|right)_landscape_handle_width_dp")){min=2;max=30;}
    else if(key.matches("((extra2?_)?(left|right)_)?handle_start_fraction")){min=0;max=.95;}
    else if(key.matches("((extra2?_)?(left|right)_)?handle_end_fraction")){min=.05;max=1;}
    else if(key.equals("handle_center_fraction")){min=0;max=1;}

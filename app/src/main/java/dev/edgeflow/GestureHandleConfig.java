@@ -22,6 +22,10 @@ public final class GestureHandleConfig {
         public final int displayWidth,displayHeight,left,top,right,bottom;
         private Area(int width,int height,int l,int t,int r,int b){displayWidth=width;displayHeight=height;left=l;top=t;right=r;bottom=b;}
         public int width(){return right-left;}public int height(){return bottom-top;}
+        public boolean landscape(){return displayWidth>displayHeight;}
+        public int handleEdge(boolean leftSide){
+            return leftSide?(landscape()?0:left):(landscape()?displayWidth:right);
+        }
         @Override public boolean equals(Object value){if(!(value instanceof Area))return false;Area a=(Area)value;return displayWidth==a.displayWidth&&displayHeight==a.displayHeight&&left==a.left&&top==a.top&&right==a.right&&bottom==a.bottom;}
         @Override public int hashCode(){return java.util.Arrays.hashCode(new int[]{displayWidth,displayHeight,left,top,right,bottom});}
         @Override public String toString(){return displayWidth+"x"+displayHeight+" ["+left+","+top+"-"+right+","+bottom+"]";}
@@ -40,11 +44,12 @@ public final class GestureHandleConfig {
         boolean left=isLeft(id);
         if(!Float.isFinite(widthDp))widthDp=12.3f;if(!Float.isFinite(start))start=defaultStart(id);if(!Float.isFinite(end))end=defaultEnd(id);
         if(!Float.isFinite(density)||density<=0)density=1;
-        int width=Math.min(Math.max(2,Math.round(widthDp*density)),Math.max(2,area.width()/8));
+        int availableWidth=area.handleEdge(false)-area.handleEdge(true);
+        int width=Math.min(Math.max(2,Math.round(widthDp*density)),Math.max(2,availableWidth/8));
         start=Math.max(0,Math.min(.95f,start));end=Math.max(start+.05f,Math.min(1,end));
         int y=area.top+Math.min(area.height()-1,Math.round(start*area.height()));
         int bottom=Math.max(y+1,Math.min(area.bottom,area.top+Math.round(end*area.height())));
-        return new int[]{left?area.left:area.right-width,y,width,bottom-y};
+        return new int[]{area.handleEdge(left)-(left?0:width),y,width,bottom-y};
     }
     /** Preserve legacy physical endpoints; a clipped tiny region expands inward only. */
     public static float[] migrateFractions(float start,float end,Area portrait){

@@ -35,22 +35,24 @@ public final class WindowUpdateCheck {
 
         wm.resetCounts();s.configure();s.main.flush();check(wm.removes==8&&wm.adds==8&&s.left!=left&&s.leftWave!=wave,"real configuration change still rebuilds display-dependent windows");
         check(s.rootReads==roots+2,"configuration rebuild refreshes accessibility state once");
-        View preview=new View();wm.addView(preview,new WindowManager.LayoutParams(1,1,2032,16,-3));s.handlePreviews.put("left",preview);s.handlePreviewRegions.put("left",new float[]{12.3f,.2f,.5f});
+        View preview=new View();wm.addView(preview,new WindowManager.LayoutParams(1,1,2032,16,-3));s.handlePreviews.put("left",preview);s.handlePreviewRegions.put("left",new float[]{12.3f,.2f,.5f,8f});
         EdgeHandleView kept=s.left;GestureWaveView keptWave=s.leftWave;int beforeRoots=s.rootReads;wm.resetCounts();
         HandleDisplayArea.value=GestureHandleConfig.safeArea(1264,2780,0,150,0,50);s.pendingGeometry=true;s.queue();s.main.flush();
         check(s.left==kept&&s.leftWave==keptWave&&wm.adds==0&&wm.removes==0,"inset changes retain all real and preview window identities");
         check(preview.params.x==s.left.params.x&&preview.params.y==s.left.params.y&&preview.params.width==s.left.params.width&&preview.params.height==s.left.params.height,"global preview equals actual touch region after safe-area change");
         check(s.rootReads==beforeRoots,"safe geometry update does not fetch accessibility roots");
         wm.resetCounts();s.pendingGeometry=true;s.queue();s.main.flush();check(wm.updates==0,"hidden bar or IME event with unchanged stable insets causes no layout jump");
-        HandleDisplayArea.value=GestureHandleConfig.safeArea(2780,1264,140,0,154,0);s.pendingGeometry=true;s.queue();s.main.flush();
-        check(s.screenWidth==2780&&s.screenHeight==1264&&s.left.params.x==140&&s.right.params.x+s.right.params.width==2626,"rotation uses current landscape cutout/navigation safe edges");
+        change(s,"left_landscape_handle_width_dp",8f);HandleDisplayArea.value=GestureHandleConfig.safeArea(2780,1264,140,0,154,0);s.pendingGeometry=true;s.queue();s.main.flush();
+        check(s.screenWidth==2780&&s.screenHeight==1264&&s.left.params.x==0&&s.right.params.x+s.right.params.width==2780,"both landscape edges ignore the lateral insets");
+        check(s.left.params.width==28&&preview.params.width==28&&s.right.params.width==Math.round(12.3f*3.5f),"independent landscape width matches preview and peer still inherits");
         check(s.handlePreviews.get("left")==preview&&preview.params.y==s.left.params.y&&preview.params.height==s.left.params.height,"rotation retains owned preview and updates it to the same new frame");
-        check(s.leftWave.params.x==140&&s.rightWave.params.x+s.rightWave.params.width==2626,"wave drawing edges remain aligned with safe input edges");
-        s.allowed=false;s.visibility();check(s.right.getVisibility()==View.GONE&&s.extra2Right.getVisibility()==View.GONE,"screen/lock/global policy hides active handles");
+        check(s.leftWave.params.x==0&&s.rightWave.params.x+s.rightWave.params.width==2780,"wave drawing edges remain aligned with physical input edges");
+        GestureTrial.active=new GestureTrial();s.allowed=false;s.visibility();check(preview.getVisibility()==View.GONE,"trial shading follows hidden hit windows");GestureTrial.active=null;s.visibility();check(preview.getVisibility()==View.VISIBLE,"range editor can preview a disabled side");check(s.right.getVisibility()==View.GONE&&s.extra2Right.getVisibility()==View.GONE,"screen/lock/global policy hides active handles");
         wm.resetCounts();s.connected=false;s.queue();s.main.flush();check(wm.adds==0&&wm.removes==0&&wm.updates==0,"queued work after disconnect cannot recreate windows");
         System.out.println("PASS "+checks+" production window update assertions");
     }
 }
+class GestureTrial {static GestureTrial active;static GestureTrial current(){return active;}}
 class NavigationOverlay {static void displayChanged(GestureHandleConfig.Area area,int dpi){}}
 class TouchpadOverlay {static void displayChanged(GestureHandleConfig.Area area,int dpi){}}
 class MagnificationOverlay {static void displayChanged(GestureHandleConfig.Area area){}}
@@ -64,6 +66,7 @@ class Looper {static final Looper main=new Looper();static Looper myLooper(){ret
 class Handler {final ArrayList<Runnable> tasks=new ArrayList<>();Looper getLooper(){return Looper.main;}void removeCallbacks(Runnable task){tasks.remove(task);}void post(Runnable task){tasks.add(task);}void postDelayed(Runnable task,long delay){tasks.add(task);}void flush(){ArrayList<Runnable> copy=new ArrayList<>(tasks);tasks.clear();for(Runnable task:copy)task.run();}}
 class View {static final int VISIBLE=0,GONE=8;int visibility=VISIBLE;WindowManager.LayoutParams params;int getVisibility(){return visibility;}boolean isShown(){return visibility==VISIBLE&&params!=null;}void setVisibility(int value){visibility=value;}Object getLayoutParams(){return params;}}
 class EdgeHandleView extends View {
+    boolean acceptsPoint(float x,float y){return true;}
     final GestureService service;final String id;int cancels,paints,lastColor;
     EdgeHandleView(GestureService service,String id){this.service=service;this.id=id;refreshAppearance();}
     void cancel(){cancels++;}void refreshAppearance(){int color=service.prefs.getInt(id+"_color",0xff188dff);if(lastColor!=color){lastColor=color;paints++;}}

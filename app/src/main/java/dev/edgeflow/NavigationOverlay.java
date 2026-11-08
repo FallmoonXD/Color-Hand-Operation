@@ -53,7 +53,8 @@ public final class NavigationOverlay {
   int minY=Math.max(area.top,navHeight),maxY=Math.min(area.bottom,area.displayHeight-navHeight);
   if(maxY-minY<2*gutter+gripHeight+gripGap+actions.length){minY=area.top;maxY=area.bottom;}
   int clearance=service instanceof GestureService gestures?gestures.visibleHandleWidth(left):0;
-  int inset=Math.min(clearance,Math.max(0,area.width()-1));
+  int safeMargin=left?area.left-area.handleEdge(true):area.handleEdge(false)-area.right;
+  int inset=Math.min(Math.max(0,clearance-safeMargin),Math.max(0,area.width()-1));
   int roomPerKey=(maxY-minY-2*gutter-gripHeight-gripGap)/actions.length;
   int size=Math.max(1,Math.min(dp(NavigationConfig.size(service)),Math.min(area.width()-inset,roomPerKey)));
   int height=2*gutter+gripHeight+gripGap+actions.length*size;

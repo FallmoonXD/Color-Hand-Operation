@@ -11,31 +11,39 @@ final class HandleSettings {
     static final String VERSION_KEY="handle_geometry_version";
     static final int VERSION=2;
     static final class Geometry {
-        final float width, start, end;
+        final float width, start, end, landscapeWidth;
         Geometry(float width, float start, float end) {
+            this(width,start,end,0);
+        }
+        Geometry(float width,float start,float end,float landscapeWidth){
             if(!Float.isFinite(width))width=12.3f;if(!Float.isFinite(start))start=0;if(!Float.isFinite(end))end=1;
             this.width = Math.max(2, Math.min(30, width));
             this.start = Math.max(0, Math.min(.95f, start));
             this.end = Math.max(this.start + .05f, Math.min(1, end));
+            this.landscapeWidth=Float.isFinite(landscapeWidth)&&landscapeWidth>0?Math.max(2,Math.min(30,landscapeWidth)):0;
         }
+        float effectiveLandscapeWidth(){return landscapeWidth==0?width:landscapeWidth;}
+        Geometry withLandscapeWidth(float value){return new Geometry(width,start,end,value);}
         float size() { return end - start; }
         float position() { return (1 - size()) < .0001f ? .5f : start / (1 - size()); }
         Geometry resized(float size) {
             size = Math.max(.05f, Math.min(1, size));
             float top = Math.max(0, Math.min(1 - size, (start + end - size) / 2));
-            return new Geometry(width, top, top + size);
+            return new Geometry(width, top, top + size,landscapeWidth);
         }
         Geometry moved(float position) {
             float top = Math.max(0, Math.min(1, position)) * (1 - size());
-            return new Geometry(width, top, top + size());
+            return new Geometry(width, top, top + size(),landscapeWidth);
         }
         int sliderProgress(int property) {
+            if(property==3)return Math.round(effectiveLandscapeWidth()-2);
             float fraction = property == 0 ? (width - 2) / 28 : property == 1 ? (size() - .05f) / .95f : 1 - position();
             return Math.round(Math.max(0, Math.min(1, fraction)) * 1000);
         }
         Geometry withSliderProgress(int property, int progress) {
+            if(property==3)return withLandscapeWidth(2+Math.max(0,Math.min(28,progress)));
             float fraction = Math.max(0, Math.min(1000, progress)) / 1000f;
-            return property == 0 ? new Geometry(2 + 28 * fraction, start, end) : property == 1 ? resized(.05f + .95f * fraction) : moved(1 - fraction);
+            return property == 0 ? new Geometry(2 + 28 * fraction, start, end,landscapeWidth) : property == 1 ? resized(.05f + .95f * fraction) : moved(1 - fraction);
         }
     }
     static Geometry read(SharedPreferences p, String id) {
@@ -52,9 +60,9 @@ final class HandleSettings {
             float center = number(p,"handle_center_fraction", .5654242f), height = number(p,"handle_height_fraction", .8691516f);
             start = center - height / 2; end = center + height / 2;
         }
-        return new Geometry(width, start, end);
+        return new Geometry(width, start, end,number(p,id+"_landscape_handle_width_dp",0));
     }
-    static Geometry migrateLegacyGeometry(Geometry legacy,GestureHandleConfig.Area portrait){float[] range=GestureHandleConfig.migrateFractions(legacy.start,legacy.end,portrait);return new Geometry(legacy.width,range[0],range[1]);}
+    static Geometry migrateLegacyGeometry(Geometry legacy,GestureHandleConfig.Area portrait){float[] range=GestureHandleConfig.migrateFractions(legacy.start,legacy.end,portrait);return new Geometry(legacy.width,range[0],range[1],legacy.landscapeWidth);}
     /** Snapshot first: the shared center/height alias must affect both sides before removal. */
     static Map<String,Object> migrateMap(Map<String,?> old,GestureHandleConfig.Area portrait){
         Map<String,Object> result=new HashMap<>(old);if(version(old)>=VERSION)return result;
@@ -125,11 +133,25 @@ final class HandleSettings {
     static String linkedKey(String id) { return id.startsWith("extra2_") ? "extra2_handles_linked" : id.startsWith("extra_") ? "extra_handles_linked" : "handles_linked"; }
     static boolean linked(SharedPreferences p, String id) {
         Geometry a = read(p, id), b = read(p, peer(id));
-        boolean same = Math.abs(a.width - b.width) < .001f && Math.abs(a.start - b.start) < .0001f && Math.abs(a.end - b.end) < .0001f;
+        boolean same = Math.abs(a.width - b.width) < .001f && Math.abs(a.landscapeWidth-b.landscapeWidth)<.001f && Math.abs(a.start - b.start) < .0001f && Math.abs(a.end - b.end) < .0001f;
         return p.getBoolean(linkedKey(id), same);
+    }
+    static boolean hideInLandscape(SharedPreferences p){
+        return p.getBoolean("hide_landscape",false)||!p.getBoolean("landscape_enabled",true);
     }
     private static void put(SharedPreferences.Editor e, String id, Geometry g) {
         e.putFloat(id + "_handle_width_dp", g.width).putFloat(id + "_handle_start_fraction", g.start).putFloat(id + "_handle_end_fraction", g.end);
+        putLandscapeWidth(e,id,g.landscapeWidth);
+    }
+    private static void putLandscapeWidth(SharedPreferences.Editor e,String id,float width){
+        if(width>0)e.putFloat(id+"_landscape_handle_width_dp",width);
+        else e.remove(id+"_landscape_handle_width_dp");
+    }
+    static void writeLandscapeWidth(SharedPreferences p,String id,Geometry geometry,boolean both){
+        SharedPreferences.Editor e=p.edit();
+        putLandscapeWidth(e,id,geometry.landscapeWidth);
+        if(both)putLandscapeWidth(e,peer(id),geometry.landscapeWidth);
+        e.apply();
     }
     static void write(SharedPreferences p, String id, Geometry g, boolean both) {
         SharedPreferences.Editor e = p.edit();
@@ -168,6 +190,6 @@ final class HandleSettings {
         }
         return regions;
     }
-    private static void putPreview(java.util.Map<String,float[]> regions,String id,Geometry geometry){regions.put(id,new float[]{geometry.width,geometry.start,geometry.end});}
+    private static void putPreview(java.util.Map<String,float[]> regions,String id,Geometry geometry){regions.put(id,new float[]{geometry.width,geometry.start,geometry.end,geometry.effectiveLandscapeWidth()});}
     private HandleSettings() {}
 }

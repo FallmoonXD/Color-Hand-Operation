@@ -60,38 +60,43 @@ public final class GestureService extends AccessibilityService implements Shared
     public static void beginHandlePreview(Context context,String id,float width,float start,float end){
         GestureService s=running;if(s==null||!java.util.Arrays.asList(GestureHandleConfig.IDS).contains(id))return;
         if(!Float.isFinite(width)||!Float.isFinite(start)||!Float.isFinite(end))return;
-        s.main.post(()->{s.handlePreviewOwner.replace(HandlePreviewOwner.TEMPORARY);s.showHandlePreview(id,width,start,end,false);});
+        s.main.post(()->{s.handlePreviewOwner.replace(HandlePreviewOwner.TEMPORARY);s.showHandlePreview(id,new float[]{width,start,end,width},false);});
     }
     /** Settings-only visuals follow their Activity lifecycle; no real handle state is edited. */
     public static void setSettingsHandlePreviews(Context context,Object owner,java.util.Map<String,float[]> regions){
         GestureService s=running;if(s==null||owner==null)return;java.util.HashMap<String,float[]> copy=new java.util.HashMap<>();
         for(java.util.Map.Entry<String,float[]> entry:regions.entrySet()){
-            float[] value=entry.getValue();if(!java.util.Arrays.asList(GestureHandleConfig.IDS).contains(entry.getKey())||value==null||value.length!=3)continue;
-            if(Float.isFinite(value[0])&&Float.isFinite(value[1])&&Float.isFinite(value[2]))copy.put(entry.getKey(),value.clone());
+            float[] value=entry.getValue();if(!java.util.Arrays.asList(GestureHandleConfig.IDS).contains(entry.getKey())||value==null||(value.length!=3&&value.length!=4))continue;
+            float landscapeWidth=value.length==4?value[3]:value[0];
+            if(Float.isFinite(value[0])&&Float.isFinite(value[1])&&Float.isFinite(value[2])&&Float.isFinite(landscapeWidth))
+                copy.put(entry.getKey(),new float[]{value[0],value[1],value[2],landscapeWidth});
         }
         s.main.post(()->{
             if(!s.connected||!s.screenOn){s.removeHandlePreviews();return;}s.handlePreviewOwner.replace(owner);s.main.removeCallbacks(s.clearHandlePreviews);
             for(String id:new java.util.ArrayList<>(s.handlePreviews.keySet()))if(!copy.containsKey(id)){s.remove(s.handlePreviews.remove(id));s.handlePreviewRegions.remove(id);}
-            for(java.util.Map.Entry<String,float[]> entry:copy.entrySet()){float[] value=entry.getValue();s.showHandlePreview(entry.getKey(),value[0],value[1],value[2],true);}
+            for(java.util.Map.Entry<String,float[]> entry:copy.entrySet()){float[] value=entry.getValue();s.showHandlePreview(entry.getKey(),value,true);}
         });
     }
     /** Cleanup is checked when executed, after any newer Activity has claimed the windows. */
     public static void endSettingsHandlePreviews(Object owner){GestureService s=running;if(s!=null)s.main.post(()->{if(s.handlePreviewOwner.release(owner))s.removeHandlePreviews();});}
     public static void endHandlePreview(){GestureService s=running;if(s!=null)s.main.post(s.clearHandlePreviews);}
-    private void showHandlePreview(String id,float width,float start,float end,boolean settingsPage){
+    private int[] previewBounds(String id,float[] value){
+        return GestureHandleConfig.bounds(id,handleArea.landscape()?value[3]:value[0],value[1],value[2],screenDensity,handleArea);
+    }
+    private void showHandlePreview(String id,float[] value,boolean settingsPage){
         if(!connected||!screenOn)return;
-        if(handleArea==null)return;int[] b=GestureHandleConfig.bounds(id,width,start,end,getResources().getDisplayMetrics().density,handleArea);
+        if(handleArea==null)return;int[] b=previewBounds(id,value);
         try{
-            handlePreviewRegions.put(id,new float[]{width,start,end});
+            handlePreviewRegions.put(id,value);
             View view=handlePreviews.get(id);WindowManager.LayoutParams lp=parameters(b[2],b[3],b[0],b[1]);lp.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;lp.setTitle(getString(R.string.app_name)+" 触控区域预览 "+id);
-            if(view==null){view=new View(this);view.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);view.setBackground(replica.PanelStyle.shape(this,(HandlePreviewView.groupColor(this,id)&0xffffff)|0x88000000,3));handlePreviews.put(id,view);windows.addView(view,lp);}else windows.updateViewLayout(view,lp);
-            main.removeCallbacks(clearHandlePreviews);if(!settingsPage)main.postDelayed(clearHandlePreviews,10000);
+            if(view==null){view=new HandleStripView(this,false);view.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);view.setBackground(replica.PanelStyle.shape(this,(HandlePreviewView.groupColor(this,id)&0xffffff)|0x88000000,3));handlePreviews.put(id,view);windows.addView(view,lp);}else windows.updateViewLayout(view,lp);
+            syncPreviewVisibility(id,view);main.removeCallbacks(clearHandlePreviews);if(!settingsPage)main.postDelayed(clearHandlePreviews,10000);
         }catch(RuntimeException e){Log.w(TAG,"Cannot show handle preview",e);removeHandlePreviews();}
     }
     private void removeHandlePreviews(){handlePreviewOwner.clear();main.removeCallbacks(clearHandlePreviews);for(View view:handlePreviews.values())remove(view);handlePreviews.clear();handlePreviewRegions.clear();}
     private void updateHandlePreviews(){
         for(java.util.Map.Entry<String,float[]> entry:handlePreviewRegions.entrySet()){
-            View view=handlePreviews.get(entry.getKey());if(view==null)continue;float[] value=entry.getValue();int[] b=GestureHandleConfig.bounds(entry.getKey(),value[0],value[1],value[2],screenDensity,handleArea);
+            View view=handlePreviews.get(entry.getKey());if(view==null)continue;int[] b=previewBounds(entry.getKey(),entry.getValue());
             WindowManager.LayoutParams old=(WindowManager.LayoutParams)view.getLayoutParams();if(old.x==b[0]&&old.y==b[1]&&old.width==b[2]&&old.height==b[3])continue;
             WindowManager.LayoutParams next=new WindowManager.LayoutParams();next.copyFrom(old);next.x=b[0];next.y=b[1];next.width=b[2];next.height=b[3];try{windows.updateViewLayout(view,next);}catch(RuntimeException error){Log.w(TAG,"Cannot update handle preview",error);}
         }
@@ -187,7 +192,7 @@ public final class GestureService extends AccessibilityService implements Shared
     public boolean canStartGesture(){
         if(!connected||!screenOn||!prefs.getBoolean("enabled",true))return false;
         if(((KeyguardManager)getSystemService(KEYGUARD_SERVICE)).isKeyguardLocked())return false;
-        if((prefs.getBoolean("hide_landscape",false)||!prefs.getBoolean("landscape_enabled",true))&&getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE)return false;
+        if(getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE&&HandleSettings.hideInLandscape(prefs))return false;
         if(imeVisible&&prefs.getBoolean("hide_keyboard",prefs.getBoolean("hide_when_keyboard",false)))return false;
         String visible=visibilityPackage.isEmpty()?foreground:visibilityPackage;
         if(notificationsFocused&&prefs.getBoolean("hide_notifications",false))return false;
@@ -210,7 +215,7 @@ public final class GestureService extends AccessibilityService implements Shared
             EdgeHandleView h=handles[i];
             if(h==null||!h.isShown())continue;
             WindowManager.LayoutParams p=(WindowManager.LayoutParams)h.getLayoutParams();
-            if(x>=p.x&&x<p.x+p.width&&y>=p.y&&y<p.y+p.height)return h;
+            if(x>=p.x&&x<p.x+p.width&&y>=p.y&&y<p.y+p.height&&h.acceptsPoint(x,y))return h;
         }
         return null;
     }
@@ -228,7 +233,12 @@ public final class GestureService extends AccessibilityService implements Shared
         boolean show=canStartGesture(),wasVisible=handlesVisible;handlesVisible=show;EdgeHandleView[] handles=handleViews();
         for(int i=0;i<handles.length;i++){EdgeHandleView handle=handles[i];if(handle==null)continue;int visibility=show&&handleEnabled(GestureHandleConfig.IDS[i])?View.VISIBLE:View.GONE;
             if(handle.getVisibility()!=visibility){if(visibility!=View.VISIBLE)handle.cancel();handle.setVisibility(visibility);}}
+        for(java.util.Map.Entry<String,View> entry:handlePreviews.entrySet())syncPreviewVisibility(entry.getKey(),entry.getValue());
         if(!show&&wasVisible)cancelGesture();
+    }
+    private void syncPreviewVisibility(String id,View preview){
+        int visibility=GestureTrial.current()==null||(handlesVisible&&handleEnabled(id))?View.VISIBLE:View.GONE;
+        if(preview.getVisibility()!=visibility)preview.setVisibility(visibility);
     }
     private float number(String key,float fallback){try{return prefs.getFloat(key,fallback);}catch(ClassCastException e){try{return prefs.getInt(key,(int)fallback);}catch(ClassCastException ignored){return fallback;}}}
     private void rebuild(){
@@ -240,8 +250,8 @@ public final class GestureService extends AccessibilityService implements Shared
             int waveWidth=Math.min(screenWidth/2,Math.round(135f*getResources().getDisplayMetrics().density/3.5f+8*getResources().getDisplayMetrics().density));
             leftWave=new GestureWaveView(this);rightWave=new GestureWaveView(this);
             leftWave.setOnApplyWindowInsetsListener((v,insets)->{scheduleGeometryRefresh();return insets;});
-            WindowManager.LayoutParams lp=parameters(waveWidth,screenHeight,handleArea.left,0);lp.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;lp.setTitle(getString(R.string.app_name)+" 手势绘制 L");windows.addView(leftWave,lp);
-            WindowManager.LayoutParams rp=parameters(waveWidth,screenHeight,handleArea.right-waveWidth,0);rp.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;rp.setTitle(getString(R.string.app_name)+" 手势绘制 R");windows.addView(rightWave,rp);
+            WindowManager.LayoutParams lp=parameters(waveWidth,screenHeight,handleArea.handleEdge(true),0);lp.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;lp.setTitle(getString(R.string.app_name)+" 手势绘制 L");windows.addView(leftWave,lp);
+            WindowManager.LayoutParams rp=parameters(waveWidth,screenHeight,handleArea.handleEdge(false)-waveWidth,0);rp.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;rp.setTitle(getString(R.string.app_name)+" 手势绘制 R");windows.addView(rightWave,rp);
             // Keep all six narrow input windows, hiding disabled segments before add.
             // Stable add order preserves extra2 > extra > primary overlap priority.
             handlesVisible=canStartGesture();left=addHandle("left");right=addHandle("right");
@@ -256,6 +266,7 @@ public final class GestureService extends AccessibilityService implements Shared
     private int[] handleBounds(String id){
         boolean extra=GestureHandleConfig.isExtra(id);float density=getResources().getDisplayMetrics().density;
         float width=number(id+"_handle_width_dp",extra?12.3f:number("handle_width_dp",12.3f));
+        if(handleArea.landscape())width=number(id+"_landscape_handle_width_dp",width);
         float start=number(id+"_handle_start_fraction",extra?GestureHandleConfig.defaultStart(id):number("handle_start_fraction",.13084841f)),end=number(id+"_handle_end_fraction",extra?GestureHandleConfig.defaultEnd(id):number("handle_end_fraction",1f));
         if(!extra&&(prefs.contains("handle_center_fraction")||prefs.contains("handle_height_fraction"))){float center=number("handle_center_fraction",.5654242f),height=number("handle_height_fraction",.8691516f);start=center-height/2;end=center+height/2;}
         return GestureHandleConfig.bounds(id,width,start,end,density,handleArea);
@@ -271,7 +282,7 @@ public final class GestureService extends AccessibilityService implements Shared
         try{windows.updateViewLayout(handle,next);}catch(RuntimeException e){Log.w(TAG,"Cannot update handle geometry "+id,e);}
     }
     private void updateWaveLayout(GestureWaveView view,boolean isLeft){
-        if(view==null||handleArea==null)return;WindowManager.LayoutParams old=(WindowManager.LayoutParams)view.getLayoutParams();int x=isLeft?handleArea.left:handleArea.right-old.width;if(old.x==x)return;
+        if(view==null||handleArea==null)return;WindowManager.LayoutParams old=(WindowManager.LayoutParams)view.getLayoutParams();int x=isLeft?handleArea.handleEdge(true):handleArea.handleEdge(false)-old.width;if(old.x==x)return;
         view.clear();WindowManager.LayoutParams next=new WindowManager.LayoutParams();next.copyFrom(old);next.x=x;try{windows.updateViewLayout(view,next);}catch(RuntimeException error){Log.w(TAG,"Cannot align wave with safe edge",error);}
     }
     private WindowManager.LayoutParams parameters(int width,int height,int x,int y){
