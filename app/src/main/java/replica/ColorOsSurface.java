@@ -7,7 +7,6 @@ public final class ColorOsSurface extends Drawable implements Drawable.Callback 
  private final OriginalMaterial optics;private final float corner;private final NativeMaterial nativeMaterial;
  private final MaterialThemeBinding theme;
  private Rect[] pills;
- private Path pillClip;
  public ColorOsSurface(Context c,float radius,int style){
   corner=PanelStyle.dp(c,radius);
   optics=new OriginalMaterial(c,radius,style,true);
@@ -25,11 +24,10 @@ public final class ColorOsSurface extends Drawable implements Drawable.Callback 
  public void setPillBounds(Rect[] shapes){
   if(shapes.length>6)throw new IllegalArgumentException("A rail supports one grip and five actions");
   if(java.util.Arrays.equals(pills,shapes))return;
-  pills=new Rect[shapes.length];pillClip=new Path();
+  pills=new Rect[shapes.length];
   float[] data=new float[6*4];
   for(int i=0;i<shapes.length;i++){
-   Rect r=pills[i]=new Rect(shapes[i]);float radius=Math.min(r.width(),r.height())*.5f;
-   pillClip.addRoundRect(r.left,r.top,r.right,r.bottom,radius,radius,Path.Direction.CW);
+   Rect r=pills[i]=new Rect(shapes[i]);
    int at=4*i;data[at]=r.exactCenterX();data[at+1]=r.exactCenterY();data[at+2]=r.width()*.5f;data[at+3]=r.height()*.5f;
   }
   optics.setPills(pills,data);
@@ -42,12 +40,10 @@ public final class ColorOsSurface extends Drawable implements Drawable.Callback 
   invalidateSelf();
  }
  @Override public void draw(Canvas canvas){
+  if(pills!=null&&pills.length==0)return;
   theme.track();optics.themeChanged();
-  int save=0;
-  if(pillClip!=null){save=canvas.save();canvas.clipPath(pillClip);}
   if(nativeMaterial!=null){nativeMaterial.themeChanged();nativeMaterial.draw(canvas,optics);}
   else optics.draw(canvas);
-  if(pillClip!=null)canvas.restoreToCount(save);
  }
  @Override protected void onBoundsChange(Rect bounds){
   optics.setBounds(bounds);

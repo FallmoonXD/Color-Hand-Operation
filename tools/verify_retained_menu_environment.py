@@ -6,7 +6,7 @@ before=d.preferences();font=d.sh('settings','get','system','font_scale').strip()
 def back():d.sh('input','keyevent','4');time.sleep(.55)
 def sheet():return d.wait_node('选择操作')
 def lower_group_still_visible():
- tree=d.ui();assert any(n.get('content-desc')=='设置导航键面板' and d.visible(n) for n in tree.iter('node'))
+ tree=d.ui();assert any(n.get('content-desc')=='设置虚拟导航键' and d.visible(n) for n in tree.iter('node'))
  assert not any(n.get('content-desc')=='无' and d.visible(n) for n in tree.iter('node'))
 try:
  d.open_action_chooser('right');d.find_item('设置应用快捷方式',True);d.click_item('设置快速工具',True);d.wait_node('快速工具')

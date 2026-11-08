@@ -4,12 +4,12 @@
     {
       "file": "src\\main\\assets\\coloros-live-optics.agsl",
       "source_sha256": "c21b0b04a569c1a20962bce4de0e936dbe4b69f8bcff9a1de4f7487078d5bbbb",
-      "sha256": "79a0126e092543b2cad1d7e2331e6282473cb428c0c489eb556b97ee96cd1974"
+      "sha256": "6a39b4bb849c210b188e0ebdaeedf6ee059efb57503c1efaf997ab94a73ab9ef"
     },
     {
       "file": "src\\main\\assets\\coloros-native-live.agsl",
       "source_sha256": "38f0ed1781645de6a5465ad863ecdad456ea81b1f3e4306174bb9cb8b0e51629",
-      "sha256": "1b81fa7aac6032e9042c696a4ac40da426ae61344d3191bdf0c75f19f142b09e"
+      "sha256": "ea3c7abcc643557a3d3b96c9b52a7698697f574d014f1adeb82aef5546e5a112"
     },
     {
       "file": "src\\main\\assets\\coloros-qs-material.agsl",

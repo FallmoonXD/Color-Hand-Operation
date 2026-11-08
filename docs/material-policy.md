@@ -2,7 +2,7 @@
 
 The material lives in `ColorOsSurface`, `NativeMaterial`, `OriginalMaterial` and `LightSurface`. The November 7 update removes the bright rectangle produced by the inset highlight in all three AGSL renderers. Panel windows reserve space outside their content frame for the system shadow. On PKR110 the quick tools window required more than the default 112 px to fade to the page background.
 
-The navigation rail supplies the shader with the grip and button contours in window coordinates. Each gets its own rim. All buttons sample the same captured frame. The clickable slots are larger than the glass shapes, with room for a small shadow. The spaces between buttons remain transparent.
+The navigation rail supplies the shader with the grip and button contours in window coordinates. The renderer computes antialiased coverage from the actual capsule boundary, and paints a separate soft shadow behind it. Each gets its own rim. All buttons sample the same captured frame. The clickable slots are larger than the glass shapes, with room for a small shadow. The spaces between buttons remain transparent.
 
 The captured panel uses the ColorOS side volume bar's 5% white light, scaled by backdrop luminance. It fades across the actual rim. Inner controls share the result from the panel beneath them. Quick tools keeps its separate shading between controls. Menus, sheets and launcher header cards fade their own surface color into the underlying material.
 

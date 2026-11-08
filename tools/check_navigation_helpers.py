@@ -16,6 +16,7 @@ class NavigationHelpers(unittest.TestCase):
   self.state={'enabled':True,'left_enabled':True,'right_enabled':True,'action_right_straight_short':'back'}
   self.calls=[]
   self.patches=[patch.object(d,'sh',side_effect=AssertionError('Host test must never access ADB')),
+   patch.object(d,'_display_size',(1264,2780)),
    patch.object(d,'preferences',side_effect=lambda *args:copy.deepcopy(self.state)),
    patch.object(d,'main_home',side_effect=lambda:self.calls.append(('home',))),
    patch.object(d,'click_item',side_effect=lambda *args:self.calls.append(('click',)+args)),
@@ -49,10 +50,12 @@ class NavigationHelpers(unittest.TestCase):
   self.state.update(left_enabled=False,right_enabled=False)
   with self.assertRaisesRegex(AssertionError,'No enabled handle'):d.action_settings('快速工具')
   self.assertEqual(self.calls,[])
- def test_old_preview_route_opens_gear_then_preview(self):
-  d.main_link('任务切换器');self.assertIn(('click','设置任务切换器',True),self.calls);self.assertIn(('click','预览任务切换器',True),self.calls)
+ def test_old_preview_route_opens_settings_then_preview(self):
+  d.main_link('任务切换器')
+  self.assertEqual(self.calls,[('home',),('click','面板与工具',True),('click','任务切换器',True),('click','预览任务切换器',True)])
  def test_old_settings_route_does_not_open_preview(self):
-  d.main_link('导航键设置');self.assertIn(('click','设置导航键面板',True),self.calls);self.assertNotIn(('click','预览导航键',True),self.calls)
+  d.main_link('导航键设置')
+  self.assertEqual(self.calls,[('home',),('click','面板与工具',True),('click','虚拟导航键',True)])
  def test_mapping_restored_to_original_not_fixed_back(self):
   self.state['action_right_straight_short']='home'
   def restore(title,*args):self.assertEqual(title,'主屏幕');self.state['action_right_straight_short']='home'

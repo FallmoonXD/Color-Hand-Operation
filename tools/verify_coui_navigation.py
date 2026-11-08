@@ -21,7 +21,7 @@ def run():
     before = {name: d.preferences(name) for name in stores}
     d.main_home()
     d.click_item('面板与工具', True)
-    tools = ('快速工具', '小组件', '快速启动', '任务切换器', '虚拟触控板', '导航键面板', '键盘快捷方式')
+    tools = ('快速工具', '小组件', '快速启动', '任务切换器', '虚拟触控板', '虚拟导航键', '键盘快捷方式')
     for title in tools:
         d.click_item(title, True)
         d.wait_node(title)

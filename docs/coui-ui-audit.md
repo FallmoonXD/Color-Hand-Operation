@@ -49,7 +49,7 @@
 | `launcher_columns` 列数 | **短单选底部列表**，与快速启动编辑内使用同一组选项，当前值有明确选中标记 | **收回单独一页。** 2、3、4 三个常规值适合一次选择；只在已有 5 列时提供兼容值。旧页面恢复和原路返回应映射到同一设置项，不偷偷改列数 |
 | `tasks` 任务切换器设置 | 普通设置页；“显示任务数量”是带当前值的单选行，实际选择用短底部列表，另有预览 | **收起整页重复数字。** 与浮层“数量”用同一列表和选中状态；8–13 与范围外已有值均能显示，取消保持原值 |
 | `touchpad` 虚拟触控板设置 | 声音设置式连续滑条，慢／快、倍率当前值和预览入口各自明确 | **保留连续输入。** 0.5–3 倍速度可在正在使用的触控板上生效；预览中的移动面与设置滑条外观区分 |
-| `navigation` 导航键面板设置 | 实色设置页，按键触控范围用滑条，顺序用可排序列表，左右边缘各有一个实机预览入口 | 保留 1–5 个按键和已有顺序。玻璃圆钮在点击范围内留出 6dp 的边距。行尾菜单可更换动作、前移、后移或移除 |
+| `navigation` 虚拟导航键设置 | 实色设置页，按键触控范围用滑条，顺序用可排序列表，左右边缘各有一个实机预览入口 | 保留 1–5 个按键和已有顺序。玻璃圆钮在点击范围内留出 6dp 的边距。行尾菜单可更换动作、前移、后移或移除 |
 | `trial` 手势试划 | 实色设置页，识别结果放在单张卡片内，点「判定数据」展开距离、角度、时间和阈值 | 手势由屏幕边缘的实际触钮判定，结果行显示动作与配置来源。进入、退出试划或取消触摸时都要清理本次接触 |
 | `overrides`、`override_picker`、`app_gestures` 按应用设置 | 已配置应用用跳转行，新增复用应用搜索列表，详情按触钮分组列出短滑和长滑 | 每个位置显示「继承」或「覆盖」和动作名称。动作目录保留「继承全局」和显式「无」，详情可试划该应用的映射 |
 | `navigation_action` 选择导航动作 | 从设置进的全页分组单选目录，复用动作行；标题区分添加与替换 | **保留独立选择。** 只列导航允许的动作，排除其他位置已用项，保留正在替换的当前项。返回交还原行焦点，写入失败保留选择上下文 |
@@ -78,13 +78,13 @@
 | 快速启动编辑 | 侧边栏编辑态，格内显示选中与编辑标记，添加、选项、完成采用 COUI 编辑工具栏 | 当前通过多个文字按钮和上下文菜单完成。目标把浏览与整理分开，重排、跨页、移入／移出文件夹、命名和删除各有可见入口。编辑保存时保留已有应用、系统动作和动态快捷方式的身份 |
 | 任务切换器 `TaskSwitcherOverlay` | **Launcher Recents 小型任务卡列表**。面板取景一次，卡片内的真实任务预览按自身比例显示 | **重做信息主次。** 当前列表把缩略图／图标放在名称旁；目标让预览可辨，应用名和图标辅助识别。窄屏用单列，横屏有足够宽度再用多列。受保护／无快照显示图标，严禁伪造预览；刷新、数量、任务消失、Root 超时与空结果分别可操作 |
 | 虚拟触控板 `TouchpadOverlay` | **指针输入工具**。跨应用外壳、实色或高对比触摸面、独立不可触摸的指针 Canvas | 指针速度和状态放在标题附近；触摸面占主要面积，单击／双击／长按作为替代按钮，滚动模式、光标居中、返回、关闭作辅操作。轻点、双指滚动、连续注入、临时让出触摸和异常恢复都要测 |
-| 边缘导航键 `NavigationOverlay` | 1–5 个玻璃按钮沿触发侧竖排。窗口共用一次跨应用取景，按每个按钮轮廓裁切，间距透明 | 顶部小把手可上下拖动，点按关闭。按钮避开触钮和屏幕缺口，横屏同样竖排。返回作用于底下的应用，长按主屏幕打开助手 |
+| 虚拟导航键 `NavigationOverlay` | 1–5 个玻璃按钮沿触发侧竖排，共用一次取景。每个轮廓分别计算抗锯齿覆盖，间距透明，白色图形按笔画重心居中 | 顶部小把手可上下拖动，点按关闭。按钮避开触钮和屏幕缺口，横屏同样竖排。返回作用于底下的应用，长按主屏幕打开助手 |
 | 键盘快捷键 `KeyboardShortcutsOverlay` | **当前应用的命令列表**。浮层头部明确目标应用；行内并列命令名、组合键及编辑入口 | 浏览用短行和键帽样式，空列表给添加按钮；编辑状态仅显示管理动作。非输入面板沿用既有焦点策略，真正编辑时表单获得焦点。派发前重新核对目标应用，避免切前台后送错按键 |
 | 系统放大／可控放大镜 `MagnificationOverlay` | 系统放大交给 Android；放大镜控制区是**辅助操作浮条**，含移动视野面、倍率、加减、关闭 | 控制区外壳用面板材质，读数与触摸面高对比；系统负责放大内容。长按重复、系统外部倍率变化、跟随手势、服务不可用和关闭后的原状态独立验证 |
 | 屏幕自由移动 `ScreenMoveOverlay` | **截图交互画布＋局部工具栏**。主体一次采集当前画面并平移，提示和关闭只在工具栏绘制 | 主体保持原截图清晰度。区分受保护内容、采集失败和目标应用切换；松手先撤掉截图再映射点击，取消不注入。关闭释放 buffer，局部面板不吞掉目标坐标 |
 | 边缘触钮、范围预览与箭头 | 输入窗保持窄条；设置预览用独立不可触摸窗口；OHO+ 波形与箭头用不拦触的 Canvas | **保留 CHO 的手势语言。** 三对触钮的范围、优先级、预览与实际输入分开。箭头按当前触点抬高三个图标尺寸、上下边缘限位；命中、方向、浮层锚点仍使用原触点。取消、回弹、息屏时清除 |
 
-运行时入口、页面指示与子层生命周期分别见[快速工具](../app/src/main/java/replica/ToolsPanel.java)、[小组件](../app/src/main/java/replica/WidgetPanel.java)、[快速启动](../app/src/main/java/dev/edgeflow/QuickLauncherOverlay.java)、[任务切换](../app/src/main/java/dev/edgeflow/TaskSwitcherOverlay.java)、[触控板](../app/src/main/java/dev/edgeflow/TouchpadOverlay.java)、[导航浮条](../app/src/main/java/dev/edgeflow/NavigationOverlay.java)、[键盘命令](../app/src/main/java/dev/edgeflow/KeyboardShortcutsOverlay.java)、[放大镜](../app/src/main/java/dev/edgeflow/MagnificationOverlay.java)、[画面平移](../app/src/main/java/dev/edgeflow/ScreenMoveOverlay.java)和[音量](../app/src/main/java/replica/VolumeOverlay.java)。
+运行时入口、页面指示与子层生命周期分别见[快速工具](../app/src/main/java/replica/ToolsPanel.java)、[小组件](../app/src/main/java/replica/WidgetPanel.java)、[快速启动](../app/src/main/java/dev/edgeflow/QuickLauncherOverlay.java)、[任务切换](../app/src/main/java/dev/edgeflow/TaskSwitcherOverlay.java)、[触控板](../app/src/main/java/dev/edgeflow/TouchpadOverlay.java)、[虚拟导航键](../app/src/main/java/dev/edgeflow/NavigationOverlay.java)、[键盘命令](../app/src/main/java/dev/edgeflow/KeyboardShortcutsOverlay.java)、[放大镜](../app/src/main/java/dev/edgeflow/MagnificationOverlay.java)、[画面平移](../app/src/main/java/dev/edgeflow/ScreenMoveOverlay.java)和[音量](../app/src/main/java/replica/VolumeOverlay.java)。
 
 ## 菜单与临时界面
 

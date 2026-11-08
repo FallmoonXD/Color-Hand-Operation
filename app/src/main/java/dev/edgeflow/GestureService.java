@@ -201,6 +201,16 @@ public final class GestureService extends AccessibilityService implements Shared
     boolean canStartGesture(String id){return handleEnabled(id)&&canStartGesture();}
     boolean canStartGesture(String id,String pkg){return canStartGesture(id)&&!excluded(pkg);}
     private EdgeHandleView[] handleViews(){return new EdgeHandleView[]{left,right,extraLeft,extraRight,extra2Left,extra2Right};}
+    int visibleHandleWidth(boolean leftSide){
+        int width=0;
+        EdgeHandleView[] views=handleViews();
+        for(int i=0;i<views.length;i++){
+            EdgeHandleView handle=views[i];
+            if(handle!=null&&handle.isShown()&&GestureHandleConfig.isLeft(GestureHandleConfig.IDS[i])==leftSide)
+                width=Math.max(width,handle.getLayoutParams().width);
+        }
+        return width;
+    }
     private void updateVisibility(){
         boolean show=canStartGesture(),wasVisible=handlesVisible;handlesVisible=show;EdgeHandleView[] handles=handleViews();
         for(int i=0;i<handles.length;i++){EdgeHandleView handle=handles[i];if(handle==null)continue;int visibility=show&&handleEnabled(GestureHandleConfig.IDS[i])?View.VISIBLE:View.GONE;
