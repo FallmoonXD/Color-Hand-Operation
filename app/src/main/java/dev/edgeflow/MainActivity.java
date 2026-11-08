@@ -14,6 +14,9 @@ public final class MainActivity extends Activity {
  private LinearLayout content;private String screen="home";private int bg,card,fg,secondary;private final ArrayList<String> history=new ArrayList<>();private final HashMap<String,String> searches=new HashMap<>();private String externalGestureKey;private boolean externalSelect;private ScrollView scroller;private String renderedScreen;private String colorHandle="left";private boolean colorBoth,angleMirrored;private final HashMap<String,Integer> scrollPositions=new HashMap<>();private int renderGeneration;private static boolean migrationRunning;private String archiveStatus="";
  private replica.ColorAppPickerPage appDirectory;private final HashMap<String,Integer> appPositions=new HashMap<>();private ShortcutPicker.Session shortcutSession;private android.content.SharedPreferences prefs;private int navigationEditIndex=-1;private String renderedPageData;private final java.util.concurrent.ExecutorService io=java.util.concurrent.Executors.newSingleThreadExecutor();
  private final HashMap<String,Runnable> directionSummaries=new HashMap<>();
+ private boolean checkingUpdate,updateFailed;
+ private String updateStatus="";
+ private ReleaseUpdate availableUpdate;
  private final android.content.SharedPreferences.OnSharedPreferenceChangeListener pagePreferenceChanged=(store,key)->{if(pageHost!=null)pageHost.post(()->{if(uiActive&&!isFinishing()&&!isDestroyed()&&!Objects.equals(renderedPageData,pageData()))render();});};
  private void observePageData(boolean observe){for(String name:new String[]{"edgeflow","replica_widgets","edgeflow_launcher"}){android.content.SharedPreferences store=getSharedPreferences(name,0);if(observe)store.registerOnSharedPreferenceChangeListener(pagePreferenceChanged);else store.unregisterOnSharedPreferenceChangeListener(pagePreferenceChanged);}}
  private int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
@@ -152,7 +155,7 @@ public final class MainActivity extends Activity {
  private void divider(LinearLayout box){if(box.getChildCount()==0||"settings_divider".equals(box.getChildAt(box.getChildCount()-1).getTag()))return;View line=new View(this);line.setTag("settings_divider");line.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);line.setBackgroundColor((fg&0x00ffffff)|0x10000000);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,Math.max(1,dp(.5f)));lp.leftMargin=dp(16);lp.rightMargin=dp(16);box.addView(line,lp);}
  private LinearLayout group(String heading){if(!heading.isEmpty()){TextView label=text(heading,14,secondary);label.setTypeface(ColorOsTheme.typeface(this,500));label.setPadding(dp(6),dp(10),0,dp(8));content.addView(label);}return card();}
  private LinearLayout row(LinearLayout box,String title,String detail){divider(box);LinearLayout row=new LinearLayout(this);row.setBaselineAligned(false);row.setGravity(Gravity.CENTER_VERTICAL);boolean hasDetail=detail!=null&&!detail.isEmpty();row.setPadding(dp(16),dp(hasDetail?10:4),dp(12),dp(hasDetail?10:4));row.setMinimumHeight(dp(hasDetail?64:56));LinearLayout labels=new LinearLayout(this);labels.setOrientation(1);TextView rowTitle=text(title,16,fg);rowTitle.setTypeface(ColorOsTheme.typeface(this,500));rowTitle.setLineSpacing(0,1.05f);labels.addView(rowTitle);if(detail!=null&&!detail.isEmpty()){TextView sub=text(detail,13,secondary);sub.setLineSpacing(0,1.2f);sub.setPadding(0,dp(4),dp(4),0);labels.addView(sub);}row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));box.addView(row);return row;}
- private void link(LinearLayout box,String title,String detail,Runnable action){LinearLayout r=row(box,title,detail);ImageView arrow=new ImageView(this);arrow.setImageDrawable(replica.SystemIcons.raw(this,"com.android.settings:ic_arrow_forward"));arrow.setScaleType(ImageView.ScaleType.FIT_CENTER);arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);Runnable tint=()->arrow.setColorFilter(ColorOsTheme.secondary(this));tint.run();ColorOsTheme.watch(arrow,tint);r.addView(arrow,new LinearLayout.LayoutParams(dp(18),dp(18)));r.setContentDescription(title);r.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x15808080),null,replica.PanelStyle.shape(this,Color.WHITE,16)));r.setOnClickListener(v->action.run());}
+ private LinearLayout link(LinearLayout box,String title,String detail,Runnable action){LinearLayout r=row(box,title,detail);ImageView arrow=new ImageView(this);arrow.setImageDrawable(replica.SystemIcons.raw(this,"com.android.settings:ic_arrow_forward"));arrow.setScaleType(ImageView.ScaleType.FIT_CENTER);arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);Runnable tint=()->arrow.setColorFilter(ColorOsTheme.secondary(this));tint.run();ColorOsTheme.watch(arrow,tint);r.addView(arrow,new LinearLayout.LayoutParams(dp(18),dp(18)));r.setContentDescription(title);r.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x15808080),null,replica.PanelStyle.shape(this,Color.WHITE,16)));r.setOnClickListener(v->action.run());return r;}
  private void toggle(LinearLayout box,String title,String detail,String key,boolean def){LinearLayout r=row(box,title,detail);ColorSwitch sw=new ColorSwitch(this);sw.setChecked(prefs.getBoolean(key,def));sw.setContentDescription(title);r.addView(sw);sw.setOnCheckedChangeListener((v,on)->{prefs.edit().putBoolean(key,on).apply();renderedPageData=pageData();reload();});r.setOnClickListener(v->sw.setChecked(!sw.isChecked()));}
  private void reload(){GestureService.reload(this);}
  private void home(){new HomeControls();}
@@ -253,6 +256,49 @@ public final class MainActivity extends Activity {
   ImageView appIcon=new ImageView(this);appIcon.setImageDrawable(getApplicationInfo().loadIcon(getPackageManager()));identity.addView(appIcon,new LinearLayout.LayoutParams(dp(68),dp(68)));
   TextView name=text(appName(),20,fg);name.setTypeface(ColorOsTheme.typeface(this,600));name.setPadding(0,dp(14),0,dp(4));identity.addView(name);identity.addView(text(version,14,secondary));
   note("按 One Hand Operation+ 的操作方式设计，采用 ColorOS 风格界面。");
+  aboutLinks(version);
+ }
+ private void aboutLinks(String installed){
+  LinearLayout links=card();
+  LinearLayout check=link(links,"检查更新",updateStatus.isEmpty()?null:updateStatus,()->checkUpdate(installed));
+  check.setEnabled(!checkingUpdate);
+  if(!updateStatus.isEmpty())check.setStateDescription(updateStatus);
+  ReleaseUpdate release=availableUpdate;
+  if(release!=null){
+   if(release.apkUrl!=null)link(links,"下载 "+release.version+" APK",null,()->openWeb(release.apkUrl));
+   link(links,"查看更新说明",null,()->openWeb(release.notesUrl));
+  }else if(updateFailed){
+   link(links,"查看发布页",null,()->openWeb(ReleaseUpdate.LATEST));
+  }
+  link(links,"GitHub 主页","FallmoonXD/Color-Hand-Operation",()->openWeb(ReleaseUpdate.HOME));
+ }
+ private void checkUpdate(String installed){
+  if(checkingUpdate)return;
+  checkingUpdate=true;updateFailed=false;availableUpdate=null;updateStatus="正在连接 GitHub…";
+  render();
+  io.execute(()->{
+   try{
+    ReleaseUpdate release=ReleaseUpdate.check(installed);
+    runOnUiThread(()->finishUpdate(release));
+   }catch(IOException|JSONException|SecurityException failure){
+    android.util.Log.w("ReleaseUpdate","Could not check the latest release",failure);
+    runOnUiThread(()->finishUpdate(null));
+   }
+  });
+ }
+ private void finishUpdate(ReleaseUpdate release){
+  if(isFinishing()||isDestroyed())return;
+  checkingUpdate=false;
+  updateFailed=release==null;
+  if(updateFailed)updateStatus="检查失败，点此重试或查看发布页";
+  else if(release.comparedToInstalled>0){availableUpdate=release;updateStatus="发现新版本 "+release.version;}
+  else if(release.comparedToInstalled==0)updateStatus="已是最新版本";
+  else updateStatus="当前版本高于最新正式版 "+release.version;
+  if(screen.equals("about"))render();
+ }
+ private void openWeb(String url){
+  try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}
+  catch(ActivityNotFoundException|SecurityException unavailable){toast("没有可用的应用打开此链接");}
  }
  private void preview(String id){GestureService s=GestureService.instance();if(s!=null)ActionExecutor.execute(s,id,replica.NativeState.defaultGesture(this));else if(id.equals("widgets"))open(new Intent(this,replica.WidgetActivity.class));else toast("请先开启无障碍服务");}
  private void side(String id){

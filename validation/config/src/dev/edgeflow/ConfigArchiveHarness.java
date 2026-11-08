@@ -102,6 +102,7 @@ public final class ConfigArchiveHarness {
   legacyOpacityAndShortcutNames();
   quickToolActionAccent();
   factorySettings();
+  releaseUpdateChecks();
   Memory v1=seeded("v1");Map<String,?> launcherBefore=v1.prefs("edgeflow_launcher").getAll(),shortcutsBefore=v1.prefs("edgeflow_shortcuts").getAll();ConfigArchive.restore(v1,archive(1));check(!AppPrefs.get(v1).getBoolean("enabled",true)&&AppPrefs.get(v1).getFloat("trigger_dp",0)==45.5f,"v1 imports typed preferences");check(launcherBefore.equals(v1.prefs("edgeflow_launcher").getAll())&&shortcutsBefore.equals(v1.prefs("edgeflow_shortcuts").getAll()),"v1 preserves newer panel settings");check(new File(v1.files,"tools-layout-v1.json").isFile()&&replica.ToolsConfig.load(v1).size()==2,"tools use actual tools-layout-v1.json path");
   Memory v2=seeded("v2");Map<String,?> widgetsBefore=v2.prefs("replica_widgets").getAll();ConfigArchive.restore(v2,archive(2));JSONObject exported=ConfigArchive.export(v2);check(v2.prefs("edgeflow_launcher").getInt("columns",0)==5&&v2.prefs("edgeflow_launcher").getInt("recent_limit",0)==20,"v2 restores launcher and task switcher settings");check(v2.prefs("edgeflow_shortcuts").contains("app:com.example")&&!v2.prefs("edgeflow_shortcuts").contains("app:com.old"),"v2 replaces shortcuts namespace");JSONObject widget=exported.getJSONObject("widgets").getJSONArray("items").getJSONObject(0);check(widget.getString("component").equals("com.example.widget/com.example.widget.Provider")&&widget.getInt("sourceId")==93&&!widget.has("id"),"widget export maps provider and excludes live ID field");check(exported.getJSONObject("widgets").getInt("height")==400&&exported.getJSONObject("widgets").getInt("pages")==2,"widget export reads replica_widgets/layout_v3 and height_v4");
   Memory target=seeded("target");target.prefs("edgeflow").edit().putFloat("left_handle_start_fraction",.8f).putFloat("left_handle_end_fraction",.9f).apply();ConfigArchive.restore(target,new JSONObject(exported.toString()));check(!target.prefs("edgeflow").contains("left_handle_start_fraction"),"v2 clears target-only gesture overrides");check(state(v2).equals(state(target)),"v2 serialize-import-export roundtrip");check(widgetsBefore.equals(target.prefs("replica_widgets").getAll()),"portable import never changes installed widget IDs");
@@ -340,6 +341,26 @@ public final class ConfigArchiveHarness {
 
  static String toolKeys(Memory c){
   return replica.ToolsConfig.load(c).stream().map(item->item.key).collect(java.util.stream.Collectors.joining(","));
+ }
+ static void releaseUpdateChecks()throws Exception{
+  JSONObject asset=new JSONObject().put("name","ColorHandOperation-0.3.18.apk").put("state","uploaded");
+  JSONObject release=new JSONObject().put("tag_name","v0.3.18").put("draft",false).put("prerelease",false).put("assets",new JSONArray().put(asset));
+  ReleaseUpdate update=ReleaseUpdate.parse("0.3.9",release);
+  check(update.comparedToInstalled>0&&update.apkUrl.equals(ReleaseUpdate.HOME+"/releases/download/v0.3.18/ColorHandOperation-0.3.18.apk"),"release comparison is numeric and the APK URL matches the published asset");
+  check(ReleaseUpdate.parse("0.3.18",release).comparedToInstalled==0&&ReleaseUpdate.parse("0.4.0",release).comparedToInstalled<0,"same or newer local versions never trigger a download");
+  asset.put("state","new");
+  check(ReleaseUpdate.parse("0.3.9",release).apkUrl==null,"unfinished APK uploads are ignored");
+  asset.put("state","uploaded").put("name","ColorHandOperation-0.3.18-source.zip");
+  update=ReleaseUpdate.parse("0.3.9",release);
+  check(update.apkUrl==null&&update.notesUrl.equals(ReleaseUpdate.HOME+"/releases/tag/v0.3.18"),"release notes remain available when the APK is missing");
+  for(String flag:new String[]{"draft","prerelease"}){
+   boolean rejected=false;try{ReleaseUpdate.parse("0.3.9",copy(release).put(flag,true));}catch(JSONException expected){rejected=true;}
+   check(rejected,"ignore "+flag+" releases");
+  }
+  for(String tag:new String[]{"v0.3.19-rc1","v0.3","v0.3.18/download"}){
+   boolean rejected=false;try{ReleaseUpdate.parse("0.3.9",copy(release).put("tag_name",tag));}catch(JSONException expected){rejected=true;}
+   check(rejected,"reject invalid release tag "+tag);
+  }
  }
  static void factorySettings()throws Exception{
   Memory fresh=new Memory("factory");AppPrefs.defaults(fresh);Prefs p=fresh.prefs("edgeflow");
