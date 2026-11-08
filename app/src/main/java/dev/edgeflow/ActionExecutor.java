@@ -100,9 +100,9 @@ public final class ActionExecutor {
     case "assistant":start(c,new Intent(Intent.ACTION_VOICE_COMMAND));break;
     case "search":root(c,"input keyevent 84",title(id));break;
     case "menu":root(c,"input keyevent 82",title(id));break;
-    case "media_previous":media(audio,KeyEvent.KEYCODE_MEDIA_PREVIOUS);break;
-    case "media_play_pause":media(audio,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);break;
-    case "media_next":media(audio,KeyEvent.KEYCODE_MEDIA_NEXT);break;
+    case "media_previous":dispatchMediaKey(audio,KeyEvent.KEYCODE_MEDIA_PREVIOUS);break;
+    case "media_play_pause":dispatchMediaKey(audio,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);break;
+    case "media_next":dispatchMediaKey(audio,KeyEvent.KEYCODE_MEDIA_NEXT);break;
     case "scroll_up":scroll(c,false);break;case "scroll_down":scroll(c,true);break;
     case "browser_forward":root(c,"input keyevent 125",title(id));break;
     case "close_app":closeCurrentApp(c, ForegroundAppCloser.target(c));break;
@@ -150,7 +150,7 @@ public final class ActionExecutor {
   if (!accepted) message(service, "系统未允许屏幕放大，请检查无障碍服务状态");
  }
  private static void global(AccessibilityService c,int id,String fallback){if(!c.performGlobalAction(id))root(c,fallback,"系统动作");}
- private static void media(AudioManager audio,int key){audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,key));audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,key));}
+ public static void dispatchMediaKey(AudioManager audio,int key){audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,key));audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,key));}
  private static void rotate(Context c,int add){int current=Settings.System.getInt(c.getContentResolver(),Settings.System.USER_ROTATION,0);root(c,"settings put system accelerometer_rotation 0; settings put system user_rotation "+((current+add)%4),"屏幕旋转");}
  private static void toggle(Context c,String ns,String key,String label){root(c,"if [ \"$(settings get "+ns+" "+key+")\" = 1 ]; then settings put "+ns+" "+key+" 0; else settings put "+ns+" "+key+" 1; fi",label);}
  private static String quote(String s){return "'"+s.replace("'","'\\''")+"'";}

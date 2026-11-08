@@ -34,8 +34,9 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     public void position(){PanelGeometry.position(this,window,dp(260),dp(360),true,gesture);}
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private AudioManager audio; private BrightnessControl brightnessControl; private float[] gesture;
-    private SeekBar liveVolume; private ImageView autoIcon; private final Handler liveHandler=new Handler();
-    private String lastPoll="";private int pendingVolume=-1;private boolean volumeWriting;
+    private SeekBar liveVolume; private ImageView autoIcon,speaker,playPause; private final Handler liveHandler=new Handler();
+    private VolumeDrag pendingDrag;
+    private Boolean shownMuted,shownPlaying;
     private final Runnable liveRefresh=new Runnable(){public void run(){if(closed)return;refresh();liveHandler.postDelayed(this,500);}};
     private String closeTarget;
     private boolean torch;
@@ -70,18 +71,23 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){brightness.removeView(sun);brightness.addView(sun);}
         LinearLayout media=new LinearLayout(this);media.setOrientation(1);media.setPadding(dp(12),dp(6),dp(12),dp(10));media.setBackground(PanelStyle.mediaSurface(this));
         LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,dp(96));mp.topMargin=dp(14);panel.addView(media,mp);
-        LinearLayout vr=row();media.addView(vr);vr.addView(icon("volume_media",Color.WHITE),new LinearLayout.LayoutParams(dp(35),dp(34)));
+        LinearLayout vr=row();media.addView(vr);speaker=icon("volume_media",Color.WHITE);vr.addView(speaker,new LinearLayout.LayoutParams(dp(35),dp(34)));
+        speaker.setOnClickListener(v->adjustMediaVolume(AudioManager.ADJUST_TOGGLE_MUTE));
+        vr.setOnClickListener(v->speaker.performClick());vr.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         SeekBar volume=new GlassSeekBar(this,true);liveVolume=volume;volume.setContentDescription("媒体音量");tintSlider(volume);volume.setMax(audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));volume.setProgress(audio.getStreamVolume(AudioManager.STREAM_MUSIC));LinearLayout.LayoutParams volumeParams=new LinearLayout.LayoutParams(0,dp(34),1);if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f)volumeParams.rightMargin=dp(8);else volumeParams.leftMargin=dp(8);vr.addView(volume,volumeParams);
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}public void onProgressChanged(SeekBar b,int v,boolean user){if(user)setMediaVolume(v);}});
-        if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){View speaker=vr.getChildAt(0);vr.removeView(speaker);vr.addView(speaker);}
+        if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){vr.removeView(speaker);vr.addView(speaker);}
         LinearLayout controls=row();LinearLayout.LayoutParams controlsParams=new LinearLayout.LayoutParams(-1,dp(36));controlsParams.topMargin=dp(10);media.addView(controls,controlsParams);
         String[] symbols={"player_prev","player_play","player_next","ic_volume_up","ic_volume_down"};
         String[] labels={"上一首","播放／暂停","下一首","音量增加","音量减小"};int[] keys={88,85,87,24,25};
         for(int i=0;i<keys.length;i++){
             int key=keys[i];ImageView t=icon(symbols[i],Color.WHITE);t.setContentDescription(labels[i]);t.setTooltipText(labels[i]);
             controls.addView(t,new LinearLayout.LayoutParams(0,dp(36),1));
-            if(key==24||key==25)new RepeatPress(t,()->{audio.adjustStreamVolume(3,key==24?1:-1,0);refresh();});
-            else t.setOnClickListener(v->command("input keyevent "+key));
+            if(key==24||key==25)new RepeatPress(t,()->adjustMediaVolume(key==24?AudioManager.ADJUST_RAISE:AudioManager.ADJUST_LOWER));
+            else{
+                if(key==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)playPause=t;
+                t.setOnClickListener(v->dev.edgeflow.ActionExecutor.dispatchMediaKey(audio,key));
+            }
         }
         for(int r=0;r<3;r++){
             LinearLayout line=row();LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(48));lp.topMargin=dp(13);panel.addView(line,lp);
@@ -96,24 +102,60 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     }
     /** This firmware rejects setStreamVolume for this package, but permits adjustments.
      * Coalesce drag targets off the UI thread; never queue one task per motion event. */
-    private void setMediaVolume(int target){
-        synchronized(this){if(closed)return;pendingVolume=Math.max(0,Math.min(audio.getStreamMaxVolume(3),target));if(volumeWriting)return;volumeWriting=true;}
-        worker.submit(()->{
+    private synchronized void setMediaVolume(int value){
+        if(closed)return;
+        int target=Math.max(0,Math.min(audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC),value));
+        if(pendingDrag!=null){pendingDrag.target=target;return;}
+        pendingDrag=new VolumeDrag(target);worker.execute(pendingDrag);
+    }
+    private final class VolumeDrag implements Runnable{
+        volatile int target;
+        VolumeDrag(int target){this.target=target;}
+        public void run(){
             try{
+                int maximum=audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC),lastTarget=-1,steps=0;
                 while(!closed){
-                    int desired;
-                    synchronized(this){if(pendingVolume<0){volumeWriting=false;return;}desired=pendingVolume;pendingVolume=-1;}
-                    for(int step=0;step<=audio.getStreamMaxVolume(3)&&!closed;step++){
-                        synchronized(this){if(pendingVolume>=0){desired=pendingVolume;pendingVolume=-1;step=0;}}
-                        int current=audio.getStreamVolume(3);if(current==desired)break;
-                        audio.adjustStreamVolume(3,desired>current?1:-1,0);
-                        if(audio.getStreamVolume(3)==current)throw new IllegalStateException("System did not accept volume adjustment");
+                    int current=audio.getStreamVolume(AudioManager.STREAM_MUSIC),wanted=target;
+                    if(wanted!=lastTarget){lastTarget=wanted;steps=0;}
+                    if(current==wanted){
+                        synchronized(ToolsPanel.this){
+                            if(target!=wanted)continue;
+                            if(pendingDrag==this)pendingDrag=null;
+                        }
+                        break;
                     }
-                    runOnUiThread(this::refresh);
+                    if(++steps>maximum+1)throw new IllegalStateException("Volume target was not reached");
+                    audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,wanted>current?AudioManager.ADJUST_RAISE:AudioManager.ADJUST_LOWER,0);
+                    if(audio.getStreamVolume(AudioManager.STREAM_MUSIC)==current)throw new IllegalStateException("Volume did not change");
                 }
-                synchronized(this){volumeWriting=false;pendingVolume=-1;}
-            }catch(Exception e){synchronized(this){volumeWriting=false;pendingVolume=-1;}android.util.Log.e("ReplicaTools","Volume adjustment failed",e);runOnUiThread(()->{refresh();Toast.makeText(this,"音量调整未完成",Toast.LENGTH_SHORT).show();});}
+            }catch(RuntimeException error){volumeFailed(error);}
+            finally{synchronized(ToolsPanel.this){if(pendingDrag==this)pendingDrag=null;}runOnUiThread(ToolsPanel.this::refresh);}
+        }
+    }
+    private synchronized void adjustMediaVolume(int direction){
+        if(closed)return;
+        pendingDrag=null; // A later slider change belongs after this button press.
+        worker.execute(()->{
+            if(closed)return;
+            try{
+                if(direction==AudioManager.ADJUST_TOGGLE_MUTE){
+                    boolean silent=mediaSilent();
+                    audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,silent?AudioManager.ADJUST_UNMUTE:AudioManager.ADJUST_MUTE,0);
+                    // Zero can also be a volume index without an active mute flag.
+                    if(silent&&!audio.isStreamMute(AudioManager.STREAM_MUSIC)&&audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0)
+                        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,0);
+                }else audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,direction,0);
+            }catch(RuntimeException error){volumeFailed(error);}
+            runOnUiThread(this::refresh);
         });
+    }
+    private boolean mediaSilent(){return audio.isStreamMute(AudioManager.STREAM_MUSIC)||audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0;}
+    private void volumeFailed(RuntimeException error){
+        android.util.Log.w("ReplicaTools","Volume adjustment failed",error);
+        runOnUiThread(()->Toast.makeText(this,"音量调整未完成",Toast.LENGTH_SHORT).show());
+    }
+    private void mediaButton(ImageView button,String icon,String action){
+        button.setImageDrawable(SystemIcons.control(this,icon));button.setContentDescription(action);button.setTooltipText(action);
     }
     private LinearLayout row(){LinearLayout r=new LinearLayout(this);r.setOrientation(0);r.setGravity(Gravity.CENTER_VERTICAL);return r;}
     private ImageView icon(String name,int color){ImageView v=new ImageView(this);v.setImageDrawable(SystemIcons.control(this,name));v.setColorFilter(color);v.setScaleType(ImageView.ScaleType.FIT_CENTER);return v;}
@@ -123,6 +165,13 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private void refresh(){
         if(closed||audio==null)return;
         if(liveVolume!=null&&!liveVolume.isPressed())liveVolume.setProgress(audio.getStreamVolume(3));
+        boolean muted=mediaSilent(),playing=audio.isMusicActive();
+        if(!Boolean.valueOf(muted).equals(shownMuted)){
+            mediaButton(speaker,muted?"volume_media_mute":"volume_media",muted?"取消媒体静音":"媒体静音");shownMuted=muted;
+        }
+        if(!Boolean.valueOf(playing).equals(shownPlaying)){
+            mediaButton(playPause,playing?"player_pause":"player_play",playing?"暂停":"播放");shownPlaying=playing;
+        }
         if(autoIcon!=null){boolean on=Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1;autoIcon.setSelected(on);if(!Boolean.valueOf(on).equals(autoIcon.getTag())){autoIcon.setBackground(PanelStyle.toolButton(this,on));autoIcon.setTag(on);}autoIcon.setColorFilter(Color.WHITE);}
 
         boolean accentActions=AppPrefs.get(this).getBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,false);

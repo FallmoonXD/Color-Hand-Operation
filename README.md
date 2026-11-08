@@ -6,7 +6,7 @@
 
 从屏幕边缘划一下，可以返回、切换应用、调音量，也可以叫出快捷工具和小组件。左右两侧、不同方向、长短滑动都能单独设置。
 
-[下载 0.3.16](https://github.com/FallmoonXD/Color-Hand-Operation/releases/tag/v0.3.16) · [功能说明](docs/feature-status.md) · [兼容与已知问题](docs/compatibility.md) · [更新记录](CHANGELOG.md) · [开发笔记](docs/README.md)
+[下载 0.3.17](https://github.com/FallmoonXD/Color-Hand-Operation/releases/tag/v0.3.17) · [功能说明](docs/feature-status.md) · [兼容与已知问题](docs/compatibility.md) · [更新记录](CHANGELOG.md) · [开发笔记](docs/README.md)
 
 ## 能做什么
 
@@ -21,7 +21,7 @@
 
 ## 安装前看一下
 
-目前还是预览版，主要在 **一加 PKR110 / ColorOS 17 / Android 17 / Root** 上测试。Android 13 及以上可以安装，但其他机型、旧版 ColorOS 和无 Root 环境还需要测试。
+目前主要在 **一加 PKR110 / ColorOS 17 / Android 17 / Root** 上测试。Android 13 及以上可以安装，但其他机型、旧版 ColorOS 和无 Root 环境还需要测试。
 
 基础手势依靠无障碍服务；原生模糊材质和一部分系统动作需要 Root。没有相应权限或系统接口时，部分效果会退回普通材质，部分动作会不可用。
 
@@ -34,7 +34,7 @@
 
 ## 这次更新
 
-0.3.16 换了新的橙紫配色图标，MD3 主题图标保持原样。功能与 0.3.15 相同，也整理了首页、说明文档和开发笔记。
+0.3.17 加入手势试划、按应用覆盖手势、快速启动文件夹和独立横屏触钮宽度。快速工具的扬声器支持一键静音，播放键会跟随当前播放状态切换。完整改动见[更新记录](CHANGELOG.md)。
 
 <p align="center"><img src="design/icon-mask-preview.png" width="720" alt="彩色与 MD3 图标的圆角、圆形和小尺寸预览"></p>
 

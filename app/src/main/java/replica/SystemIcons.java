@@ -80,8 +80,10 @@ public final class SystemIcons {
   switch(name){
    case "brightness_icon":nativeName="status_bar_qs_brightness_icon_auto";break;
    case "volume_media":nativeName="status_bar_qs_icon_volume_media";break;
+   case "volume_media_mute":nativeName="status_bar_qs_icon_volume_media_mute";break;
    case "player_prev":nativeName="ic_oplus_media_panel_action_pre";break;
    case "player_play":nativeName="ic_oplus_media_panel_action_play";break;
+   case "player_pause":nativeName="ic_oplus_media_panel_action_pause";break;
    case "player_next":nativeName="ic_oplus_media_panel_action_next";break;
    case "ic_volume_up":nativeName="ic_expand_less_rounded";break;
    case "ic_volume_down":nativeName="ic_expand_more_rounded";break;

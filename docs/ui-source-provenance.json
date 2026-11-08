@@ -210,6 +210,16 @@
       "sha256": "1bc4540b7c28b2b9ce29b9a521c87612ad837bb883b82202e25d5fc89ca5f120",
       "source": "ColorOS 17 com.android.settings drawable/coui_line_arrow_collapsed",
       "usage": "Installed resource is preferred; exact vector geometry fallback, tint supplied by ColorOsTheme."
+    },
+    {
+      "file": "src/main/res/drawable/cos_ic_oplus_media_panel_action_pause.xml",
+      "sha256": "c5af2f0ae24647a6c2781d9bbecff32ec8e383ef1199a11db4762ba0a60413d3",
+      "source": "com.android.systemui / res/drawable/ic_oplus_media_panel_action_pause.xml"
+    },
+    {
+      "file": "src/main/res/drawable/cos_status_bar_qs_icon_volume_media_mute.xml",
+      "sha256": "df667928b482750ff4882375ad92455b5b2f87028628166ee993dd8fd22c8a39",
+      "source": "com.android.systemui / res/drawable/status_bar_qs_icon_volume_media_mute.xml"
     }
   ],
   "dependency": "HiddenApiBypass 6.2; narrow exemptions only; app/libs/README.txt",
