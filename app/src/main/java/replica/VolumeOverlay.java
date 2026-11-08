@@ -3,14 +3,15 @@ package replica;
 import android.animation.*;
 import android.accessibilityservice.AccessibilityService;
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Rect;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.view.*;
-import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityWindowInfo;
 import android.widget.*;
 
 /** A pair of non-focusable volume buttons that follows the system volume panel. */
@@ -23,35 +24,49 @@ public final class VolumeOverlay {
  private final WindowManager.LayoutParams params;
  private final RepeatPress up,down;
  private final SystemVolumeWindow systemWindow;
- private final int displayWidth;
+ private final int displayWidth,displayHeight;
  private Dialog dialog;
- private ValueAnimator enterAnimation,exitAnimation;
- private float poseAlpha=0,poseX=.5f,poseY=.5f,poseOffset;
+ private ValueAnimator motion;
+ private float progress;
  private float edgeDirection;
  private boolean mounted,closing,removed;
  private int referenceDepth,referenceSide;
- private boolean followingRetreat;
- private long outsideAt=-1,appExitUntil,adjustmentUntil;
+ private long adjustmentUntil;
+ private final Rect lastCompactBounds=new Rect();
+ private final long openedAt=SystemClock.uptimeMillis();
+ private long entranceEndsAt;
+ private boolean triedAudio,observingAudio;
+ private final Runnable idleTimeout=this::onCompactIdle;
+ private final BroadcastReceiver volumeChanges=new BroadcastReceiver(){
+  @Override public void onReceive(Context c,Intent intent){armCompactTimeout();}
+ };
  private final Runnable fallbackTimeout=()->{if(!checkSystemWindow())dismiss();};
  private final Runnable refresh=this::checkSystemWindow;
- private final Runnable confirmHidden=()->{if(!checkSystemWindow())remove();};
- private final Runnable outsideFallback;
+ private final Runnable confirmHidden=()->{if(!checkSystemWindow())dismiss();};
 
  public static void show(Context c){
   show(c,NativeState.gesture(c));
  }
  /** Avoid retaining an accessibility context after its service is disabled. */
  public static void dismissAll(){if(current!=null)current.remove();}
+ public static void close(){if(current!=null)current.dismiss();}
  public static void show(Context c,float[] anchor){
-  if(current!=null&&!current.closing){current.adjusted(3000);return;}
-  if(current!=null)current.remove();
+  if(current!=null){
+   boolean reopen=current.closing;
+   if(reopen){
+    current.closing=false;
+    current.cancelMotion();
+   }
+   current.adjusted(3000);
+   if(reopen)current.enter();
+   return;
+  }
   VolumeOverlay next=new VolumeOverlay(c,anchor);
   current=next.mounted?next:null;
  }
 
  private VolumeOverlay(Context c,float[] anchor){
   context=c;manager=(WindowManager)c.getSystemService(Context.WINDOW_SERVICE);systemWindow=new SystemVolumeWindow(c);
-  outsideFallback=()->{if(!checkSystemWindow()&&!systemWindow.tracked())dismiss();};
   AudioManager audio=(AudioManager)c.getSystemService(Context.AUDIO_SERVICE);
   view=new LinearLayout(c){
    @Override public boolean dispatchTouchEvent(MotionEvent event){
@@ -66,9 +81,9 @@ public final class VolumeOverlay {
   view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){public void onViewAttachedToWindow(View v){}public void onViewDetachedFromWindow(View v){if(mounted)remove();}});
   int flags=WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
   params=new WindowManager.LayoutParams(PanelStyle.dp(c,60),-2,c instanceof android.accessibilityservice.AccessibilityService?2032:2038,flags,android.graphics.PixelFormat.TRANSLUCENT);
-  float[] g=anchor;android.graphics.Point screen=PanelGeometry.screen(c);displayWidth=screen.x;
+  float[] g=anchor;android.graphics.Point screen=PanelGeometry.screen(c);displayWidth=screen.x;displayHeight=screen.y;
   params.gravity=Gravity.TOP|Gravity.LEFT;
-  edgeDirection=g[0]<screen.x/2f?-1f:1f;poseOffset=edgeDirection*PanelStyle.dp(c,14);params.alpha=0;
+  edgeDirection=g[0]<screen.x/2f?-1f:1f;params.alpha=0;
   params.x=g[0]<screen.x/2f?PanelStyle.dp(c,60):screen.x-PanelStyle.dp(c,120);
   params.y=Math.max(PanelGeometry.inset(c,"status_bar_height"),Math.min(screen.y-PanelStyle.dp(c,140)-PanelGeometry.inset(c,"navigation_bar_height"),Math.round((g[1]+g[3])/2f)-PanelStyle.dp(c,70)));
   PanelGeometry.screenCoordinates(params);
@@ -101,24 +116,57 @@ public final class VolumeOverlay {
  }
  private void adjusted(int timeout){
   // A new FLAG_SHOW_UI request may replace a native window already on its way out.
-  outsideAt=-1;appExitUntil=0;adjustmentUntil=SystemClock.uptimeMillis()+200;
+  adjustmentUntil=SystemClock.uptimeMillis()+200;
   handler.removeCallbacks(confirmHidden);
-  if(followingRetreat){followingRetreat=false;exitAnimation.cancel();edgePose(1);}
-  armFallback(timeout);queueWindowCheck();
+  armFallback(timeout);armCompactTimeout();queueWindowCheck();
  }
- public static void systemWindowsChanged(AccessibilityService service,AccessibilityEvent event){
-  VolumeOverlay owner=current;
-  if(owner==null||owner.context!=service||owner.closing)return;
-  // Outside notifications hide the touch coordinates for other UIDs. A new app
-  // window after that contact confirms an app tap without guessing at slider taps.
-  long since=event.getEventTime()-owner.outsideAt;
-  if(event.getEventType()==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED&&owner.outsideAt>=0&&since>=0&&since<350&&owner.systemWindow.tracked()){
-   for(AccessibilityWindowInfo w:service.getWindows())if(w.getId()==event.getWindowId()&&w.getType()==AccessibilityWindowInfo.TYPE_APPLICATION){
-    owner.outsideAt=-1;owner.appExitUntil=SystemClock.uptimeMillis()+250;
-    owner.startRetreat(owner.poseAlpha);break;
-   }
+ private void armCompactTimeout(){
+  armCompactTimeout(SystemClock.uptimeMillis());
+ }
+ private void armCompactTimeout(long lastActivity){
+  if(closing||removed||!observingAudio)return;
+  android.view.accessibility.AccessibilityManager a=context.getSystemService(android.view.accessibility.AccessibilityManager.class);
+  handler.removeCallbacks(idleTimeout);
+  handler.postAtTime(idleTimeout,lastActivity+
+    a.getRecommendedTimeoutMillis(3000,android.view.accessibility.AccessibilityManager.FLAG_CONTENT_CONTROLS));
+ }
+ private void onCompactIdle(){
+  // Hover can extend SystemUI's clock. In that case wait for the observed retreat.
+  if(context.getSystemService(android.view.accessibility.AccessibilityManager.class).isTouchExplorationEnabled())return;
+  for(int id:InputDevice.getDeviceIds()){
+   InputDevice device=InputDevice.getDevice(id);
+   if(device!=null&&(device.supportsSource(InputDevice.SOURCE_MOUSE)||device.supportsSource(InputDevice.SOURCE_STYLUS)
+       ||device.supportsSource(InputDevice.SOURCE_TOUCHPAD)))return;
   }
-  owner.queueWindowCheck();
+  dismiss();
+ }
+ private void compactBoundsChanged(Rect box){
+  if(!systemWindow.colorOsSidePanel)return;
+  if(!triedAudio){
+   triedAudio=true;
+   try{context.registerReceiver(volumeChanges,new IntentFilter("android.media.VOLUME_CHANGED_ACTION"),Context.RECEIVER_NOT_EXPORTED);}
+   catch(SecurityException unavailable){return;}
+   observingAudio=true;
+   // A freshly shown ColorOS side bar rearms the compact timeout as its entrance
+   // settles. A bar already on screen restarts the clock from the volume request.
+   entranceEndsAt=openedAt;
+   if(systemWindow.transitionTime()>=openedAt)
+    entranceEndsAt+=Math.round(ColorMotion.VOLUME_IN_MS*ValueAnimator.getDurationScale());
+   armCompactTimeout(entranceEndsAt);
+  }
+  if(!observingAudio)return;
+  // Ignore sub-dp jitter. A bounded hardware key can move the native row even
+  // when the stream is already at minimum/maximum and its volume does not change.
+  int tolerance=PanelStyle.dp(context,1);
+  boolean changed=Math.abs(box.left-lastCompactBounds.left)>=tolerance
+      ||Math.abs(box.right-lastCompactBounds.right)>=tolerance||Math.abs(box.top-lastCompactBounds.top)>=tolerance
+      ||Math.abs(box.bottom-lastCompactBounds.bottom)>=tolerance;
+  if(changed&&!lastCompactBounds.isEmpty()&&SystemClock.uptimeMillis()>entranceEndsAt+200)
+   armCompactTimeout();
+  lastCompactBounds.set(box);
+ }
+ public static void systemWindowsChanged(AccessibilityService service){
+  if(current!=null&&current.context==service)current.queueWindowCheck();
  }
  private void queueWindowCheck(){
   if(!mounted||closing)return;
@@ -133,97 +181,91 @@ public final class VolumeOverlay {
     handler.postDelayed(confirmHidden,Math.max(32,adjustmentUntil-SystemClock.uptimeMillis()));
    return false;
   }
-  handler.removeCallbacks(fallbackTimeout);handler.removeCallbacks(confirmHidden);handler.removeCallbacks(outsideFallback);
-  followRetreat(box);
+  handler.removeCallbacks(fallbackTimeout);handler.removeCallbacks(confirmHidden);
+  // The expanded mixer can keep the compact window's ID. Its touch region grows
+  // from a narrow side bar across the display, even if expansion was not a tap.
+  boolean grewAcrossScreen=referenceSide!=0&&box.left<displayWidth/4&&box.right>displayWidth*3/4;
+  boolean fullMixer=systemWindow.colorOsSidePanel&&box.left<=0&&box.top<=0&&box.right>=displayWidth&&box.bottom>=displayHeight;
+  if(fullMixer&&referenceSide==0&&SystemClock.uptimeMillis()<openedAt+200){
+   // A compact bar can initially report its full decor before publishing touch insets.
+   handler.removeCallbacks(refresh);handler.postAtTime(refresh,openedAt+200);return true;
+  }
+  if(grewAcrossScreen||fullMixer){
+   dismiss();
+   return true;
+  }
+  int side=box.centerX()<displayWidth/2?-1:1;
+  int depth=side<0?box.right:displayWidth-box.left;
+  int gap=side<0?box.left:displayWidth-box.right;
+  if(box.height()>box.width()&&depth>0&&depth<displayWidth/2){
+   if(gap>PanelStyle.dp(context,2)){
+    referenceSide=side;referenceDepth=depth;
+    compactBoundsChanged(box);
+   }else if(side==referenceSide&&depth<referenceDepth*.9f&&SystemClock.uptimeMillis()>=adjustmentUntil){
+    dismiss();
+    return true;
+   }
+  }
   // Window changes normally drive this path; some ROMs coalesce the final event.
-  long grace=appExitUntil-SystemClock.uptimeMillis();
-  handler.removeCallbacks(refresh);handler.postDelayed(refresh,followingRetreat&&grace>0?Math.min(grace,350):350);
+  handler.removeCallbacks(refresh);handler.postDelayed(refresh,350);
   return true;
  }
  private boolean outsideTouch(MotionEvent event){
   if(event.getActionMasked()!=MotionEvent.ACTION_OUTSIDE)return false;
-  if(!closing){
-   outsideAt=event.getEventTime();
-   adjustmentUntil=0;
-   if(systemWindow.tracked())queueWindowCheck();
-   else{handler.removeCallbacks(outsideFallback);handler.postDelayed(outsideFallback,120);}
-  }
+  dismiss();
   return true;
  }
- private void followRetreat(Rect box){
-  // ColorOS publishes the visible part of the compact bar as it slides off the edge.
-  // Use that movement only for a side bar; expanded dialogs still own our lifetime.
-  int side=box.centerX()<displayWidth/2?-1:1;
-  int gap=side<0?box.left:displayWidth-box.right,depth=side<0?box.right:displayWidth-box.left;
-  boolean compact=box.height()>box.width()&&depth>0&&depth<displayWidth/2;
-  if(compact&&gap>PanelStyle.dp(context,2)){referenceSide=side;referenceDepth=depth;}
-  boolean leaving=compact&&referenceSide==side&&referenceDepth>0&&gap<=PanelStyle.dp(context,2)&&depth<referenceDepth*.9f;
-  if(SystemClock.uptimeMillis()<adjustmentUntil||(enterAnimation!=null&&enterAnimation.isRunning())||leaving==followingRetreat)return;
-  if(!leaving){
-   if(SystemClock.uptimeMillis()<appExitUntil)return;
-   followingRetreat=false;exitAnimation.cancel();edgePose(1);return;
-  }
-  // SystemUI reports clipped bounds in batches. Continue the remaining fade between
-  // samples, keeping the window available if another adjustment reverses the exit.
-  float fraction=Math.min(1,(float)depth/referenceDepth);
-  startRetreat(fraction*fraction);
- }
- private void startRetreat(float start){
-  if(followingRetreat)return;
-  followingRetreat=true;
-  NativeMaterial.cancelEntrance(dialog!=null?dialog.getWindow().getDecorView():view);
-  if(enterAnimation!=null&&enterAnimation.isRunning()){enterAnimation.removeAllListeners();enterAnimation.cancel();}
-  edgePose(start);
-  exitAnimation=ValueAnimator.ofFloat(start,0);
-  exitAnimation.setDuration(Math.max(1,Math.round(200*Math.sqrt(start))));
-  exitAnimation.setInterpolator(ColorMotion.VOLUME_OUT);
-  exitAnimation.addUpdateListener(a->edgePose((Float)a.getAnimatedValue()));
-  exitAnimation.start();
- }
- private void edgePose(float f){pose(Math.max(0,Math.min(1,f)),.5f+.5f*f,.5f+.5f*f,edgeDirection*PanelStyle.dp(context,14)*(1-f));}
- private void pose(float alpha,float sx,float sy,float offset){
-  if(removed)return;poseAlpha=alpha;poseX=sx;poseY=sy;poseOffset=offset;
+ private void pose(float fraction){
+  if(removed)return;
+  progress=fraction;
+  float scale=.5f+.5f*fraction;
+  float offset=edgeDirection*PanelStyle.dp(context,14)*(1-fraction);
   try{
-   View target=view;
    Window w=dialog==null?null:dialog.getWindow();WindowManager.LayoutParams p=w==null?params:w.getAttributes();
-   p.alpha=alpha;
-   if(closing||followingRetreat)p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+   p.alpha=Math.max(0,Math.min(1,fraction));
+   if(closing)p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
    else p.flags&=~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+   View target=view;
    if(w!=null){w.setAttributes(p);target=w.getDecorView();}
    else manager.updateViewLayout(view,p);
-   target.setPivotX(edgeDirection<0?0:target.getWidth());target.setPivotY(target.getHeight()/2f);target.setScaleX(sx);target.setScaleY(sy);target.setTranslationX(offset);
-  }catch(Exception ignored){remove();}
+   target.setPivotX(edgeDirection<0?0:target.getWidth());target.setPivotY(target.getHeight()/2f);
+   target.setScaleX(scale);target.setScaleY(scale);target.setTranslationX(offset);
+  }catch(RuntimeException e){remove();}
  }
  private void enter(){
-  if(closing||removed||followingRetreat)return;
-  pose(0,.5f,.5f,edgeDirection*PanelStyle.dp(context,14));
-  NativeMaterial.whenReady(dialog!=null?dialog.getWindow().getDecorView():view,this::startEntrance);
- }
- private void startEntrance(){
-  if(closing||removed||followingRetreat)return;
-  enterAnimation=ValueAnimator.ofFloat(0,1);enterAnimation.setDuration(ColorMotion.VOLUME_IN_MS);enterAnimation.setInterpolator(new android.view.animation.LinearInterpolator());
-  enterAnimation.addUpdateListener(a->{if(closing||removed)return;float t=(Float)a.getAnimatedValue();edgePose(ColorMotion.VOLUME_IN.getInterpolation(t));});
-  enterAnimation.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator a){if(!closing&&!removed)pose(1,1,1,0);}});enterAnimation.start();
+  if(closing||removed)return;
+  pose(progress);
+  NativeMaterial.whenReady(dialog!=null?dialog.getWindow().getDecorView():view,()->{
+   if(!closing&&!removed)animate(1,ColorMotion.VOLUME_IN_MS,ColorMotion.VOLUME_IN);
+  });
  }
  private void dismiss(){
-  if(closing||removed)return;
-  closing=true;handler.removeCallbacks(fallbackTimeout);up.stop();down.stop();
+  if(removed||closing)return;
+  closing=true;handler.removeCallbacksAndMessages(null);up.stop();down.stop();
   NativeMaterial.cancelEntrance(dialog!=null?dialog.getWindow().getDecorView():view);
-  if(enterAnimation!=null)enterAnimation.cancel();
-  final float startAlpha=poseAlpha,startX=poseX,startY=poseY,startOffset=poseOffset;
-  exitAnimation=ValueAnimator.ofFloat(0f,1f);exitAnimation.setDuration(ColorMotion.VOLUME_OUT_MS);exitAnimation.setInterpolator(new android.view.animation.LinearInterpolator());
-  exitAnimation.addUpdateListener(animation->{
-   if(removed)return;float t=(Float)animation.getAnimatedValue();
-   float u=ColorMotion.VOLUME_OUT.getInterpolation(t);pose(startAlpha*(1-u),startX+(.5f-startX)*u,startY+(.5f-startY)*u,startOffset+(edgeDirection*PanelStyle.dp(context,14)-startOffset)*u);
+  if(progress<=0){remove();return;}
+  pose(progress); // Release input immediately, including touches during the exit.
+  animate(0,ColorMotion.VOLUME_OUT_MS,ColorMotion.VOLUME_OUT);
+ }
+ private void animate(float target,long duration,TimeInterpolator spring){
+  if(removed)return;
+  cancelMotion();
+  motion=ValueAnimator.ofFloat(progress,target);motion.setDuration(duration);motion.setInterpolator(spring);
+  motion.addUpdateListener(a->pose((Float)a.getAnimatedValue()));
+  if(target==0)motion.addListener(new AnimatorListenerAdapter(){
+   @Override public void onAnimationEnd(Animator a){remove();}
   });
-  exitAnimation.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator animation){remove();}});
-  exitAnimation.start();
+  motion.start();
+ }
+ private void cancelMotion(){
+  if(motion==null)return;
+  motion.removeAllListeners();motion.removeAllUpdateListeners();motion.cancel();motion=null;
  }
  private void remove(){
   if(removed)return;removed=true;mounted=false;up.stop();down.stop();handler.removeCallbacksAndMessages(null);
+  if(observingAudio){context.unregisterReceiver(volumeChanges);observingAudio=false;}
   NativeMaterial.cancelEntrance(dialog!=null?dialog.getWindow().getDecorView():view);
-  if(exitAnimation!=null&&exitAnimation.isRunning())exitAnimation.cancel();
-  if(enterAnimation!=null&&enterAnimation.isRunning())enterAnimation.cancel();
+  cancelMotion();
   try{if(dialog!=null)dialog.dismiss();else manager.removeView(view);}catch(Exception ignored){}
   if(current==this)current=null;
  }

@@ -15,21 +15,27 @@ final class SystemVolumeWindow {
     private static final String SYSTEM_UI = "com.android.systemui";
     private final Rect bounds = new Rect();
     private final String prefix, suffix;
+    final boolean colorOsSidePanel;
+    private long transitionTime;
     private int id = -1;
 
     SystemVolumeWindow(Context context) {
         String sample = "";
+        boolean sidePanel = false;
         try {
             Resources res = context.getPackageManager().getResourcesForApplication(SYSTEM_UI);
+            sidePanel = res.getIdentifier("oplus_volume_dialog_right", "layout", SYSTEM_UI) != 0;
             int title = res.getIdentifier("volume_dialog_title", "string", SYSTEM_UI);
             if (title != 0) sample = res.getString(title, "\ufffc");
         } catch (PackageManager.NameNotFoundException | RuntimeException ignored) {}
+        colorOsSidePanel = sidePanel;
         int placeholder = sample.indexOf('\ufffc');
         prefix = placeholder < 0 ? "" : sample.substring(0, placeholder);
         suffix = placeholder < 0 ? "" : sample.substring(placeholder + 1);
     }
 
     boolean tracked() { return id != -1; }
+    long transitionTime() { return transitionTime; }
 
     /** Returns current screen bounds, including the region still on screen during dismissal. */
     Rect find(AccessibilityService service, int display) {
@@ -81,6 +87,7 @@ final class SystemVolumeWindow {
     private boolean eligible(AccessibilityWindowInfo w,int display) {
         if (w.getType() != AccessibilityWindowInfo.TYPE_SYSTEM || w.getDisplayId() != display) return false;
         w.getBoundsInScreen(bounds);
+        transitionTime = w.getTransitionTimeMillis();
         return !bounds.isEmpty();
     }
 

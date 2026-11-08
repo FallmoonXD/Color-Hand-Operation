@@ -1,4 +1,5 @@
 """Verify the floating buttons against ColorOS SystemUI on a phone with a short volume gesture."""
+import re
 import time
 
 import device as d
@@ -46,7 +47,7 @@ def pair():
     raise AssertionError('System volume panel and CHO buttons did not both open')
 
 
-def until_hidden():
+def until_hidden(*, together=False):
     # WindowManager can retain the native surface after its final visible frame.
     # Compare accessible windows during dismissal, then check both surfaces detach.
     setting = d.sh('settings','get','secure','accessibility_interactive_ui_timeout_ms').strip()
@@ -64,11 +65,39 @@ def until_hidden():
                 first_missing.pop(label,None)
         if not system and not buttons:
             delta = first_missing['buttons'] - first_missing['system']
-            assert abs(delta) < .35, ('accessible panels closed separately', delta)
+            if together:
+                assert abs(delta) < .35, ('accessible panels closed separately', delta)
             if not windows():
                 return
         time.sleep(.04)
     raise AssertionError('Volume windows did not close')
+
+
+def check_mixer(trigger):
+    trigger()
+    pair()
+    time.sleep(.75)
+    more = next(n for n in d.ui().iter('node')
+                if n.get('resource-id') == 'com.android.systemui:id/vertical_volume_icon_parent')
+    left, top, right, bottom = d.bounds(more)
+    # InputDispatcher exposes the actual window alpha even after the exit has
+    # released the touch region. Sample on the phone to catch intermediate frames.
+    samples = d.sh('sh','-c',
+        f'input tap {(left+right)//2} {(top+bottom)//2}; '
+        'for i in $(seq 1 45); do dumpsys input | grep "Color Hand Operation 音量控制,.*alpha=" | sed -n "1p"; done')
+    scale = d.sh('settings','get','global','animator_duration_scale').strip()
+    if scale == 'null' or float(scale) == 1:
+        alphas = [float(v) for v in re.findall(r'\balpha=([\d.]+)', samples)]
+        assert any(.6 < a < 1 for a in alphas) and any(.02 < a < .3 for a in alphas), alphas
+        assert len({a for a in alphas if .1 < a < .9}) >= 3, alphas
+    deadline = time.monotonic() + 4
+    while 'buttons' in windows() and time.monotonic() < deadline:
+        time.sleep(.05)
+    assert windows().keys() == {'system'}, 'Opening the mixer should dismiss only the CHO buttons'
+    rows = sum(n.get('resource-id') == 'com.android.systemui:id/volume_container' for n in d.ui().iter('node'))
+    assert rows > 1, 'The full system mixer must still be open'
+    d.sh('input','tap',str(max(1,left//4)),str(max(1,top//4)))
+    until_hidden()
 
 
 def run():
@@ -96,8 +125,9 @@ def run():
         time.sleep(1.8)
         state = windows()
         assert state.get('buttons') == first and 'system' in state, state
-        until_hidden()
-        print('PASS outside tap reaches the Activity, repeated gestures reuse the window, buttons follow SystemUI dismissal')
+        until_hidden(together=True)
+        check_mixer(trigger)
+        print('PASS outside tap reaches the Activity, compact idle closes both windows, mixer expansion animates only CHO out')
     finally:
         if d.vol() != before:
             d.sh('cmd','media_session','volume','--stream','3','--set',str(before))

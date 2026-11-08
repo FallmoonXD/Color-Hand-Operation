@@ -134,7 +134,7 @@ public final class ActionExecutor {
   }catch(Exception e){android.util.Log.e("EdgeActions",id,e);message(c,title(id)+"暂不可用："+e.getClass().getSimpleName());}
  }
  private static void preparePanel(String id){switch(id){case "quick_tools":case "widgets":case "quick_launcher":case "task_switcher":case "virtual_touchpad":case "navigation_panel":case "keyboard_shortcuts":case "app_launcher":case "screen_timeout":case "volume_up":case "volume_down":case "sidebar":case "screen_magnifier":case "screen_free_move":
-   replica.ToolsOverlay.dismissAll();if(!id.equals("volume_up")&&!id.equals("volume_down"))replica.VolumeOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();KeyboardShortcutsOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();if(!id.equals("widgets")){replica.WidgetOverlay.dismissAll();replica.WidgetActivity.dismissAll();}break;default:break;}}
+   replica.ToolsOverlay.dismissAll();if(!id.equals("volume_up")&&!id.equals("volume_down"))replica.VolumeOverlay.close();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();KeyboardShortcutsOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();if(!id.equals("widgets")){replica.WidgetOverlay.dismissAll();replica.WidgetActivity.dismissAll();}break;default:break;}}
  private static void magnify(AccessibilityService service, float[] anchor) {
   AccessibilityService.MagnificationController controller = service.getMagnificationController();
   android.accessibilityservice.MagnificationConfig current = controller.getMagnificationConfig();
