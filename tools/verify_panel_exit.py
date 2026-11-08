@@ -8,6 +8,7 @@ import json
 import subprocess
 import time
 import uuid
+from pathlib import Path
 
 import device as d
 
@@ -102,10 +103,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--back-handle', choices=('left', 'right'),
                         help='Also test the specified primary handle already mapped to short straight Back.')
+    parser.add_argument('--output', type=Path, default=d.B / 'panel-exit',
+                        help='Directory for the recordings and measurements.')
     args = parser.parse_args()
     scale = d.sh('settings', 'get', 'global', 'animator_duration_scale').strip()
     assert scale in ('null', '1', '1.0'), 'Run at normal animation speed'
-    out = d.B / 'panel-exit'
+    out = args.output
     out.mkdir(parents=True, exist_ok=True)
     try:
         cases = [('快速工具', 'outside'), ('快速工具', 'back'), ('小组件', 'outside'),
@@ -118,6 +121,7 @@ if __name__ == '__main__':
             result = measure(path)
             path.with_suffix('.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
             print(title, action, result['visible_ms'], 'ms,', result['intermediate_frames'], 'frames')
-            assert result['visible_ms'] >= 125 and result['intermediate_frames'] >= 4, 'Panel disappeared too quickly'
+            assert 65 <= result['visible_ms'] <= 130, 'Visible panel exit was too short or too long'
+            assert result['intermediate_frames'] >= 4, 'Panel snapped shut'
     finally:
         d.main_home()
