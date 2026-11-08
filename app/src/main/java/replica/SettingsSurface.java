@@ -28,6 +28,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
     private final int corner;
     private final WindowManager wm;
     private final ToolbarEdge edge;
+    private final ToolbarShadow shadow;
     private final TopEdgeGradient panelTint;
     private final Consumer<Boolean> windowBlurChanged = enabled -> refresh();
     private Object rootManager;
@@ -42,6 +43,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
         if (window != null) window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         wm = view.getContext().getSystemService(WindowManager.class);
         edge = kind == Kind.TOOLBAR ? new ToolbarEdge(view) : null;
+        shadow = kind == Kind.TOOLBAR ? new ToolbarShadow(view) : null;
         int px = PanelStyle.dp(view.getContext(), corner);
         panelTint = kind == Kind.TOOLBAR ? null : TopEdgeGradient.panel(view.getContext(), px, ColorOsTheme.popup(view.getContext()));
         view.setOutlineProvider(new ViewOutlineProvider() {
@@ -81,6 +83,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
     @Override public void onViewDetachedFromWindow(View v) {
         if (listening) { wm.removeCrossWindowBlurEnabledListener(windowBlurChanged); listening = false; }
         if (edge != null) edge.update(false, false, 0);
+        if (shadow != null) shadow.clear();
         clear();
         failed = false;
     }
@@ -106,6 +109,7 @@ final class SettingsSurface implements View.OnAttachStateChangeListener {
                 && (power == null || !power.isPowerSaveMode());
         if (edge != null) edge.update(available && ColorOsTheme.materialStroke(c), ColorOsTheme.dark(c),
                 PanelStyle.dp(c, corner));
+        if (shadow != null && view.isAttachedToWindow()) shadow.update(available && ColorOsTheme.materialStroke(c), ColorOsTheme.dark(c));
         boolean enabled = available && !failed && ColorOsTheme.materialBlur(c);
         if (!enabled || (local() ? VIEW_EFFECT == null :
                 wm == null || !wm.isCrossWindowBlurEnabled() || WindowCardApi.API == null)) {

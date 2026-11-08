@@ -36,7 +36,7 @@ public final class ColorSettingsScaffold {
 
     public ColorSettingsScaffold(Activity activity, String label, boolean home, Runnable onBack) {
         this.activity=activity;
-        root=new FrameLayout(activity);page=new PageBody();page.setOrientation(LinearLayout.VERTICAL);
+        root=new FrameLayout(activity);root.setClipChildren(false);page=new PageBody();page.setOrientation(LinearLayout.VERTICAL);
         root.addView(page,new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((v,insets)->{applyInsets(insets);return insets;});
         // A new page is attached to an already laid-out host. Seed padding before its
@@ -52,6 +52,7 @@ public final class ColorSettingsScaffold {
         mask=new ColorAppBarMask(activity);root.addView(mask,new FrameLayout.LayoutParams(-1,dp(52)));
         bar=new LinearLayout(activity){@Override public boolean onTouchEvent(android.view.MotionEvent event){return true;}};
         bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(12),0,dp(12),0);
+        bar.setClipChildren(false);bar.setClipToPadding(false);
         root.addView(bar,new FrameLayout.LayoutParams(-1,dp(52)));
         if(!home)bar.addView(toolbarButton(false,"返回",v->onBack.run()),new LinearLayout.LayoutParams(dp(48),dp(48)));
         title=titleLabel(label,18,550);title.setPadding(dp(home?8:6),0,dp(8),0);title.setAccessibilityHeading(true);
@@ -190,6 +191,7 @@ public final class ColorSettingsScaffold {
     }
     private FrameLayout toolbarButton(boolean more,String description,View.OnClickListener click){
         FrameLayout target=new FrameLayout(activity);
+        target.setClipChildren(false);
         target.setFocusable(true);target.setContentDescription(description);target.setOnClickListener(click);
         ImageView icon=new ImageView(activity);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         if(more)icon.setImageResource(dev.edgeflow.R.drawable.cos_settings_more);
@@ -197,6 +199,7 @@ public final class ColorSettingsScaffold {
         icon.setColorFilter(ColorOsTheme.text(activity));icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         int pad=dp(more?8:10);icon.setPadding(pad,pad,pad,pad);icon.setDuplicateParentStateEnabled(true);
         target.addView(icon,new FrameLayout.LayoutParams(dp(40),dp(40),Gravity.CENTER));
+        ToolbarShadow.allowToolbarOverflow(icon,target,bar);
         SettingsSurface surface=new SettingsSurface(icon,SettingsSurface.Kind.TOOLBAR,20,null);
         if(more){target.setTooltipText(description);moreIcon=icon;moreSurface=surface;}
         else{backIcon=icon;backSurface=surface;}

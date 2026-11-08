@@ -65,7 +65,7 @@ def run():
         help_bounds = d.bounds(visible(tree, HELP, 'text'))
         status = d.bounds(visible(tree, '已开启' if initial.get('enabled', True) else '已关闭', 'text'))
         assert title[2] <= more[0] and help_bounds[1] >= status[3]
-        screenshot('home')
+        home = screenshot('home')
         d.click('更多选项'); d.wait_node('关于'); d.sh('input','keyevent','4')
 
         d.panel_settings('任务切换器')
@@ -78,6 +78,15 @@ def run():
         idle = screenshot('short-rest')
         x = (row[0]+row[2])//2
         y = (row[1]+row[3])//2
+        # On a light page, sample the spot shadow below the 52 dp bar as well as below
+        # the icon. A clipped shadow stops at the bar even though the circle itself looks fine.
+        if min(pixel(idle,x,3*height//4)) > 175 and d.sh('settings','get','system','system_material_stroke_enable').strip()=='1':
+            for shot,icon,side in ((home,more_icon,-1),(idle,back_icon,1)):
+                cx=(icon[0]+icon[2])//2
+                sy=secondary[3]+max(1,(icon[3]-icon[1])//20)
+                background=pixel(shot,cx+side*(icon[2]-icon[0]),sy)
+                shadow=pixel(shot,cx,sy)
+                assert min(b-s for b,s in zip(background,shadow))>=2, ('Toolbar shadow clipped',background,shadow)
         band_y = secondary[3] + (row[1]-secondary[3])//2
         base = pixel(idle, x, 3*height//4)
         assert max(abs(a-b) for a,b in zip(pixel(idle,x,secondary[1]+2),base)) <= 2, 'Status end is tinted'

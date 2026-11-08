@@ -20,6 +20,8 @@
 
 ColorOS 上使用 `OplusRenderEffect.createGradientBlurEffect` 和 `OplusViewBackgroundRenderEffect.setBackgroundRenderEffect`。关闭模糊、开启省电或设备缺少接口时，标题仍有底色渐变。
 
+返回和更多按钮共用 COUI 工具栏的外投影。PKR110 上系统返回按钮的投影高度为 16dp，圆边下方约 7dp 仍能采到阴影。CHO 给按钮和工具栏留出投影绘制空间，点击区保持 48dp。实机对照在本地 `verification/toolbar-tools-study/shadows.png`。
+
 更多菜单、确认框、底部选择窗使用弹窗底色做局部渐变；快速启动和任务切换器的标题卡取各自的卡片底色。玻璃面板的明暗由取景和边缘光照决定，见[材质记录](material-policy.md)。系统设置、文档选择器和小组件提供方的设置界面由对应应用绘制。
 
 `validation/settings-title/run.ps1` 检查静止、拖动、释放三种状态的图层透明度。`tools/verify_short_settings_header.py` 在实机比较首页和二级页标题栏，从短页选项和空白处起手，读取行的位置及渐变像素，再检查回弹和点击。设备记录在 `verification/short-settings-header/`。
