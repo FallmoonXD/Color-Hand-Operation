@@ -19,6 +19,11 @@ public final class AppPrefs {
  private static void writeFactoryDefaults(Context c,boolean factoryToolOrder){
   FactoryHandleDefaults factory=HandleDisplayArea.factoryDefaults(c);
   SharedPreferences.Editor e=get(c).edit().clear();
+  // The home reset only resets gesture settings, not a tool's chosen animation.
+  for(Map.Entry<String,?> saved:get(c).getAll().entrySet()){
+   if(saved.getKey().startsWith("tool_motion/")&&replica.ToolAnimation.valid(saved.getKey(),saved.getValue()))
+    e.putString(saved.getKey(),(String)saved.getValue());
+  }
   e.putInt("schema",GestureHandleConfig.FACTORY_SCHEMA).putInt(HandleSettings.VERSION_KEY,HandleSettings.VERSION)
    .putBoolean(FACTORY_TOOL_ORDER,factoryToolOrder).putBoolean("enabled",false).putInt("handle_pair_count",1)
    .putBoolean("left_enabled",true).putBoolean("right_enabled",true)
@@ -63,6 +68,10 @@ public final class AppPrefs {
  public static JSONObject validate(JSONObject input)throws Exception{
   JSONObject out=new JSONObject();Set<String> booleans=new HashSet<>(Arrays.asList("enabled","left_enabled","right_enabled","vibration","haptics","quick_vibration","custom_vibration","long_immediate","hide_landscape","hide_keyboard","hide_when_keyboard","landscape_enabled","navigation_vertical","hide_home","hide_notifications","quick_action_short","quick_action_long","extra_left_enabled","extra_right_enabled","extra2_left_enabled","extra2_right_enabled",QUICK_TOOLS_ACTION_ACCENT,FACTORY_TOOL_ORDER));
   for(Iterator<String> it=input.keys();it.hasNext();){String key=it.next();Object value=input.get(key);
+   if(key.startsWith("tool_motion/")){
+    if(!replica.ToolAnimation.valid(key,value))throw new JSONException("无效的工具动画："+key);
+    out.put(key,value);continue;
+   }
    if(booleans.contains(key)||key.matches("(extra2?_)?(left|right)_long_enabled")||key.matches("(extra2?_)?handles_linked")){if(!(value instanceof Boolean))throw new JSONException(key+" 必须为布尔值");out.put(key,value);continue;}
    if(ActionTarget.isKey(key)){out.put(key,ActionTarget.validate(key,value));continue;}
    if(GestureMapping.isKey(key)){
@@ -114,6 +123,7 @@ public final class AppPrefs {
  private static JSONObject prepare(Context c,JSONObject old,JSONObject incoming,boolean replace)throws Exception{
   Map<String,Object> existing=fields(old),values=fields(incoming);GestureHandleConfig.Area portrait=HandleSettings.needsReference(existing,values,replace)?HandleDisplayArea.read(c).portrait:null;
   Map<String,Object> prepared;try{prepared=HandleSettings.prepareImport(existing,values,replace,portrait);}catch(IllegalArgumentException bad){throw new JSONException(bad.getMessage());}
+  prepared.entrySet().removeIf(entry->entry.getKey().startsWith("tool_motion/")&&"default".equals(entry.getValue()));
   prepared.putIfAbsent("schema",1);
   if(((Number)prepared.get("schema")).intValue()>=GestureHandleConfig.FACTORY_SCHEMA){
    prepared.putIfAbsent("enabled",false);

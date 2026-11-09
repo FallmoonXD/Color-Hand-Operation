@@ -15,6 +15,11 @@ public final class ColorSpringTrack {
     public static ColorSpringTrack backArrow(float depth){
         return new ColorSpringTrack(depth,0,.1,0,1);
     }
+    static ColorSpringTrack sidebar(float start,float end,boolean enter,boolean position,boolean width){
+        double response=position?(enter?.6:.4):(enter?(width?.4:.5):.45);
+        double bounce=enter?(position?.3:width?.35:.25):.15;
+        return new ColorSpringTrack(start,end,response,bounce,1);
+    }
     private ColorSpringTrack(double start,double target,double response,double bounce,double minVisibleChange){
         if(!Double.isFinite(start)||!Double.isFinite(target)||!Double.isFinite(response)||response<=0
                 ||!Double.isFinite(bounce)||bounce<0||bounce>=1||!Double.isFinite(minVisibleChange)||minVisibleChange<=0)

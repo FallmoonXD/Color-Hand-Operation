@@ -15,6 +15,7 @@ public final class MainActivity extends Activity {
  private replica.ColorAppPickerPage appDirectory;private final HashMap<String,Integer> appPositions=new HashMap<>();private ShortcutPicker.Session shortcutSession;private android.content.SharedPreferences prefs;private int navigationEditIndex=-1;private String renderedPageData;private final java.util.concurrent.ExecutorService io=java.util.concurrent.Executors.newSingleThreadExecutor();
  private final HashMap<String,Runnable> directionSummaries=new HashMap<>();
  private boolean checkingUpdate,updateFailed;
+ private boolean motionEntering=true;
  private String updateStatus="";
  private ReleaseUpdate availableUpdate;
  private final android.content.SharedPreferences.OnSharedPreferenceChangeListener pagePreferenceChanged=(store,key)->{if(pageHost!=null)pageHost.post(()->{if(uiActive&&!isFinishing()&&!isDestroyed()&&!Objects.equals(renderedPageData,pageData()))render();});};
@@ -23,6 +24,7 @@ public final class MainActivity extends Activity {
  private String appName(){return getString(R.string.app_name);}
  @Override public void onCreate(Bundle b){boolean dark=(getResources().getConfiguration().uiMode&48)==32;setTheme(getResources().getIdentifier(dark?"AppThemeDark":"AppTheme","style",getPackageName()));super.onCreate(b);AppPrefs.defaults(this);prefs=AppPrefs.get(this);if(b!=null)restoreNavigation(b);pageHost=new FrameLayout(this);getWindow().setDecorFitsSystemWindows(false);setContentView(pageHost);registerReceiver(serviceStateReceiver,new IntentFilter(getPackageName()+".SERVICE_STATE"),Context.RECEIVER_NOT_EXPORTED);serviceReceiverRegistered=true;render();registerBack();observePageData(true);themeObserver=ColorOsTheme.observe(this,()->runOnUiThread(()->{themeDirty=true;if(uiActive&&!isFinishing()&&!isDestroyed())render();}));migrateWidgetsIfPresent();}
  private void restoreNavigation(Bundle b){
+  motionEntering=b.getBoolean("motionEntering",true);
   overridePackage=b.getString("overridePackage");trialPackage=b.getString("trialPackage");moreNavActions=b.getBoolean("moreNavActions");
   if(b.getBundle("shortcutGroups")!=null)shortcutGroups=b.getBundle("shortcutGroups");
   Bundle indexes=b.getBundle("appPositions");if(indexes!=null)for(String route:indexes.keySet())appPositions.put(route,indexes.getInt(route));
@@ -55,7 +57,7 @@ public final class MainActivity extends Activity {
    screen=history.isEmpty()?"home":history.remove(history.size()-1);
  }
  @Override public void onSaveInstanceState(Bundle b){
-  super.onSaveInstanceState(b);b.putString("archiveStatus",archiveStatus);b.putString("screen",screen);b.putStringArrayList("history",new ArrayList<>(history));
+  super.onSaveInstanceState(b);b.putBoolean("motionEntering",motionEntering);b.putString("archiveStatus",archiveStatus);b.putString("screen",screen);b.putStringArrayList("history",new ArrayList<>(history));
   b.putString("externalGestureKey",externalGestureKey);b.putBoolean("externalSelect",externalSelect);
   b.putString("colorHandle",colorHandle);b.putBoolean("colorBoth",colorBoth);b.putBoolean("angleMirrored",angleMirrored);
   b.putInt("navigationEditIndex",navigationEditIndex);
@@ -91,6 +93,11 @@ public final class MainActivity extends Activity {
  }
  /** Returning from an overlay does not invalidate a settings page. Compare only its displayed data. */
  private String pageData(){
+  if(screen.equals("tool_animations")||animationTool()!=null){
+   StringBuilder state=new StringBuilder();for(replica.ToolAnimation tool:replica.ToolAnimation.values())
+    state.append(tool.selection(prefs,true).id).append('/').append(tool.selection(prefs,false).id).append(';');
+   return state.toString();
+  }
   if(screen.equals("actions")||screen.equals("app_gestures")||isHandlePage(screen)||screen.equals("home"))
    return getSharedPreferences("edgeflow_launcher",0).getString("layout_v2","");
   if(screen.equals("widgets"))return Boolean.toString(getSharedPreferences("replica_widgets",0).getBoolean("loop",false));
@@ -138,15 +145,15 @@ public final class MainActivity extends Activity {
   scroller=scaffold.scroll;content=scaffold.content;
   switch(screen){
    case "left":case "right":case "extra_left":case "extra_right":case "extra2_left":case "extra2_right":side(screen);break;
-   case "trial":trialPage();break;case "overrides":overrideList();break;case "override_picker":overridePicker();break;case "app_gestures":appGestures();break;case "panels":panels();break;case "ranges":rangeList();break;case "actions":actionDirectory();break;case "advanced":advanced();break;case "gestures":gestureSettings();break;case "angle":angleSettings();break;case "exceptions":excludedApps();break;
+   case "trial":trialPage();break;case "overrides":overrideList();break;case "override_picker":overridePicker();break;case "app_gestures":appGestures();break;case "panels":panels();break;case "tool_animations":animationTools();break;case "ranges":rangeList();break;case "actions":actionDirectory();break;case "advanced":advanced();break;case "gestures":gestureSettings();break;case "angle":angleSettings();break;case "exceptions":excludedApps();break;
    case "touchpad":touchpadSettings();break;case "navigation":navigationSettings();break;case "launcher":launcherSettings();break;case "tasks":taskSettings();break;case "widgets":widgetSettings();break;case "tools":toolsSettings();break;case "keyboard":keyboardSettings();break;
    case "action_app":applicationActionSettings();break;case "action_shortcut":shortcutActionSettings();break;case "navigation_action":navigationActionSettings();break;
-   case "permissions":permissions();break;case "backup":backup();break;case "widget_migration":widgetMigrationReport();break;case "about":about();break;default:if(rangeHandle()!=null)rangeEditor(rangeHandle());else home();break;
+   case "permissions":permissions();break;case "backup":backup();break;case "widget_migration":widgetMigrationReport();break;case "about":about();break;default:if(animationTool()!=null)animationOptions(animationTool());else if(rangeHandle()!=null)rangeEditor(rangeHandle());else home();break;
   }
   int y=scrollPositions.getOrDefault(screen,0);ScrollView currentScroll=scroller;if(y>0)currentScroll.post(()->currentScroll.scrollTo(0,y));
   pageMotion.show(pageHost,scaffold.root,transition);transition=0;renderedPageData=pageData();refreshGeometryPreview();
  }
- private String pageTitle(){if(rangeHandle()!=null)return "触钮范围";return switch(screen){case "trial"->"手势试划";case "overrides"->"按应用设置";case "override_picker"->"选择应用";case "app_gestures"->packageTitle(overridePackage);case "panels"->"面板与工具";case "ranges"->"触钮范围";case "actions"->"选择操作";case "left","right","extra_left","extra_right","extra2_left","extra2_right"->handleTitle(screen);case "advanced"->"高级设置";case "gestures"->"手势设置";case "angle"->"手势角度";case "exceptions"->"应用例外";case "touchpad"->"虚拟触控板";case "navigation"->"虚拟导航键";case "launcher"->"快速启动";case "tasks"->"任务切换器";case "widgets"->"小组件";case "tools"->"快速工具";case "keyboard"->"键盘快捷方式";case "navigation_action"->"选择导航动作";case "action_app"->"启动指定应用";case "action_shortcut"->"应用快捷方式";case "permissions"->"权限与后台运行";case "backup"->"备份与恢复";case "widget_migration"->"小组件迁移结果";case "about"->"关于 "+appName();default->appName();};}
+ private String pageTitle(){if(animationTool()!=null)return animationTool().title+"动画";if(rangeHandle()!=null)return "触钮范围";return switch(screen){case "trial"->"手势试划";case "overrides"->"按应用设置";case "override_picker"->"选择应用";case "app_gestures"->packageTitle(overridePackage);case "panels"->"面板与工具";case "tool_animations"->"动画设置";case "ranges"->"触钮范围";case "actions"->"选择操作";case "left","right","extra_left","extra_right","extra2_left","extra2_right"->handleTitle(screen);case "advanced"->"高级设置";case "gestures"->"手势设置";case "angle"->"手势角度";case "exceptions"->"应用例外";case "touchpad"->"虚拟触控板";case "navigation"->"虚拟导航键";case "launcher"->"快速启动";case "tasks"->"任务切换器";case "widgets"->"小组件";case "tools"->"快速工具";case "keyboard"->"键盘快捷方式";case "navigation_action"->"选择导航动作";case "action_app"->"启动指定应用";case "action_shortcut"->"应用快捷方式";case "permissions"->"权限与后台运行";case "backup"->"备份与恢复";case "widget_migration"->"小组件迁移结果";case "about"->"关于 "+appName();default->appName();};}
  private ImageView icon(String name,String description){return icon(name,description,false);}
  private ImageView icon(String name,String description,boolean accent){ImageView view=new ImageView(this);view.setImageDrawable(replica.SystemIcons.raw(this,name));Runnable tint=()->view.setColorFilter(accent?ColorOsTheme.accent(this):ColorOsTheme.text(this));tint.run();ColorOsTheme.watch(view,tint);view.setScaleType(ImageView.ScaleType.FIT_CENTER);view.setContentDescription(description);return view;}
  private LinearLayout card(){return card(content);}
@@ -331,6 +338,7 @@ public final class MainActivity extends Activity {
   geometry(group(linked?handleTitle(id)+" · 同时修改左右侧":handleTitle(id)),id,linked);trialLink(null);
  }
  private void panels(){
+  link(card(),"动画设置","工具的入场和退场动画",()->page("tool_animations"));
   LinearLayout launch=group("面板"),controls=group("操作工具");
   link(launch,"快速工具","亮度、媒体和快捷开关",()->page("tools"));
   link(launch,"小组件","分页、尺寸和组件设置",()->page("widgets"));
@@ -339,6 +347,84 @@ public final class MainActivity extends Activity {
   link(controls,"虚拟触控板","指针和触摸操作",()->page("touchpad"));
   link(controls,"虚拟导航键","按键、大小与顺序",()->page("navigation"));
   link(controls,"键盘快捷方式","按应用管理组合键",()->page("keyboard"));
+ }
+ private replica.ToolAnimation animationTool(){return screen.startsWith("animation/")?replica.ToolAnimation.find(screen.substring(10)):null;}
+ private void animationTools(){
+  LinearLayout tools=group("面板");
+  for(replica.ToolAnimation tool:replica.ToolAnimation.values()){
+   if(tool==replica.ToolAnimation.TOUCHPAD)tools=group("操作工具");
+   if(tool==replica.ToolAnimation.VOLUME_BUTTONS)tools=group("其他工具");
+   link(tools,tool.title,animationPair(tool),()->{motionEntering=true;page("animation/"+tool.id);});
+  }
+ }
+ private String animationName(replica.ToolAnimation.Style style,boolean enter){return style==replica.ToolAnimation.Style.SCREEN&&enter?"直接显示":style.title;}
+ private String animationPair(replica.ToolAnimation tool){
+  return "入场 "+animationName(tool.active(this,true),true)+"　·　退场 "+animationName(tool.active(this,false),false);
+ }
+ private String copyPair(replica.ToolAnimation tool){
+  return "入场 "+tool.selection(prefs,true).title+"　·　退场 "+tool.selection(prefs,false).title;
+ }
+ private String animationDescription(replica.ToolAnimation tool,replica.ToolAnimation.Style style){
+  return switch(style){
+   case DEFAULT -> animationName(tool.fallback,motionEntering);
+   case VOLUME -> "从触发侧缩放、平移";
+   case EXPANDED_VOLUME -> "多列音量窗的入场节奏";
+   case SIDEBAR -> "在边缘触钮与面板之间伸缩";
+   case ANCHOR -> "以边缘为锚点缩放、淡变";
+   case SLIDE -> "沿触发侧平移，不缩放";
+   case CENTER -> motionEntering?"在原位放大并淡入":"在原位淡出";
+   case NONE -> motionEntering?"立即显示":"立即收回";
+   default -> style.title;
+  };
+ }
+ private void animationOptions(replica.ToolAnimation tool){
+  LinearLayout tabs=new LinearLayout(this);
+  tabs.setBackground(replica.PanelStyle.shape(this,card,16));tabs.setPadding(dp(4),dp(4),dp(4),dp(4));
+  LinearLayout.LayoutParams margin=new LinearLayout.LayoutParams(-1,-2);margin.bottomMargin=dp(14);content.addView(tabs,margin);
+  for(boolean enter:new boolean[]{true,false}){
+   String label=enter?"入场":"退场";
+   TextView tab=text(label,15,motionEntering==enter?ColorOsTheme.accent(this):secondary);
+   tab.setGravity(Gravity.CENTER);tab.setSelected(motionEntering==enter);tab.setFocusable(true);
+   if(tab.isSelected())tab.setBackground(replica.PanelStyle.shape(this,(ColorOsTheme.accent(this)&0xffffff)|0x1c000000,12));
+   tab.setOnClickListener(v->{if(motionEntering!=enter){motionEntering=enter;render();}});
+   tabs.addView(tab,new LinearLayout.LayoutParams(0,dp(40),1));
+  }
+  note("点左图预览，点名称选择。");
+  LinearLayout footer=card(scaffold.page);LinearLayout.LayoutParams fp=(LinearLayout.LayoutParams)footer.getLayoutParams();
+  fp.setMargins(dp(16),0,dp(16),dp(8));footer.setLayoutParams(fp);
+  TextView pair=text(copyPair(tool),13,secondary);pair.setGravity(Gravity.CENTER);pair.setPadding(dp(8),dp(6),dp(8),0);footer.addView(pair);
+  TextView all=button("将这组动画应用到所有工具",()->{tool.applyToAll(prefs);renderedPageData=pageData();toast("已应用到所有工具");});
+  all.setTextColor(ColorOsTheme.accent(this));footer.addView(all,new LinearLayout.LayoutParams(-1,dp(48)));
+  LinearLayout options=card();ArrayList<replica.ColorRadioButton> radios=new ArrayList<>();
+  replica.ToolAnimation.Style selected=tool.selection(prefs,motionEntering);
+  for(replica.ToolAnimation.Style style:replica.ToolAnimation.choices(motionEntering)){
+   divider(options);
+   LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(9),dp(8),dp(9));
+   row.setBackground(ColorDialogBuilder.touchBackground(this,card,14));options.addView(row,new LinearLayout.LayoutParams(-1,-2));
+   replica.ToolAnimationPreview preview=new replica.ToolAnimationPreview(this,tool.resolve(style),motionEntering);
+   preview.setContentDescription("预览"+style.title+(motionEntering?"入场":"退场"));
+   row.addView(preview,new LinearLayout.LayoutParams(dp(72),dp(48)));
+   LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);
+   TextView title=text(style.title,16,fg);title.setTypeface(ColorOsTheme.typeface(this,500));names.addView(title);
+   TextView hint=text(animationDescription(tool,style),13,secondary);hint.setPadding(0,dp(3),0,0);names.addView(hint);
+   row.addView(names,new LinearLayout.LayoutParams(0,-2,1));
+   replica.ColorRadioButton radio=new replica.ColorRadioButton(this);radio.setChecked(style==selected);
+   radio.setClickable(false);radio.setFocusable(false);radio.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+   radios.add(radio);row.addView(radio,new LinearLayout.LayoutParams(dp(42),dp(48)));
+   row.setContentDescription(style.title);row.setStateDescription(radio.isChecked()?"已选择":"未选择");
+   row.setAccessibilityDelegate(new View.AccessibilityDelegate(){
+    @Override public void onInitializeAccessibilityNodeInfo(View v,android.view.accessibility.AccessibilityNodeInfo info){
+     super.onInitializeAccessibilityNodeInfo(v,info);info.setClassName("android.widget.RadioButton");info.setCheckable(true);info.setChecked(radio.isChecked());
+    }
+   });
+   row.setOnClickListener(v->{
+    tool.select(prefs,motionEntering,style);
+    for(replica.ColorRadioButton item:radios){item.setChecked(item==radio);((View)item.getParent()).setStateDescription(item.isChecked()?"已选择":"未选择");}
+    pair.setText(copyPair(tool));renderedPageData=pageData();preview.play();
+   });
+   if(style==selected)preview.post(()->pageMotion.whenSettled(()->{if(preview.isAttachedToWindow()&&radio.isChecked())preview.play();}));
+  }
+  note("选择「工具默认」时，各工具采用自己的样式。");
  }
  private void directionRows(LinearLayout box,String id,boolean longer){String[] directions={"straight","up","down"};for(int i=0;i<3;i++){String direction=directions[i];String name=i==0?(GestureHandleConfig.isLeft(id)?"直线向右":"直线向左"):i==1?"对角线向上":"对角线向下";LinearLayout r=row(box,name,actionTitle(AppPrefs.action(this,id,direction,longer)));bindDirectionSummary(r,id,direction,longer);ImageView arrow=icon("status_bar_qs_back_arrow",null,true);arrow.setPadding(dp(9),dp(9),dp(9),dp(9));arrow.setRotation(GestureHandleConfig.isLeft(id)?(i==0?180:i==1?135:225):(i==0?0:i==1?45:-45));arrow.setColorFilter(ColorOsTheme.accent(this));FrameLayout iconContainer=new FrameLayout(this);iconContainer.setBackground(replica.PanelStyle.shape(this,(ColorOsTheme.accent(this)&0x00ffffff)|0x12000000,longer?12:22));iconContainer.addView(arrow,new FrameLayout.LayoutParams(-1,-1));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(42),dp(42));lp.rightMargin=dp(16);r.addView(iconContainer,0,lp);r.setContentDescription((longer?"长滑":"短滑")+name);r.setOnClickListener(v->chooseAction(GestureHandleConfig.actionKey(id,direction,longer)));if(i<2)divider(box);}}
  private void bindDirectionSummary(LinearLayout row,String id,String direction,boolean longer){TextView summary=(TextView)((LinearLayout)row.getChildAt(0)).getChildAt(1);directionSummaries.put(GestureHandleConfig.actionKey(id,direction,longer),()->summary.setText(actionTitle(AppPrefs.action(this,id,direction,longer))));}

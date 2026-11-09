@@ -122,10 +122,10 @@ public final class ActionExecutor {
     case "nfc":android.nfc.NfcAdapter nfc=android.nfc.NfcAdapter.getDefaultAdapter(c);if(nfc==null)message(c,"此设备不支持 NFC");else root(c,nfc.isEnabled()?"cmd nfc disable-nfc persist":"cmd nfc enable-nfc",title(id));break;
     case "dark_mode":root(c,"cmd uimode night "+(((c.getResources().getConfiguration().uiMode&48)==32)?"no":"yes"),title(id));break;
     case "auto_brightness":toggle(c,"system","screen_brightness_mode",title(id));break;
-    case "screen_timeout":timeout(c);break;
+    case "screen_timeout":timeout(c,points);break;
     case "screen_record":root(c,"am start -n com.oplus.screenrecorder/com.oplus.screenrecorder.MainActivity --es recorder_entrance SystemUIScreenAssistant",title(id));break;
     case "settings":start(c,new Intent(Settings.ACTION_SETTINGS));break;
-    case "app_launcher":apps(c);break;
+    case "app_launcher":apps(c,points);break;
     case "keyboard":((android.view.inputmethod.InputMethodManager)c.getSystemService(Context.INPUT_METHOD_SERVICE)).showInputMethodPicker();break;
     case "color_inversion":toggle(c,"secure","accessibility_display_inversion_enabled",title(id));break;
     case "battery_saver":root(c,"if [ \"$(settings get global low_power)\" = 1 ]; then cmd power set-mode 0; else cmd power set-mode 1; fi",title(id));break;
@@ -198,22 +198,22 @@ public final class ActionExecutor {
  private static void applyTorch(Context app){try{boolean next=!torchOn;torchManager.setTorchMode(torchId,next);torchOn=next;}catch(Exception e){android.util.Log.w("EdgeActions","torch",e);message(app,"闪光灯暂不可用，可能被相机占用");}}
  private static void cancelTorchTimeout(){if(torchTimeout!=null)MAIN.removeCallbacks(torchTimeout);torchTimeout=null;}
  private static void releaseTorch(){cancelTorchTimeout();if(torchManager!=null&&torchCallback!=null)try{torchManager.unregisterTorchCallback(torchCallback);}catch(Exception ignored){}torchManager=null;torchCallback=null;torchId=null;torchReady=false;torchPending=false;}
- private static AlertDialog.Builder dialog(Context c,String title){boolean dark=(c.getResources().getConfiguration().uiMode&48)==32;int theme=c.getResources().getIdentifier(dark?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());return new replica.GlassDialogBuilder(new ContextThemeWrapper(c,theme)).setTitle(title);}
+ private static replica.ColorDialogBuilder dialog(Context c,String title){boolean dark=(c.getResources().getConfiguration().uiMode&48)==32;int theme=c.getResources().getIdentifier(dark?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());return new replica.GlassDialogBuilder(new ContextThemeWrapper(c,theme)).setTitle(title);}
  private static void show(AlertDialog d){d.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);d.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);d.setOnDismissListener(x->DIALOGS.remove(d));DIALOGS.add(d);try{d.show();}catch(RuntimeException e){DIALOGS.remove(d);throw e;}}
  private static void dismissDialogs(){dialogGeneration++;for(AlertDialog d:new ArrayList<>(DIALOGS))try{replica.ColorDialogBuilder.dismissImmediately(d);}catch(Exception ignored){}DIALOGS.clear();}
  /** Called when the accessibility service disconnects; never turns off a user-owned torch. */
  public static void release(AccessibilityService service){if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->release(service));return;}lifecycleGeneration++;dismissDialogs();KeyboardShortcutsOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();releaseTorch();}
- private static void timeout(Context c){
+ private static void timeout(Context c,float[] anchor){
   int[] seconds={15,30,60,120,300,600};String[] names={"15 秒","30 秒","1 分钟","2 分钟","5 分钟","10 分钟"};
   int current=Settings.System.getInt(c.getContentResolver(),Settings.System.SCREEN_OFF_TIMEOUT,30000)/1000,selected=-1;
   for(int i=0;i<seconds.length;i++)if(seconds[i]==current)selected=i;
-  AlertDialog choices=dialog(c,"屏幕超时").setSingleChoiceItems(names,selected,(d,n)->{root(c,"settings put system screen_off_timeout "+(seconds[n]*1000),"屏幕超时");d.dismiss();}).setNegativeButton("取消",null).create();
+  AlertDialog choices=dialog(c,"屏幕超时").setToolAnimation(replica.ToolAnimation.TIMEOUT,anchor).setSingleChoiceItems(names,selected,(d,n)->{root(c,"settings put system screen_off_timeout "+(seconds[n]*1000),"屏幕超时");d.dismiss();}).setNegativeButton("取消",null).create();
   // This is the standalone action. The child chooser in quick tools stays modal.
   choices.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
   show(choices);
  }
  /** Compatibility for already assigned legacy launchers; the removed option stays out of new menus. */
- private static void apps(Context c){int generation=dialogGeneration;WORK.execute(()->{
+ private static void apps(Context c,float[] anchor){int generation=dialogGeneration;WORK.execute(()->{
   try{
    List<ResolveInfo> queried=c.getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),0);ArrayList<ResolveInfo> valid=new ArrayList<>();
    for(ResolveInfo item:queried)if(item.activityInfo!=null&&item.activityInfo.exported&&item.activityInfo.enabled)valid.add(item);
@@ -226,7 +226,7 @@ public final class ActionExecutor {
       android.widget.ImageView icon=new android.widget.ImageView(c);icon.setImageDrawable(icons.get(p));icon.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);icon.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO);android.widget.LinearLayout.LayoutParams ip=new android.widget.LinearLayout.LayoutParams(iconSize,iconSize);ip.setMarginEnd(replica.PanelStyle.dp(c,16));row.addView(icon,ip);
       android.widget.TextView name=replica.ColorDialogBuilder.listLabel(c,labels.get(p));name.setPadding(0,0,0,0);name.setMinHeight(0);name.setMaxLines(2);name.setEllipsize(android.text.TextUtils.TruncateAt.END);row.addView(name,new android.widget.LinearLayout.LayoutParams(0,-2,1));return row;}
     };
-    try{show(dialog(c,"应用启动器").setAdapter(adapter,(d,n)->{ResolveInfo item=valid.get(n);launchApp(c,new ComponentName(item.activityInfo.packageName,item.activityInfo.name).flattenToString());}).setNegativeButton("取消",null).create());}catch(RuntimeException error){android.util.Log.w("EdgeActions","app chooser",error);message(c,"应用启动器暂不可用");}
+    try{show(dialog(c,"应用启动器").setToolAnimation(replica.ToolAnimation.OLD_LAUNCHER,anchor).setAdapter(adapter,(d,n)->{ResolveInfo item=valid.get(n);launchApp(c,new ComponentName(item.activityInfo.packageName,item.activityInfo.name).flattenToString());}).setNegativeButton("取消",null).create());}catch(RuntimeException error){android.util.Log.w("EdgeActions","app chooser",error);message(c,"应用启动器暂不可用");}
    });
   }catch(Exception failure){android.util.Log.w("EdgeActions","query apps",failure);message(c,"未能读取已安装应用");}
  });}

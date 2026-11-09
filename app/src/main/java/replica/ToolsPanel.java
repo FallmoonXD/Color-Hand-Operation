@@ -31,6 +31,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private void setContentView(View v){window.setContentView(v);}
     private void closeThen(Runnable action){
         if(overlay())ToolsOverlay.closeThen(action);
+        else if(getBaseContext() instanceof ToolsActivity owner)owner.closeThen(action);
         else{close.run();action.run();}
     }
     private void commandAfterClose(String command){

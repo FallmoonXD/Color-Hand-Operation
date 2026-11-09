@@ -79,6 +79,7 @@ public final class NavigationOverlay {
   WindowManager.LayoutParams lp=w.getAttributes();lp.gravity=Gravity.TOP|Gravity.LEFT;lp.x=left?area.left+inset:area.right-size-inset;
   lp.y=Math.max(topLimit,Math.min(bottomLimit,Math.round(anchor[1]-height/2f)));lp.width=size;lp.height=height;
   lp.setTitle(service.getString(R.string.app_name)+" 虚拟导航键");PanelGeometry.screenCoordinates(lp);w.setAttributes(lp);
+  final float pivotInRail=anchor[1]-lp.y;
   grip.setOnTouchListener(new View.OnTouchListener(){
    float down;int initial;boolean moved;
    public boolean onTouch(View v,MotionEvent e){
@@ -86,13 +87,13 @@ public final class NavigationOverlay {
      case MotionEvent.ACTION_DOWN:down=e.getRawY();initial=w.getAttributes().y;moved=false;return true;
      case MotionEvent.ACTION_MOVE:
       float delta=e.getRawY()-down;if(Math.abs(delta)>android.view.ViewConfiguration.get(service).getScaledTouchSlop())moved=true;
-      if(moved){WindowManager.LayoutParams a=w.getAttributes();a.y=Math.max(topLimit,Math.min(bottomLimit,initial+Math.round(delta)));w.setAttributes(a);}return true;
+      if(moved){WindowManager.LayoutParams a=w.getAttributes();a.y=Math.max(topLimit,Math.min(bottomLimit,initial+Math.round(delta)));w.setAttributes(a);if(motion!=null)motion.reanchor(left,a.y+pivotInRail);}return true;
      case MotionEvent.ACTION_UP:if(!moved)v.performClick();return true;
      case MotionEvent.ACTION_CANCEL:return true;default:return false;
     }
    }
   });
-  motion=ColorMotion.fromEdge(w,left,anchor[1]-lp.y);
+  motion=ColorMotion.forTool(w,replica.ToolAnimation.NAVIGATION,anchor);
   try{dialog.show();w.setLayout(size,height);motion.enter();}catch(RuntimeException e){android.util.Log.e("EdgeNavigation","Cannot attach",e);remove();}
  }
  /** One window blurs the page. The inset controls use the same optical layer as quick tools. */

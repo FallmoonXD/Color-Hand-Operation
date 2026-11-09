@@ -20,7 +20,7 @@ public final class QuickLauncherOverlay {
   if(folder!=null){folderParentPage=page;folderId=folder;page=0;}
   int theme=s.getResources().getIdentifier(replica.PanelStyle.dark(s)?"ReplicaGlassDark":"ReplicaGlass","style",s.getPackageName());context=new ContextThemeWrapper(s,theme);
   dialog=new replica.PanelOverlayDialog(context,this::closeFromOutside,this::closeFromOutside);
-  root=new LinearLayout(context){float sx,sy;boolean swiping;final ParentTouchGate parentTouch=new ParentTouchGate();public boolean dispatchTouchEvent(MotionEvent e){return parentTouch.consume(e.getActionMasked(),e.getDownTime(),childDismissedAt,hasChildUi())||super.dispatchTouchEvent(e);}public boolean onInterceptTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){sx=e.getX();sy=e.getY();swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_MOVE&&Math.abs(e.getX()-sx)>dp(35)&&Math.abs(e.getX()-sx)>Math.abs(e.getY()-sy)*1.5f){swiping=true;return true;}return false;}public boolean onTouchEvent(MotionEvent e){if(swiping){if(e.getActionMasked()==MotionEvent.ACTION_UP){turn(e.getX()<sx?1:-1);swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)swiping=false;return true;}return super.onTouchEvent(e);}};root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(12),dp(8),dp(12),dp(10));dialog.setContentView(root);dialog.setOnDismissListener(d->cleanup());Window w=dialog.getWindow();w.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 快速启动");replica.PanelStyle.window(context,w,24);render();dialog.show();position();motion=new replica.ColorMotion(w);motion.enter();if(isRecent())loadRecent(false);
+  root=new LinearLayout(context){float sx,sy;boolean swiping;final ParentTouchGate parentTouch=new ParentTouchGate();public boolean dispatchTouchEvent(MotionEvent e){return parentTouch.consume(e.getActionMasked(),e.getDownTime(),childDismissedAt,hasChildUi())||super.dispatchTouchEvent(e);}public boolean onInterceptTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){sx=e.getX();sy=e.getY();swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_MOVE&&Math.abs(e.getX()-sx)>dp(35)&&Math.abs(e.getX()-sx)>Math.abs(e.getY()-sy)*1.5f){swiping=true;return true;}return false;}public boolean onTouchEvent(MotionEvent e){if(swiping){if(e.getActionMasked()==MotionEvent.ACTION_UP){turn(e.getX()<sx?1:-1);swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)swiping=false;return true;}return super.onTouchEvent(e);}};root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(12),dp(8),dp(12),dp(10));dialog.setContentView(root);dialog.setOnDismissListener(d->cleanup());Window w=dialog.getWindow();w.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 快速启动");replica.PanelStyle.window(context,w,24);render();dialog.show();position();motion=replica.ColorMotion.forTool(w,replica.ToolAnimation.LAUNCHER,anchor);motion.enter();if(isRecent())loadRecent(false);
  }
  public static void show(AccessibilityService s,float[] anchor){showFolder(s,anchor,null);}
  static void showFolder(AccessibilityService s,float[] anchor,String folder){
@@ -230,7 +230,28 @@ public final class QuickLauncherOverlay {
    if(isRecent()){render();position();}
   });
  }
- public static void onGestureMotion(int action,float x,float y){QuickLauncherOverlay p=current;if(p==null||p.closed||p.editing||p.shortcutPicker!=null||p.popup!=null||!p.children.isEmpty())return;if(action==MotionEvent.ACTION_CANCEL){p.dismiss();return;}if(Math.hypot(x-p.anchor[2],y-p.anchor[3])>p.dp(8))p.hoverMoved=true;if(!p.hoverMoved)return;int hit=-1;for(int i=0;i<p.hitViews.size();i++){View v=p.hitViews.get(i);int[] pos=new int[2];v.getLocationOnScreen(pos);if(x>=pos[0]&&x<pos[0]+v.getWidth()&&y>=pos[1]&&y<pos[1]+v.getHeight()){hit=i;break;}}if(hit!=p.hovered){for(int i=0;i<p.hitViews.size();i++)p.hitViews.get(i).setBackground(p.tileBackground(i==hit));p.hovered=hit;}if(action==MotionEvent.ACTION_UP&&hit>=0)p.activate(p.hitKeys.get(hit));}
+ private final TileHitTest tileHitTest=new TileHitTest();
+ /** Raw motion events are in display coordinates; the accessibility window clips transformed tiles. */
+ static final class TileHitTest {
+  private final android.graphics.Matrix matrix=new android.graphics.Matrix();
+  private final int[] origin=new int[2];
+  private final float[] extent=new float[2];
+  boolean contains(View decor,View tile,float x,float y){
+   if(!tile.isShown())return false;
+   decor.getLocationOnScreen(origin);
+   float left=origin[0]-decor.getTranslationX()-(1-decor.getScaleX())*decor.getPivotX();
+   float top=origin[1]-decor.getTranslationY()-(1-decor.getScaleY())*decor.getPivotY();
+   if(x<left||x>=left+decor.getWidth()||y<top||y>=top+decor.getHeight())return false;
+   matrix.reset();tile.transformMatrixToGlobal(matrix);tile.getLocationOnScreen(origin);
+   extent[0]=tile.getWidth();extent[1]=tile.getHeight();matrix.mapVectors(extent);
+   return x>=origin[0]&&x<origin[0]+extent[0]&&y>=origin[1]&&y<origin[1]+extent[1];
+  }
+ }
+ private boolean hitTile(View tile,float x,float y){
+  Window window=dialog.getWindow();
+  return window.getAttributes().alpha>0&&tileHitTest.contains(window.getDecorView(),tile,x,y);
+ }
+ public static void onGestureMotion(int action,float x,float y){QuickLauncherOverlay p=current;if(p==null||p.closed||p.editing||p.shortcutPicker!=null||p.popup!=null||!p.children.isEmpty())return;if(action==MotionEvent.ACTION_CANCEL){p.dismiss();return;}if(Math.hypot(x-p.anchor[2],y-p.anchor[3])>p.dp(8))p.hoverMoved=true;if(!p.hoverMoved)return;int hit=-1;for(int i=0;i<p.hitViews.size();i++){View v=p.hitViews.get(i);if(p.hitTile(v,x,y)){hit=i;break;}}if(hit!=p.hovered){for(int i=0;i<p.hitViews.size();i++)p.hitViews.get(i).setBackground(p.tileBackground(i==hit));p.hovered=hit;}if(action==MotionEvent.ACTION_UP&&hit>=0)p.activate(p.hitKeys.get(hit));}
  private void closeChildren(){pickerGeneration++;closePopup();if(shortcutPicker!=null){shortcutPicker.close();shortcutPicker=null;}for(AlertDialog d:new ArrayList<>(children))try{replica.ColorDialogBuilder.dismissImmediately(d);}catch(Exception ignored){}children.clear();if(recentRequest!=null){recentRequest.cancel();recentRequest=null;}}
  private void closeFromOutside(){if(children.isEmpty()&&shortcutPicker==null&&popup==null)dismiss();}
  private void dismiss(){if(closed)return;closed=true;closeChildren();if(current==this)current=null;if(motion!=null)motion.exit(()->{try{dialog.dismiss();}catch(Exception ignored){}});else dialog.dismiss();}

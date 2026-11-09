@@ -102,6 +102,7 @@ public final class ConfigArchiveHarness {
   legacyOpacityAndShortcutNames();
   quickToolActionAccent();
   factorySettings();
+  toolAnimations();
   releaseUpdateChecks();
   Memory v1=seeded("v1");Map<String,?> launcherBefore=v1.prefs("edgeflow_launcher").getAll(),shortcutsBefore=v1.prefs("edgeflow_shortcuts").getAll();ConfigArchive.restore(v1,archive(1));check(!AppPrefs.get(v1).getBoolean("enabled",true)&&AppPrefs.get(v1).getFloat("trigger_dp",0)==45.5f,"v1 imports typed preferences");check(launcherBefore.equals(v1.prefs("edgeflow_launcher").getAll())&&shortcutsBefore.equals(v1.prefs("edgeflow_shortcuts").getAll()),"v1 preserves newer panel settings");check(new File(v1.files,"tools-layout-v1.json").isFile()&&replica.ToolsConfig.load(v1).size()==2,"tools use actual tools-layout-v1.json path");
   Memory v2=seeded("v2");Map<String,?> widgetsBefore=v2.prefs("replica_widgets").getAll();ConfigArchive.restore(v2,archive(2));JSONObject exported=ConfigArchive.export(v2);check(v2.prefs("edgeflow_launcher").getInt("columns",0)==5&&v2.prefs("edgeflow_launcher").getInt("recent_limit",0)==20,"v2 restores launcher and task switcher settings");check(v2.prefs("edgeflow_shortcuts").contains("app:com.example")&&!v2.prefs("edgeflow_shortcuts").contains("app:com.old"),"v2 replaces shortcuts namespace");JSONObject widget=exported.getJSONObject("widgets").getJSONArray("items").getJSONObject(0);check(widget.getString("component").equals("com.example.widget/com.example.widget.Provider")&&widget.getInt("sourceId")==93&&!widget.has("id"),"widget export maps provider and excludes live ID field");check(exported.getJSONObject("widgets").getInt("height")==400&&exported.getJSONObject("widgets").getInt("pages")==2,"widget export reads replica_widgets/layout_v3 and height_v4");
@@ -361,6 +362,32 @@ public final class ConfigArchiveHarness {
    boolean rejected=false;try{ReleaseUpdate.parse("0.3.9",copy(release).put("tag_name",tag));}catch(JSONException expected){rejected=true;}
    check(rejected,"reject invalid release tag "+tag);
   }
+ }
+ static void toolAnimations()throws Exception{
+  Memory source=new Memory("tool-animations");AppPrefs.defaults(source);
+  Prefs prefs=source.prefs("edgeflow");
+  replica.ToolAnimation quick=replica.ToolAnimation.QUICK_TOOLS,widgets=replica.ToolAnimation.WIDGETS;
+  check(quick.active(source,true)==replica.ToolAnimation.Style.VOLUME&&widgets.active(source,false)==replica.ToolAnimation.Style.CENTER,"missing tool animations inherit each tool's native style");
+  quick.select(prefs,true,replica.ToolAnimation.Style.SIDEBAR);quick.select(prefs,false,replica.ToolAnimation.Style.SLIDE);
+  check(widgets.selection(prefs,true)==replica.ToolAnimation.Style.DEFAULT,"individual selection does not touch another tool");
+  int commits=prefs.commits;quick.applyToAll(prefs);
+  check(prefs.commits==commits+1,"all tools and both phases commit together");
+  for(replica.ToolAnimation tool:replica.ToolAnimation.values())
+   check(tool.selection(prefs,true)==replica.ToolAnimation.Style.SIDEBAR&&tool.selection(prefs,false)==replica.ToolAnimation.Style.SLIDE,"bulk motion pair "+tool.id);
+  widgets.select(prefs,false,replica.ToolAnimation.Style.NONE);
+  Memory dest=new Memory("tool-motion-restore");ConfigArchive.restore(dest,ConfigArchive.export(source));
+  check(widgets.active(dest,false)==replica.ToolAnimation.Style.NONE&&quick.active(dest,false)==replica.ToolAnimation.Style.SLIDE,"per-tool overrides survive backup independently");
+  AppPrefs.resetGestures(dest);check(widgets.active(dest,false)==replica.ToolAnimation.Style.NONE,"reset gestures preserves tool choices");
+  AppPrefs.importPrefs(dest,new JSONObject().put(widgets.key(false),"default"));
+  check(!AppPrefs.get(dest).contains(widgets.key(false))&&widgets.active(dest,false)==replica.ToolAnimation.Style.CENTER,"explicit default in a partial import restores inheritance");
+  JSONObject backup=ConfigArchive.export(source);
+  for(String bad:new String[]{"tool_motion/missing/enter","tool_motion/widgets/both","tool_motion/widgets/exit"}){
+   JSONObject broken=copy(backup);broken.getJSONObject("preferences").put(bad,"expanded_volume");
+   rejectUnchanged(dest,broken,"invalid tool animation rejected atomically: "+bad);
+  }
+  JSONObject old=copy(backup);
+  for(replica.ToolAnimation tool:replica.ToolAnimation.values())for(boolean enter:new boolean[]{true,false})old.getJSONObject("preferences").remove(tool.key(enter));
+  ConfigArchive.restore(dest,old);check(widgets.active(dest,false)==replica.ToolAnimation.Style.CENTER,"old full archive resets omitted animations to tool defaults");
  }
  static void factorySettings()throws Exception{
   Memory fresh=new Memory("factory");AppPrefs.defaults(fresh);Prefs p=fresh.prefs("edgeflow");

@@ -66,7 +66,7 @@ public final class WidgetActivity extends Activity {
         } else {
             setFinishOnTouchOutside(true);
             panel.render();
-            motion = new ColorMotion(getWindow());
+            motion = ColorMotion.forTool(getWindow(),ToolAnimation.WIDGETS,anchor);
             motion.enter();
         }
         overridePendingTransition(0, 0);
@@ -144,7 +144,7 @@ public final class WidgetActivity extends Activity {
             setFinishOnTouchOutside(true);
             panel.reanchor(anchor);
             panel.start();
-            motion = new ColorMotion(getWindow());
+            motion = ColorMotion.forTool(getWindow(),ToolAnimation.WIDGETS,anchor);
             motion.enter();
         }
     }

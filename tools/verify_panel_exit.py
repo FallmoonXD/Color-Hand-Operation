@@ -126,6 +126,12 @@ if __name__ == '__main__':
     assert scale in ('null', '1', '1.0'), 'Run at normal animation speed'
     out = args.output
     out.mkdir(parents=True, exist_ok=True)
+    prefs=d.preferences()
+    tools={'快速工具':'quick_tools','小组件':'widgets','任务切换器':'task_switcher',
+           '快速启动':'quick_launcher','虚拟触控板':'virtual_touchpad'}
+    level=d.sh('getprop','debug.systemui.gaussblur_level').strip()
+    if not level or level=='-1':level=d.sh('getprop','persist.sys.oplus.anim_level').strip()
+    volume_duration=250 if int(level or '-1')>3 else 500
     try:
         cases = [('快速工具', 'outside'), ('快速工具', 'back'), ('小组件', 'outside'),
                  ('任务切换器', 'outside'), ('快速启动', 'outside'), ('虚拟触控板', 'close')]
@@ -134,17 +140,19 @@ if __name__ == '__main__':
         for title, action in cases:
             path = out / f'{title}-{action}.mp4'
             window_exit_ms = record(title, action, path)
-            result = measure(path)
+            style=prefs.get('tool_motion/'+tools[title]+'/exit','default')
+            if style=='default':style='volume' if title=='快速工具' else 'center'
+            result = measure(path) if style!='none' else {}
             if window_exit_ms is not None:
                 result['window_exit_ms'] = window_exit_ms
             path.with_suffix('.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
-            print(title, action, result['visible_ms'], 'ms,', result['intermediate_frames'], 'frames')
-            # Native Settings coui_center_dialog_exit: alpha 1→0, 150 ms,
-            # cubic (.3,0,1,1). The 90%→10% interval is 107 ms; allow two
-            # display/encoder frames of quantization at 60 Hz.
-            assert 75 <= result['visible_ms'] <= 141, 'Visible exit differs from the COUI center fade'
-            assert result['intermediate_frames'] >= 4, 'Panel snapped shut'
-            if 'window_exit_ms' in result:
-                assert 135 <= result['window_exit_ms'] <= 195, 'Window did not complete the native 150 ms exit'
+            print(title,action,style,result.get('visible_ms'),result.get('intermediate_frames'),flush=True)
+            if style!='none':assert result['intermediate_frames']>=2, 'Panel snapped shut'
+            if style=='center':
+                assert 75<=result['visible_ms']<=141 and result['intermediate_frames']>=4, 'Visible exit differs from the COUI center fade'
+            if window_exit_ms is not None:
+                if style=='none':assert window_exit_ms<55, 'Unanimated exit waited on a timer'
+                nominal={'center':150,'volume':volume_duration,'slide':350}.get(style)
+                if nominal is not None:assert nominal-20<=window_exit_ms<=nominal+50, 'Wrong window exit speed'
     finally:
         d.main_home()

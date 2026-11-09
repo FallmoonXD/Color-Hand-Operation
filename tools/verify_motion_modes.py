@@ -32,16 +32,22 @@ def scale_checks(out):
     key = 'animator_duration_scale'
     original = setting('global', key)
     try:
+        d.sh('settings','put','global',key,'1')
+        time.sleep(.6)
+        baseline=out/'quick-tools-scale-reference.mp4'
+        base_ms=record('快速工具','outside',baseline)
+        instant=d.preferences().get('tool_motion/quick_tools/exit')=='none'
+        base_visible=0 if instant else measure(baseline)['visible_ms']
         for scale in (0, .5, 2):
             d.sh('settings', 'put', 'global', key, str(scale))
             time.sleep(.6)
             video = out / f'quick-tools-scale-{scale}.mp4'
             ms = record('快速工具', 'outside', video)
-            if scale:
+            if scale and not instant:
                 result = measure(video)
-                expected = 107 * scale
+                expected = base_visible * scale
                 assert abs(result['visible_ms'] - expected) < 38, result
-                assert 150 * scale - 20 <= ms <= 150 * scale + 48, ms
+                assert abs(ms-base_ms*scale)<=55, ms
             else:
                 assert ms < 55, ms
                 result = {}

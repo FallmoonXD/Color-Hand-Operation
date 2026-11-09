@@ -27,7 +27,7 @@ public final class MotionInstrumentation extends Instrumentation {
             if(!result.containsKey("error")){
                 host=startActivitySync(new android.content.Intent(context,MotionActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
                 check.getMethod("interactions",Instrumentation.class,Activity.class).invoke(null,this,host);
-                result.putString("input","PASS attached controls, reversal and exit callback ownership");
+                result.putString("input","PASS attached controls, reversal, exit callback ownership and transformed glide targets");
             }
         }catch(Throwable error){result.putString("error",android.util.Log.getStackTraceString(error));}
         finally{if(host!=null){Activity end=host;runOnMainSync(end::finish);}}

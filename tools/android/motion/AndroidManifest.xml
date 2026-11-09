@@ -4,6 +4,8 @@
         <package android:name="dev.edgeflow"/>
         <package android:name="com.android.settings"/>
         <package android:name="com.android.systemui"/>
+        <package android:name="com.coloros.smartsidebar"/>
+        <package android:name="com.coloros.smartsidebar"/>
     </queries>
     <application android:label="CHO motion check" android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name="replica.MotionActivity" android:exported="false"/>

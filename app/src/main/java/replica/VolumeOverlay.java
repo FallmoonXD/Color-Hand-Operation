@@ -26,7 +26,7 @@ public final class VolumeOverlay {
  private final SystemVolumeWindow systemWindow;
  private final int displayWidth,displayHeight;
  private Dialog dialog;
- private ValueAnimator motion;
+ private ToolMotionPlayer motion;
  private float progress;
  private float edgeDirection;
  private boolean mounted,closing,removed;
@@ -104,7 +104,11 @@ public final class VolumeOverlay {
    PanelGeometry.reserveShadow(params,(int)Math.ceil(view.getElevation()*4));
    try{manager.addView(view,params);mounted=true;}catch(Exception ignored){}
   }
-  if(mounted){view.post(this::enter);armFallback(3000);queueWindowCheck();}
+  if(mounted){
+   View target=dialog==null?view:dialog.getWindow().getDecorView();
+   motion=new ToolMotionPlayer(target,edgeDirection<0,Float.NaN,false,this::windowAlpha);
+   motion.prepare();view.post(this::enter);armFallback(3000);queueWindowCheck();
+  }
  }
 
  private ImageView button(String name,String description){ImageView t=new ImageView(context);t.setImageDrawable(SystemIcons.raw(context,name));t.setColorFilter(android.graphics.Color.WHITE);t.setScaleType(ImageView.ScaleType.FIT_CENTER);t.setPadding(PanelStyle.dp(context,14),PanelStyle.dp(context,19),PanelStyle.dp(context,14),PanelStyle.dp(context,19));t.setContentDescription(description);t.setBackgroundColor(0);return t;}
@@ -215,53 +219,33 @@ public final class VolumeOverlay {
   dismiss();
   return true;
  }
- private void pose(float fraction){
+ private void windowAlpha(float alpha){
   if(removed)return;
-  progress=fraction;
-  float scale=.5f+.5f*fraction;
-  float offset=edgeDirection*PanelStyle.dp(context,14)*(1-fraction);
+  progress=alpha;
   try{
    Window w=dialog==null?null:dialog.getWindow();WindowManager.LayoutParams p=w==null?params:w.getAttributes();
-   p.alpha=Math.max(0,Math.min(1,fraction));
-   if(closing)p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-   else p.flags&=~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-   View target=view;
-   if(w!=null){w.setAttributes(p);target=w.getDecorView();}
-   else manager.updateViewLayout(view,p);
-   target.setPivotX(edgeDirection<0?0:target.getWidth());target.setPivotY(target.getHeight()/2f);
-   target.setScaleX(scale);target.setScaleY(scale);target.setTranslationX(offset);
-  }catch(RuntimeException e){remove();}
+   p.alpha=alpha;
+   if(closing)p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;else p.flags&=~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+   if(w!=null)w.setAttributes(p);else manager.updateViewLayout(view,p);
+  }catch(RuntimeException unavailable){remove();}
  }
  private void enter(){
   if(closing||removed)return;
-  if(!ValueAnimator.areAnimatorsEnabled()){pose(1);return;}
-  pose(progress);
+  windowAlpha(progress);
+  ToolAnimation.Style style=ToolAnimation.VOLUME_BUTTONS.active(context,true);
+  if(!ValueAnimator.areAnimatorsEnabled()||style==ToolAnimation.Style.NONE){motion.shown();return;}
   NativeMaterial.whenReady(dialog!=null?dialog.getWindow().getDecorView():view,()->{
-   if(!closing&&!removed)animate(1,ColorMotion.VOLUME_IN_MS,ColorMotion.VOLUME_IN);
+   if(!closing&&!removed)motion.play(style,true,null);
   });
  }
  private void dismiss(){
   if(removed||closing)return;
   closing=true;handler.removeCallbacksAndMessages(null);up.stop();down.stop();
   NativeMaterial.cancelEntrance(dialog!=null?dialog.getWindow().getDecorView():view);
-  if(progress<=0){remove();return;}
-  pose(progress); // Release input immediately, including touches during the exit.
-  animate(0,ColorMotion.VOLUME_OUT_MS,ColorMotion.VOLUME_OUT);
+  windowAlpha(progress);
+  if(!removed)motion.play(ToolAnimation.VOLUME_BUTTONS.active(context,false),false,this::remove);
  }
- private void animate(float target,long duration,TimeInterpolator spring){
-  if(removed)return;
-  cancelMotion();
-  motion=ValueAnimator.ofFloat(progress,target);motion.setDuration(duration);motion.setInterpolator(spring);
-  motion.addUpdateListener(a->pose((Float)a.getAnimatedValue()));
-  if(target==0)motion.addListener(new AnimatorListenerAdapter(){
-   @Override public void onAnimationEnd(Animator a){remove();}
-  });
-  motion.start();
- }
- private void cancelMotion(){
-  if(motion==null)return;
-  motion.removeAllListeners();motion.removeAllUpdateListeners();motion.cancel();motion=null;
- }
+ private void cancelMotion(){if(motion!=null)motion.cancel();}
  private void remove(){
   if(removed)return;removed=true;mounted=false;up.stop();down.stop();handler.removeCallbacksAndMessages(null);
   if(observingAudio){context.unregisterReceiver(volumeChanges);observingAudio=false;}

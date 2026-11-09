@@ -11,10 +11,10 @@ import android.widget.FrameLayout;
 /** Installed Settings coui_{open,close}_slide curves, 350ms and 30% under-page travel. */
 public final class ColorPageMotion {
     static final int PAGE_MS=350;
-    private static final PathInterpolator OPEN_IN=new PathInterpolator(.3f,.1f,.3f,1);
+    static final PathInterpolator OPEN_IN=new PathInterpolator(.3f,.1f,.3f,1);
     private static final PathInterpolator OPEN_OUT=new PathInterpolator(.3f,.15f,.3f,1);
     private static final PathInterpolator CLOSE_IN=new PathInterpolator(.3f,.26f,.4f,1);
-    private static final PathInterpolator CLOSE_OUT=new PathInterpolator(.25f,.1f,.3f,1);
+    static final PathInterpolator CLOSE_OUT=new PathInterpolator(.25f,.1f,.3f,1);
     private static final PathInterpolator OPACITY=new PathInterpolator(.33f,0,.67f,1);
     private ValueAnimator animation;
     private FrameLayout host;

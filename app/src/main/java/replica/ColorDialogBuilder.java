@@ -30,6 +30,9 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
  private final HashMap<Integer,DialogInterface.OnClickListener> clicks=new HashMap<>();
  private final java.util.HashSet<Integer> destructive=new java.util.HashSet<>();
  private final boolean glass;
+ private ToolAnimation animationTool;
+ private float[] animationAnchor;
+ public ColorDialogBuilder setToolAnimation(ToolAnimation tool,float[] anchor){animationTool=tool;animationAnchor=anchor.clone();return this;}
  public ColorDialogBuilder(Context c){this(c,false);}
  protected ColorDialogBuilder(Context c,boolean glass){super(c);this.glass=glass;}
  protected final boolean needsTextInput(){return content!=null&&containsTextEditor(content);}
@@ -253,7 +256,10 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    }else if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
    if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
    window.getDecorView().setClipToOutline(true);layoutWindow();refreshColors();observeOwner();
-   if(sheet){poseSheet(0,Math.max(root.getHeight(),lastHeight));root.post(entrance);}
+   if(animationTool!=null&&(animationTool.selection(dev.edgeflow.AppPrefs.get(c),true)!=ToolAnimation.Style.DEFAULT
+       ||animationTool.selection(dev.edgeflow.AppPrefs.get(c),false)!=ToolAnimation.Style.DEFAULT)){
+    surface.setRevealAlpha(1);motion=ColorMotion.forTool(window,animationTool,animationAnchor);motion.enter();
+   }else if(sheet){poseSheet(0,Math.max(root.getHeight(),lastHeight));root.post(entrance);}
    else if(glass){motion=new ColorMotion(window);motion.enter();}
    else{poseCenter(0,ColorMotion.CENTER_START_SCALE);animatePanel(true,null);}
   }
@@ -308,7 +314,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(closing||finished)return;
    if(root==null||!isShowing()||!root.isAttachedToWindow()||!ownerAvailable()){finishDismiss();return;}
    closing=true;root.cancelPendingInputEvents();root.removeCallbacks(entrance);NativeMaterial.cancelEntrance(getWindow().getDecorView());
-   if(!sheet&&glass&&motion!=null)motion.exit(()->finishDismiss(true));else animatePanel(false,()->finishDismiss(true));
+   if(motion!=null)motion.exit(()->finishDismiss(true));else animatePanel(false,()->finishDismiss(true));
   }
   private void finishDismiss(){deliveryCancelled=true;pendingAction=null;finishDismiss(false);}
   private void finishDismiss(boolean dispatch){

@@ -206,11 +206,54 @@ public final class NativeMotionCheck {
         }
         near("SystemUI CrossFadeHelper duration",210,ColorMotion.MATERIAL_MS,0);
     }
+    private static void toolMotions(Context context,Context systemui)throws Exception{
+        Class<?> volume=systemui.getClassLoader().loadClass("com.oplus.systemui.volume.utils.VolumeAnimUtil");
+        near("expanded volume enter",volume.getField("DURATION_MULT_ROWS_SHOW").getLong(null),ColorMotion.MULTI_VOLUME_IN_MS,0);
+        ClassLoader sidebar=context.createPackageContext("com.coloros.smartsidebar",Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY).getClassLoader();
+        Class<?> force=sidebar.loadClass("t3.g");
+        for(boolean enter:new boolean[]{true,false})for(int channel=0;channel<3;channel++){
+            float response=channel==0?(enter?.6f:.4f):enter?(channel==1?.4f:.5f):.45f;
+            float bounce=enter?(channel==0?.3f:channel==1?.35f:.25f):.15f;
+            int start=enter?12:320,end=enter?320:12;
+            ColorSpringTrack ours=ColorSpringTrack.sidebar(start,end,enter,channel==0,channel==1);
+            Object stock=force.getConstructor(float.class).newInstance((float)end);
+            force.getMethod("l",float.class).invoke(stock,response);
+            force.getMethod("i",float.class).invoke(stock,bounce);
+            for(int ms=0;ms<ours.durationMs;ms+=13){
+                Object state=force.getMethod("q",double.class,double.class,long.class).invoke(stock,(double)start,0d,(long)ms);
+                near("sidebar spring "+channel,((Number)field(state,"a")).doubleValue(),ours.valueAt(ms),.003);
+            }
+        }
+        View sample=new View(context);sample.layout(0,0,200,160);
+        for(boolean left:new boolean[]{true,false})for(ToolAnimation.Style entry:ToolAnimation.choices(true)){
+            if(entry==ToolAnimation.Style.DEFAULT)continue;
+            for(ToolAnimation.Style exit:ToolAnimation.choices(false)){
+                if(exit==ToolAnimation.Style.DEFAULT)continue;
+                ToolMotionPlayer player=new ToolMotionPlayer(sample,left,Float.NaN,true,sample::setAlpha);
+                player.prepare();player.play(entry,true,null);
+                android.animation.ValueAnimator opening=(android.animation.ValueAnimator)field(player,"animator");
+                if(opening!=null)opening.setCurrentPlayTime(opening.getDuration()/3);
+                float x=sample.getTranslationX()+(1-sample.getScaleX())*sample.getPivotX();
+                float y=sample.getTranslationY()+(1-sample.getScaleY())*sample.getPivotY();
+                float alpha=sample.getAlpha();
+                int[] ends={0};player.play(exit,false,()->ends[0]++);
+                android.animation.ValueAnimator closing=(android.animation.ValueAnimator)field(player,"animator");
+                if(closing!=null){
+                    closing.setCurrentPlayTime(0);
+                    near("mixed exit X",x,sample.getTranslationX()+(1-sample.getScaleX())*sample.getPivotX(),.01);
+                    near("mixed exit Y",y,sample.getTranslationY()+(1-sample.getScaleY())*sample.getPivotY(),.01);
+                    near("mixed exit alpha",alpha,sample.getAlpha(),.001);
+                    closing.end();
+                }
+                near("exactly one removal",1,ends[0],0);player.cancel();
+            }
+        }
+    }
     public static int run(Context system)throws Exception{
         int flags=Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY;
         Context settings=system.createPackageContext("com.android.settings",flags);
         Context systemui=system.createPackageContext("com.android.systemui",flags);
-        windows(settings,system.createPackageContext("dev.edgeflow",0));controls(settings,systemui);scroll(settings);
+        windows(settings,system.createPackageContext("dev.edgeflow",0));controls(settings,systemui);scroll(settings);toolMotions(system,systemui);
         for(boolean radio:new boolean[]{true,false})for(boolean on:new boolean[]{true,false})
             for(String channel:new String[]{"fill","mark","pulse","tick-pulse"})
                 if(!(radio&&channel.equals("tick-pulse")))choice(settings,radio,on,channel);
@@ -275,6 +318,31 @@ public final class NativeMotionCheck {
         android.os.SystemClock.sleep(ColorMotion.MATERIAL_MS+40);
         if(field(material[0],"materialFade")!=null||((Number)field(material[0],"mix")).floatValue()!=1)
             throw new AssertionError("A detached material received stale fade updates");
+        glideTargets(test,host);
+    }
+    private static void glideTargets(android.app.Instrumentation test,android.app.Activity host)throws Exception{
+        java.util.concurrent.atomic.AtomicReference<Throwable> failure=new java.util.concurrent.atomic.AtomicReference<>();
+        test.runOnMainSync(()->{
+            android.app.Dialog window=new android.app.Dialog(host);
+            try{
+                android.widget.FrameLayout grid=new android.widget.FrameLayout(host);
+                View tile=new View(host);android.widget.FrameLayout.LayoutParams item=new android.widget.FrameLayout.LayoutParams(90,65);
+                item.leftMargin=80;item.topMargin=45;grid.addView(tile,item);window.setContentView(grid);window.show();
+                View decor=window.getWindow().getDecorView();decor.layout(0,0,320,220);grid.layout(0,0,320,220);tile.layout(80,45,170,110);
+                Class<?> type=Class.forName("dev.edgeflow.QuickLauncherOverlay$TileHitTest");
+                java.lang.reflect.Constructor<?> create=type.getDeclaredConstructor();create.setAccessible(true);Object hit=create.newInstance();
+                java.lang.reflect.Method contains=type.getDeclaredMethod("contains",View.class,View.class,float.class,float.class);contains.setAccessible(true);
+                for(boolean left:new boolean[]{true,false}){
+                    decor.setPivotX(left?0:320);decor.setPivotY(100);decor.setScaleX(.5f);decor.setScaleY(.65f);decor.setTranslationX(left?-12:12);
+                    int[] origin=new int[2];tile.getLocationOnScreen(origin);
+                    if(!(Boolean)contains.invoke(hit,decor,tile,origin[0]+22f,origin[1]+20f)
+                            ||(Boolean)contains.invoke(hit,decor,tile,origin[0]+65f,origin[1]+20f))
+                        throw new AssertionError("Glide hit no longer follows the displayed tile");
+                }
+            }catch(Throwable error){failure.set(error);}
+            finally{window.dismiss();}
+        });
+        if(failure.get()!=null)throw new AssertionError(failure.get());
     }
     private static void touch(View v,int action){
         long now=android.os.SystemClock.uptimeMillis();

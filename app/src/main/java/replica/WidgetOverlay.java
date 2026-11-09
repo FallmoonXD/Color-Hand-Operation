@@ -32,6 +32,7 @@ public final class WidgetOverlay {
                 || service.getSystemService(KeyguardManager.class).isKeyguardLocked()) return;
         if (current != null && !current.closing) {
             current.anchor = anchor.clone();
+            if(current.motion!=null)current.motion.reanchor(anchor[0]<PanelGeometry.screen(service).x/2f,anchor[1]);
             current.panel.reanchor(anchor);
             return;
         }
@@ -40,7 +41,7 @@ public final class WidgetOverlay {
             WidgetOverlay owner = new WidgetOverlay(service, anchor);
             current = owner;
             owner.panel.render();
-            owner.motion = new ColorMotion(owner.dialog.getWindow());
+            owner.motion = ColorMotion.forTool(owner.dialog.getWindow(),ToolAnimation.WIDGETS,anchor);
             owner.dialog.show();
             owner.panel.start();
             owner.motion.enter();

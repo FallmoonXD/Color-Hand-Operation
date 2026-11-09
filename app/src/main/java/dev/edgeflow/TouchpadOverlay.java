@@ -80,7 +80,7 @@ public final class TouchpadOverlay {
   p.x=anchor[0]<screen.x/2f?area.left+sideMargin:area.right-width-sideMargin;
   p.y=Math.max(area.top,Math.min(area.bottom-height-dp(12),Math.round(Math.max(screen.y*.55f,anchor[3]))));
   p.width=width;p.height=height;p.setTitle(service.getString(dev.edgeflow.R.string.app_name)+" 虚拟触控板");PanelGeometry.screenCoordinates(p);w.setAttributes(p);
-  try{dialog.show();w.setLayout(width,height);positionCursor();wm.addView(cursor,cursorParams);cursorAdded=true;motion=new ColorMotion(w);motion.enter();}catch(Exception e){android.util.Log.e("EdgeTouchpad","Cannot attach",e);remove();}
+  try{dialog.show();w.setLayout(width,height);positionCursor();wm.addView(cursor,cursorParams);cursorAdded=true;motion=ColorMotion.forTool(w,replica.ToolAnimation.TOUCHPAD,anchor);motion.enter();}catch(Exception e){android.util.Log.e("EdgeTouchpad","Cannot attach",e);remove();}
  }
  private LinearLayout row(){LinearLayout v=new LinearLayout(service);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
  private void setScrollMode(boolean enabled){scrollMode=enabled;String label=enabled?"滚动：开":"滚动：关";scrollButton.setText(label);scrollButton.setContentDescription(label);scrollButton.setBackground(PanelStyle.toolButton(service,enabled));}

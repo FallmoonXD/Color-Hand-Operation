@@ -11,6 +11,7 @@ public final class ColorMotion {
  public static final TimeInterpolator VOLUME_IN=SIMPLE_VOLUME?spring(.9,0):spring(.7,.2);
  public static final TimeInterpolator VOLUME_OUT=SIMPLE_VOLUME?spring(.9,0):spring(.7,0);
  public static final long VOLUME_IN_MS=SIMPLE_VOLUME?300:700,VOLUME_OUT_MS=SIMPLE_VOLUME?250:500;
+ public static final long MULTI_VOLUME_IN_MS=SIMPLE_VOLUME?300:900;
  // Settings: coui_center_dialog_{enter,exit}, coui_bottom_dialog_{enter,exit}.
  public static final TimeInterpolator ENTER=new android.view.animation.PathInterpolator(.3f,0,.1f,1);
  public static final TimeInterpolator EXIT=new android.view.animation.PathInterpolator(.3f,0,1,1);
@@ -47,11 +48,23 @@ public final class ColorMotion {
   };
  }
  private final Window window;private final int edge;private final float edgePivotY;
+ private final ToolAnimation tool;
+ private final ToolMotionPlayer toolPlayer;
  private ValueAnimator animator;private boolean closing;
  private float fraction;
  public ColorMotion(Window w){this(w,0,0);}
  public static ColorMotion fromEdge(Window w,boolean left,float pivotY){return new ColorMotion(w,left?-1:1,pivotY);}
- private ColorMotion(Window w,int edge,float pivotY){window=w;this.edge=edge;edgePivotY=pivotY;w.setWindowAnimations(0);pose(0);}
+ private ColorMotion(Window w,int edge,float pivotY){window=w;this.edge=edge;edgePivotY=pivotY;tool=null;toolPlayer=null;w.setWindowAnimations(0);pose(0);}
+ public static ColorMotion forTool(Window w,ToolAnimation tool,float[] anchor){return new ColorMotion(w,tool,anchor);}
+ public void reanchor(boolean left,float y){if(toolPlayer!=null)toolPlayer.reanchor(left,y);}
+ private ColorMotion(Window w,ToolAnimation tool,float[] anchor){
+  window=w;this.tool=tool;edge=0;edgePivotY=0;w.setWindowAnimations(0);
+  boolean left=anchor[0]<PanelGeometry.screen(w.getContext()).x/2f;
+  toolPlayer=new ToolMotionPlayer(w.getDecorView(),left,anchor[1],false,alpha->{
+   WindowManager.LayoutParams params=w.getAttributes();params.alpha=alpha;w.setAttributes(params);
+  });
+  toolPlayer.prepare();
+ }
  private void pose(float f){
   fraction=f;View v=window.getDecorView();
   if(edge!=0){
@@ -65,10 +78,18 @@ public final class ColorMotion {
   WindowManager.LayoutParams p=window.getAttributes();p.alpha=Math.max(0,Math.min(1,f));window.setAttributes(p);
  }
  public void enter(){
+  if(toolPlayer!=null){
+   ToolAnimation.Style style=tool.active(window.getContext(),true);
+   if(!ValueAnimator.areAnimatorsEnabled()||style==ToolAnimation.Style.NONE){if(!closing)toolPlayer.shown();return;}
+   View decor=window.getDecorView();
+   decor.post(()->{if(!closing)NativeMaterial.whenReady(decor,()->{if(!closing)toolPlayer.play(style,true,null);});});
+   return;
+  }
   if(!ValueAnimator.areAnimatorsEnabled()){if(!closing)pose(1);return;}
   window.getDecorView().post(()->{if(!closing)NativeMaterial.whenReady(window.getDecorView(),()->{if(!closing)animate(1,edge==0?CENTER_IN_MS:VOLUME_IN_MS,edge==0?ENTER:VOLUME_IN,null);});});
  }
  public void exit(Runnable done){if(closing)return;closing=true;NativeMaterial.cancelEntrance(window.getDecorView());PanelOverlayDialog.beginWindowExit(window);
+  if(toolPlayer!=null){toolPlayer.play(tool.active(window.getContext(),false),false,done);return;}
   if(fraction<=0||!ValueAnimator.areAnimatorsEnabled()){done.run();return;}
   animate(0,edge==0?CENTER_OUT_MS:VOLUME_OUT_MS,edge==0?EXIT:VOLUME_OUT,done);
  }
@@ -79,5 +100,5 @@ public final class ColorMotion {
   if(done!=null)animator.addListener(new AnimatorListenerAdapter(){public void onAnimationEnd(Animator a){done.run();}});
   animator.start();
  }
- public void cancel(){closing=true;NativeMaterial.cancelEntrance(window.getDecorView());if(animator!=null){animator.removeAllListeners();animator.cancel();}}
+ public void cancel(){closing=true;NativeMaterial.cancelEntrance(window.getDecorView());if(toolPlayer!=null)toolPlayer.cancel();if(animator!=null){animator.removeAllListeners();animator.cancel();}}
 }

@@ -19,7 +19,7 @@ public final class ToolsOverlay {
   try{
    dialog=new PanelOverlayDialog(c,this::back,()->{if(panel==null||!panel.hasChildDialogs())close();});
    dialog.setOnDismissListener(d->remove());Window w=dialog.getWindow();
-   panel=new ToolsPanel(c,w,this::close,retained,anchor);motion=new ColorMotion(w);WindowManager.LayoutParams attributes=w.getAttributes();attributes.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 快速工具");w.setAttributes(attributes);
+   panel=new ToolsPanel(c,w,this::close,retained,anchor);motion=ColorMotion.forTool(w,ToolAnimation.QUICK_TOOLS,panel.anchor());WindowManager.LayoutParams attributes=w.getAttributes();attributes.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 快速工具");w.setAttributes(attributes);
    w.getDecorView().addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){public void onViewAttachedToWindow(View v){}public void onViewDetachedFromWindow(View v){remove();}});
    dialog.show();panel.position();
    c.registerComponentCallbacks(configuration);motion.enter();android.util.Log.i("ReplicaTools","accessibility overlay shown; no activity launch");
