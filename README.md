@@ -43,6 +43,10 @@ Windows 用 `.\gradlew.bat assembleDebug`。调试包在 `app/build/outputs/apk/
 
 遇到手势冲突或面板显示异常，可以在 Issue 里附上机型、系统版本和复现步骤。涉及边缘手势时，也请注明横竖屏和系统导航方式。[提交问题](https://github.com/FallmoonXD/Color-Hand-Operation/issues)
 
----
+## 项目声明
 
-Color Hand Operation 是独立开发的个人项目。仓库目前未指定统一的开源许可证。图标和系统素材的来源见[第三方素材说明](THIRD_PARTY_NOTICES.md)。
+CHO 是我独立维护的个人项目，与三星、OPPO 和一加均无官方关联。正式版只在本仓库的 [GitHub Releases](https://github.com/FallmoonXD/Color-Hand-Operation/releases) 发布和更新。
+
+我不授权将 CHO 用于商业用途，也不授权将原版或修改版上架任何应用商店，包括免费上架。
+
+以上限制适用于我有权授权的项目内容。仓库目前没有统一的开源许可证，第三方组件和素材各自遵循其适用条款。权利人如对某项内容有异议，可以在 Issue 中指出具体文件或资源，方便我核查。[第三方素材说明](THIRD_PARTY_NOTICES.md) · [提交 Issue](https://github.com/FallmoonXD/Color-Hand-Operation/issues)
