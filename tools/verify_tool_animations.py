@@ -13,7 +13,6 @@ TOOLS = {'quick_tools':'快速工具','widgets':'小组件','quick_launcher':'�
          'screen_timeout':'屏幕超时','app_launcher':'应用启动器（兼容）'}
 STYLES = {'default':'工具默认','volume':'系统音量条','expanded_volume':'展开音量面板','sidebar':'智能侧边栏',
           'anchor':'锚点菜单','slide':'侧向平移','center':'原地浮现','none':'无动画'}
-BULK = '将这组动画应用到所有工具'
 
 
 def enter(tool):
@@ -25,7 +24,7 @@ def enter(tool):
 
 
 def choose(phase,style):
-    d.click('入场' if phase=='enter' else '退场')
+    d.click_item('入场' if phase=='enter' else '退场')
     row=d.find_item(STYLES[style],True)
     d.tap(row)
     time.sleep(.2)
@@ -35,15 +34,18 @@ def selections():
     return {k:v for k,v in d.preferences().items() if k.startswith('tool_motion/')}
 
 
-def bulk():
-    d.click_item(BULK,True)
+def bulk(phase):
+    label='入场' if phase=='enter' else '退场'
+    d.click_item(label)
+    d.click_item('将'+label+'动画应用到所有工具',True)
 
 
 def restore(before):
     if before==selections():
         return
     enter('quick_tools')
-    choose('enter','default');choose('exit','default');bulk()
+    for phase in ('enter','exit'):
+        choose(phase,'default');bulk(phase)
     for tool in TOOLS:
         own=[(phase,before[f'tool_motion/{tool}/{phase}']) for phase in ('enter','exit')
              if f'tool_motion/{tool}/{phase}' in before]
@@ -65,7 +67,11 @@ def main():
         choose('enter','sidebar');choose('exit','slide')
         assert selections()==dict(before,**{'tool_motion/quick_tools/enter':'sidebar','tool_motion/quick_tools/exit':'slide'})
         assert not any(n.get('text')=='展开音量面板' and d.visible(n) for n in d.ui().iter('node'))
-        bulk()
+        bulk('enter')
+        expected=dict(before,**{'tool_motion/quick_tools/exit':'slide'})
+        expected.update({f'tool_motion/{tool}/enter':'sidebar' for tool in TOOLS})
+        assert selections()==expected,'Bulk entry changed an exit'
+        bulk('exit')
         all_keys={f'tool_motion/{tool}/{phase}':value for tool in TOOLS for phase,value in [('enter','sidebar'),('exit','slide')]}
         assert selections()==all_keys,'Global apply did not copy exactly the pair'
         enter('widgets');choose('exit','none')

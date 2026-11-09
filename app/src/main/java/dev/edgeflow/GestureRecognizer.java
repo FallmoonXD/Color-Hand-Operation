@@ -20,7 +20,7 @@ public final class GestureRecognizer {
         this(shortDistance,longDistance,longDelay,new GestureAngles(80,Math.max(10,Math.min(70,angleDegrees)),Math.max(10,Math.min(70,angleDegrees)),80),new GestureAngles(80,Math.max(10,Math.min(70,angleDegrees)),Math.max(10,Math.min(70,angleDegrees)),80),immediateLong,quickShort,quickLong);
     }
     public GestureRecognizer(float shortDistance,float longDistance,long longDelay,GestureAngles shortAngles,GestureAngles longAngles,boolean immediateLong,boolean quickShort,boolean quickLong){
-        this.shortDistance=Math.max(1,shortDistance);this.longDistance=Math.max(this.shortDistance+1,longDistance);
+        this.shortDistance=Math.max(1,shortDistance);this.longDistance=longThresholdPx(this.shortDistance,longDistance);
         this.longDelay=Math.max(0,longDelay);this.shortAngles=shortAngles;this.longAngles=longAngles;this.immediateLong=immediateLong;this.quickShort=quickShort;this.quickLong=quickLong;
     }
     public void begin(boolean left,float x,float y){begin(left,x,y,0);}
@@ -60,6 +60,7 @@ public final class GestureRecognizer {
     public float distance(){return (float)Math.hypot(x-sx,y-sy);}
     public float angle(){return (float)Math.toDegrees(Math.atan2(vertical(),Math.max(.001f,(x-sx)*(left?1:-1))));}
     public long elapsed(long now){return Math.max(0,now-downTime);}
+    static float longThresholdPx(float shortPx,float longPx){return Math.max(shortPx+1,longPx);}
     public float shortThreshold(){return shortDistance;}
     public float longThreshold(){return longDistance;}
     public long durationThreshold(){return immediateLong?0:longDelay;}

@@ -17,6 +17,7 @@ public final class MainActivity extends Activity {
  private boolean checkingUpdate,updateFailed;
  private boolean motionEntering=true;
  private replica.ToolAnimationPreview.Loop animationPreviews;
+ private GestureDistancePreview distancePreview;
  private String updateStatus="";
  private ReleaseUpdate availableUpdate;
  private final android.content.SharedPreferences.OnSharedPreferenceChangeListener pagePreferenceChanged=(store,key)->{if(pageHost!=null)pageHost.post(()->{if(uiActive&&!isFinishing()&&!isDestroyed()&&!Objects.equals(renderedPageData,pageData()))render();});};
@@ -87,6 +88,7 @@ public final class MainActivity extends Activity {
  @Override public void onPause(){
   uiActive=false;if(trial!=null)trial.deactivate();dismissMenu();
   if(animationPreviews!=null)animationPreviews.stop();
+  if(distancePreview!=null)distancePreview.clear();
   dismissColorPalette();if(content!=null)android.transition.TransitionManager.endTransitions(content);endGeometryPreview();pageMotion.cancel();super.onPause();
  }
  @Override public void onStop(){endGeometryPreview();super.onStop();}
@@ -132,6 +134,7 @@ public final class MainActivity extends Activity {
  }
  private TextView text(String s,int sp,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(sp);t.setTextColor(color);t.setTypeface(ColorOsTheme.typeface(this,400));t.setIncludeFontPadding(false);t.setGravity(Gravity.CENTER_VERTICAL);return t;}
  private void render(){
+  if(distancePreview!=null){distancePreview.clear();distancePreview=null;}
   if(animationPreviews!=null){animationPreviews.stop();animationPreviews=null;}
   if(trial!=null){trial.deactivate();trial=null;}
   if(themeDirty&&chooser!=null)chooser.scaffold=null;
@@ -167,7 +170,8 @@ public final class MainActivity extends Activity {
  private ImageView icon(String name,String description,boolean accent){ImageView view=new ImageView(this);view.setImageDrawable(replica.SystemIcons.raw(this,name));Runnable tint=()->view.setColorFilter(accent?ColorOsTheme.accent(this):ColorOsTheme.text(this));tint.run();ColorOsTheme.watch(view,tint);view.setScaleType(ImageView.ScaleType.FIT_CENTER);view.setContentDescription(description);return view;}
  private LinearLayout card(){return card(content);}
  private LinearLayout card(LinearLayout parent){LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(4),dp(4),dp(4),dp(4));box.setBackground(replica.PanelStyle.shape(this,card,20));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=dp(14);parent.addView(box,lp);return box;}
- private TextView note(String value){TextView view=text(value,14,secondary);view.setLineSpacing(0,1.2f);view.setPadding(dp(12),dp(2),dp(12),dp(18));content.addView(view);return view;}
+ private TextView note(String value){return note(content,value);}
+ private TextView note(LinearLayout parent,String value){TextView view=text(value,14,secondary);view.setLineSpacing(0,1.2f);view.setPadding(dp(12),dp(2),dp(12),dp(18));parent.addView(view);return view;}
  private void divider(LinearLayout box){if(box.getChildCount()==0||"settings_divider".equals(box.getChildAt(box.getChildCount()-1).getTag()))return;View line=new View(this);line.setTag("settings_divider");line.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);line.setBackgroundColor((fg&0x00ffffff)|0x10000000);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,Math.max(1,dp(.5f)));lp.leftMargin=dp(16);lp.rightMargin=dp(16);box.addView(line,lp);}
  private LinearLayout group(String heading){if(!heading.isEmpty()){TextView label=text(heading,14,secondary);label.setTypeface(ColorOsTheme.typeface(this,500));label.setPadding(dp(6),dp(10),0,dp(8));content.addView(label);}return card();}
  private LinearLayout row(LinearLayout box,String title,String detail){divider(box);LinearLayout row=new LinearLayout(this);row.setBaselineAligned(false);row.setGravity(Gravity.CENTER_VERTICAL);boolean hasDetail=detail!=null&&!detail.isEmpty();row.setPadding(dp(16),dp(hasDetail?10:4),dp(12),dp(hasDetail?10:4));row.setMinimumHeight(dp(hasDetail?64:56));LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);TextView rowTitle=text(title,16,fg);rowTitle.setTypeface(ColorOsTheme.typeface(this,500));rowTitle.setLineSpacing(0,1.05f);labels.addView(rowTitle);if(detail!=null&&!detail.isEmpty()){TextView sub=text(detail,13,secondary);sub.setLineSpacing(0,1.2f);sub.setPadding(0,dp(4),dp(4),0);labels.addView(sub);}row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));box.addView(row);return row;}
@@ -204,7 +208,7 @@ public final class MainActivity extends Activity {
    add=button("添加触钮",()->{int n=HandleSettings.pairCount(prefs);if(n>=3)return;endGeometryPreview();HandleSettings.addPair(prefs);refresh(true);reload();});
    remove=button("移除触钮",MainActivity.this::removePair);controls.addView(add,new LinearLayout.LayoutParams(0,-1,1));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,-1,1);rp.leftMargin=dp(12);controls.addView(remove,rp);
    LinearLayout settings=card(body);
-   link(settings,"触钮范围",null,()->page(HandleSettings.pairCount(prefs)==1&&HandleSettings.linked(prefs,"left")?"range_left":"ranges"));
+   link(settings,"触钮范围","调整边缘触钮的宽度、大小和位置",()->page(HandleSettings.pairCount(prefs)==1&&HandleSettings.linked(prefs,"left")?"range_left":"ranges"));
    link(settings,"面板与工具","快速工具、小组件和其他手势面板",()->page("panels"));
    link(settings,"手势设置","方向、距离和振动",()->page("gestures"));
    link(settings,"高级设置","应用例外与隐藏条件",()->page("advanced"));
@@ -322,7 +326,7 @@ public final class MainActivity extends Activity {
   divider(longActions);View longLine=longActions.getChildAt(longActions.getChildCount()-1);LinearLayout longRows=new LinearLayout(this);longRows.setOrientation(LinearLayout.VERTICAL);longActions.addView(longRows);directionRows(longRows,id,true);longRows.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);longLine.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);
   longer.setOnCheckedChangeListener((v,on)->{prefs.edit().putBoolean(id+"_long_enabled",on).apply();beginListChange(content);longRows.setVisibility(on?View.VISIBLE:View.GONE);longLine.setVisibility(on?View.VISIBLE:View.GONE);reload();});switchRow.setOnClickListener(v->longer.setChecked(!longer.isChecked()));
   LinearLayout adjust=group("触钮设置");LinearLayout align=row(adjust,"对齐触钮","左侧和右侧保持相同的尺寸和位置");ColorSwitch linked=new ColorSwitch(this);linked.setChecked(HandleSettings.linked(prefs,id));linked.setContentDescription("对齐触钮");align.addView(linked);
-  link(adjust,"触钮范围",null,()->page("range_"+id));
+  link(adjust,"触钮范围","调整边缘触钮的宽度、大小和位置",()->page("range_"+id));
   linked.setOnCheckedChangeListener((v,on)->{
    endGeometryPreview();if(on)HandleSettings.write(prefs,id,HandleSettings.read(prefs,id),true);
    prefs.edit().putBoolean(HandleSettings.linkedKey(id),on).apply();reload();refreshGeometryPreview();
@@ -334,6 +338,7 @@ public final class MainActivity extends Activity {
   String id=screen.substring(6);return isHandlePage(id)?id:null;
  }
  private void rangeList(){
+  trialLink(null);
   LinearLayout list=card();
   for(int i=0;i<HandleSettings.pairCount(prefs)*2;i++){
    String id=GestureHandleConfig.IDS[i];
@@ -343,8 +348,9 @@ public final class MainActivity extends Activity {
   }
  }
  private void rangeEditor(String id){
+  trialLink(null);
   boolean linked=HandleSettings.linked(prefs,id);
-  geometry(group(linked?handleTitle(id)+" · 同时修改左右侧":handleTitle(id)),id,linked);trialLink(null);
+  geometry(group(linked?handleTitle(id)+" · 同时修改左右侧":handleTitle(id)),id,linked);
  }
  private void panels(){
   link(card(),"动画设置","工具的入场和退场动画",()->page("tool_animations"));
@@ -370,9 +376,6 @@ public final class MainActivity extends Activity {
  private String animationPair(replica.ToolAnimation tool){
   return "入场 "+animationName(tool.active(this,true),true)+"　·　退场 "+animationName(tool.active(this,false),false);
  }
- private String copyPair(replica.ToolAnimation tool){
-  return "入场 "+tool.selection(prefs,true).title+"　·　退场 "+tool.selection(prefs,false).title;
- }
  private String animationDescription(replica.ToolAnimation tool,replica.ToolAnimation.Style style){
   return switch(style){
    case DEFAULT -> animationName(tool.fallback,motionEntering);
@@ -387,34 +390,48 @@ public final class MainActivity extends Activity {
   };
  }
  private void animationOptions(replica.ToolAnimation tool){
-  LinearLayout tabs=new LinearLayout(this);
-  tabs.setBackground(replica.PanelStyle.shape(this,card,16));tabs.setPadding(dp(4),dp(4),dp(4),dp(4));
+  replica.ColorPhaseTabs tabs=new replica.ColorPhaseTabs(this,motionEntering);
+  tabs.setBackground(replica.PanelStyle.shape(this,card,16));
   LinearLayout.LayoutParams margin=new LinearLayout.LayoutParams(-1,-2);margin.bottomMargin=dp(14);content.addView(tabs,margin);
+  FrameLayout host=new FrameLayout(this);content.addView(host,new LinearLayout.LayoutParams(-1,-2));
   for(boolean enter:new boolean[]{true,false}){
    String label=enter?"入场":"退场";
    TextView tab=text(label,15,motionEntering==enter?ColorOsTheme.accent(this):secondary);
    tab.setGravity(Gravity.CENTER);tab.setSelected(motionEntering==enter);tab.setFocusable(true);
-   if(tab.isSelected())tab.setBackground(replica.PanelStyle.shape(this,(ColorOsTheme.accent(this)&0xffffff)|0x1c000000,12));
-   tab.setOnClickListener(v->{if(motionEntering!=enter){motionEntering=enter;render();}});
+   tab.setOnClickListener(v->{
+    if(motionEntering==enter)return;
+    motionEntering=enter;tabs.select(enter);
+    for(int i=0;i<tabs.getChildCount();i++){
+     TextView labelView=(TextView)tabs.getChildAt(i);labelView.setSelected(labelView==tab);
+     labelView.setTextColor(labelView==tab?ColorOsTheme.accent(this):secondary);
+    }
+    animationChoices(tool,host,enter);resumeAnimationPreviews();
+   });
    tabs.addView(tab,new LinearLayout.LayoutParams(0,dp(40),1));
   }
-  animationPreviews=new replica.ToolAnimationPreview.Loop(scaffold.root);
-  LinearLayout footer=card(scaffold.page);LinearLayout.LayoutParams fp=(LinearLayout.LayoutParams)footer.getLayoutParams();
-  fp.setMargins(dp(16),0,dp(16),dp(8));footer.setLayoutParams(fp);
-  TextView pair=text(copyPair(tool),13,secondary);pair.setGravity(Gravity.CENTER);pair.setPadding(dp(8),dp(6),dp(8),0);footer.addView(pair);
-  TextView all=button("将这组动画应用到所有工具",()->{tool.applyToAll(prefs);renderedPageData=pageData();toast("已应用到所有工具");});
-  all.setTextColor(ColorOsTheme.accent(this));footer.addView(all,new LinearLayout.LayoutParams(-1,dp(48)));
-  LinearLayout options=card();ArrayList<replica.ColorRadioButton> radios=new ArrayList<>();
-  replica.ToolAnimation.Style selected=tool.selection(prefs,motionEntering);
-  replica.ToolAnimation.Style otherPhase=tool.active(this,!motionEntering);
-  for(replica.ToolAnimation.Style style:replica.ToolAnimation.choices(motionEntering)){
+  animationChoices(tool,host,motionEntering);
+ }
+ private void animationChoices(replica.ToolAnimation tool,FrameLayout host,boolean enter){
+  if(animationPreviews!=null)animationPreviews.stop();
+  LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);
+  View previous=host.getChildAt(0);
+  if(previous!=null&&android.animation.ValueAnimator.areAnimatorsEnabled()){
+   android.transition.Fade fade=new android.transition.Fade();fade.setDuration(300);fade.setInterpolator(replica.ColorMotion.ENTER);
+   fade.addTarget(previous);fade.addTarget(body);android.transition.TransitionManager.beginDelayedTransition(host,fade);
+  }
+  host.removeAllViews();host.addView(body,new FrameLayout.LayoutParams(-1,-2));
+  animationPreviews=new replica.ToolAnimationPreview.Loop(body);
+  LinearLayout options=card(body);ArrayList<replica.ColorRadioButton> radios=new ArrayList<>();
+  replica.ToolAnimation.Style selected=tool.selection(prefs,enter);
+  replica.ToolAnimation.Style otherPhase=tool.active(this,!enter);
+  for(replica.ToolAnimation.Style style:replica.ToolAnimation.choices(enter)){
    divider(options);
    LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(9),dp(8),dp(9));
    row.setBackground(ColorDialogBuilder.touchBackground(this,card,14));options.addView(row,new LinearLayout.LayoutParams(-1,-2));
    replica.ToolAnimation.Style candidate=tool.resolve(style);
-   replica.ToolAnimationPreview preview=new replica.ToolAnimationPreview(this,motionEntering?candidate:otherPhase,
-           motionEntering?otherPhase:candidate,animationPreviews);
-   preview.setContentDescription("预览"+style.title+(motionEntering?"入场":"退场"));
+   replica.ToolAnimationPreview preview=new replica.ToolAnimationPreview(this,enter?candidate:otherPhase,
+           enter?otherPhase:candidate,animationPreviews);
+   preview.setContentDescription("预览"+style.title+(enter?"入场":"退场"));
    row.addView(preview,new LinearLayout.LayoutParams(dp(72),dp(48)));
    LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);
    TextView title=text(style.title,16,fg);title.setTypeface(ColorOsTheme.typeface(this,500));names.addView(title);
@@ -430,12 +447,15 @@ public final class MainActivity extends Activity {
     }
    });
    row.setOnClickListener(v->{
-    tool.select(prefs,motionEntering,style);
+    tool.select(prefs,enter,style);
     for(replica.ColorRadioButton item:radios){item.setChecked(item==radio);((View)item.getParent()).setStateDescription(item.isChecked()?"已选择":"未选择");}
-    pair.setText(copyPair(tool));renderedPageData=pageData();
+    renderedPageData=pageData();
    });
   }
-  note("选择「工具默认」时，各工具采用自己的样式。");
+  note(body,"选择「工具默认」时，各工具采用自己的样式。");
+  LinearLayout footer=card(body);String phase=enter?"入场":"退场";
+  TextView all=button("将"+phase+"动画应用到所有工具",()->{tool.applyToAll(prefs,enter);renderedPageData=pageData();toast("已应用到所有工具的"+phase+"动画");});
+  footer.addView(all,new LinearLayout.LayoutParams(-1,dp(48)));
  }
  private void directionRows(LinearLayout box,String id,boolean longer){String[] directions={"straight","up","down"};for(int i=0;i<3;i++){String direction=directions[i];String name=i==0?(GestureHandleConfig.isLeft(id)?"直线向右":"直线向左"):i==1?"对角线向上":"对角线向下";LinearLayout r=row(box,name,actionTitle(AppPrefs.action(this,id,direction,longer)));bindDirectionSummary(r,id,direction,longer);ImageView arrow=icon("status_bar_qs_back_arrow",null,true);arrow.setPadding(dp(9),dp(9),dp(9),dp(9));arrow.setRotation(GestureHandleConfig.isLeft(id)?(i==0?180:i==1?135:225):(i==0?0:i==1?45:-45));arrow.setColorFilter(ColorOsTheme.accent(this));FrameLayout iconContainer=new FrameLayout(this);iconContainer.setBackground(replica.PanelStyle.shape(this,(ColorOsTheme.accent(this)&0x00ffffff)|0x12000000,longer?12:22));iconContainer.addView(arrow,new FrameLayout.LayoutParams(-1,-1));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(42),dp(42));lp.rightMargin=dp(16);r.addView(iconContainer,0,lp);r.setContentDescription((longer?"长滑":"短滑")+name);r.setOnClickListener(v->chooseAction(GestureHandleConfig.actionKey(id,direction,longer)));if(i<2)divider(box);}}
  private void bindDirectionSummary(LinearLayout row,String id,String direction,boolean longer){TextView summary=(TextView)((LinearLayout)row.getChildAt(0)).getChildAt(1);directionSummaries.put(GestureHandleConfig.actionKey(id,direction,longer),()->summary.setText(actionTitle(AppPrefs.action(this,id,direction,longer))));}
@@ -709,10 +729,24 @@ public final class MainActivity extends Activity {
  private void slider(LinearLayout box,String name,String key,float min,float max,float def,boolean integer,String unit,String description,String low,String high){
   LinearLayout outer=sliderBody(box,name,description);float value=integer?prefs.getInt(key,(int)def):prefs.getFloat(key,def);TextView number=sliderEndpoints(outer,name,low==null?sliderValue(key,min,unit,integer):low,high==null?sliderValue(key,max,unit,integer):high,sliderValue(key,value,unit,integer));ColorSlider seek=new ColorSlider(this);int steps=integer&&max-min<=255?Math.max(1,Math.round(max-min)):100;seek.setMax(steps);seek.setProgress(Math.round((value-min)/(max-min)*steps));seek.setContentDescription(name);seek.setStateDescription(number.getText());outer.addView(seek,settingsSliderLayout());
   final boolean[] cancelled={false},tracking={false};seek.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN)cancelled[0]=false;if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)cancelled[0]=true;return false;});
-  seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){float current=value,committed=value;private void save(){float adjusted=normalizeNumber(key,current);if(integer)prefs.edit().putInt(key,Math.round(adjusted)).apply();else prefs.edit().putFloat(key,adjusted).apply();sliderNumber(number,seek,sliderValue(key,adjusted,unit,integer));committed=adjusted;if(adjusted!=current)toast("已保持有效的手势范围");reload();}
-   public void onProgressChanged(SeekBar b,int p,boolean user){current=min+(max-min)*p/steps;sliderNumber(number,seek,sliderValue(key,current,unit,integer));if(user){if(!tracking[0])save();}}
-   public void onStartTrackingTouch(SeekBar b){tracking[0]=true;cancelled[0]=false;}
-   public void onStopTrackingTouch(SeekBar b){tracking[0]=false;if(!sliderCancelled(b,cancelled[0]))save();else{seek.setProgress(Math.round((committed-min)/(max-min)*steps));}}
+  boolean longer=key.equals("long_trigger_dp");
+  GestureDistancePreview guide=longer||key.equals("trigger_dp")?distancePreview:null;
+  seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){float current=value,committed=value;
+   private void save(){float adjusted=normalizeNumber(key,current);if(integer)prefs.edit().putInt(key,Math.round(adjusted)).apply();else prefs.edit().putFloat(key,adjusted).apply();committed=adjusted;
+    if(adjusted!=current){seek.setProgress(Math.round((adjusted-min)/(max-min)*steps));toast("已保持有效的手势范围");}
+    sliderNumber(number,seek,sliderValue(key,adjusted,unit,integer));reload();}
+   public void onProgressChanged(SeekBar b,int p,boolean user){
+    current=min+(max-min)*p/steps;float displayed=guide==null?current:normalizeNumber(key,current);
+    sliderNumber(number,seek,sliderValue(key,displayed,unit,integer));
+    if(!user)return;
+    if(guide!=null)guide.show(b,longer,displayed);
+    if(!tracking[0]){save();if(guide!=null)guide.finish(b,false);}
+   }
+   public void onStartTrackingTouch(SeekBar b){tracking[0]=true;cancelled[0]=false;if(guide!=null)guide.show(b,longer,normalizeNumber(key,current));}
+   public void onStopTrackingTouch(SeekBar b){tracking[0]=false;boolean cancel=sliderCancelled(b,cancelled[0]);
+    if(!cancel)save();else{seek.setProgress(Math.round((committed-min)/(max-min)*steps));sliderNumber(number,seek,sliderValue(key,committed,unit,integer));}
+    if(guide!=null)guide.finish(b,cancel);
+   }
   });
  }
  private boolean sliderCancelled(SeekBar bar,boolean eventCancelled){return eventCancelled||!uiActive||(bar instanceof ColorSlider&&((ColorSlider)bar).isTouchCancelled());}
@@ -728,6 +762,7 @@ public final class MainActivity extends Activity {
  private String format(float value,String unit,boolean integer){return SettingsDisplay.number(value,unit,integer);}
  private void advanced(){LinearLayout g=card();link(g,"按应用设置","单独覆盖应用中的手势动作",()->page("overrides"));link(g,"应用例外","在选定应用中停用手势",()->page("exceptions"));g=group("隐藏触钮");toggle(g,"横屏模式","","hide_landscape",false);toggle(g,"快捷面板","通知面板展开时隐藏","hide_notifications",false);toggle(g,"主屏幕","","hide_home",false);toggle(g,"键盘显示时隐藏","","hide_keyboard",prefs.getBoolean("hide_when_keyboard",false));}
  private void gestureSettings(){
+  distancePreview=new GestureDistancePreview(scaffold.root,prefs);
   trialLink(null);
   LinearLayout g=group("短距离滑动");toggle(g,"快捷操作","开始操作后再从屏幕上松开手指","quick_action_short",false);link(g,"手势角度",null,()->page("angle"));slider(g,"滑动距离","trigger_dp",15,100,39.43f,false,"dp",null,"短","长");
   if(HandleSettings.hasLongGestures(prefs)){g=group("长距离滑动");toggle(g,"快捷操作",null,"quick_action_long",true);slider(g,"滑动距离","long_trigger_dp",40,180,87.43f,false,"dp",null,"短","长");valueSlider(g,"长距离滑动持续时间",prefs.getBoolean("long_immediate",false)?0:prefs.getInt("long_delay_ms",300),0,1000,"ms","短","长",v->prefs.edit().putInt("long_delay_ms",Math.round(v)).putBoolean("long_immediate",false).apply());}

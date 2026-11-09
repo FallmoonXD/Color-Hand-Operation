@@ -60,10 +60,10 @@ public enum ToolAnimation {
         if(!valid(key(enter),s.id))throw new IllegalArgumentException("Invalid tool animation");
         SharedPreferences.Editor edit=prefs.edit();put(edit,enter,s);edit.apply();
     }
-    public void applyToAll(SharedPreferences prefs){
-        Style enter=selection(prefs,true),exit=selection(prefs,false);
+    public void applyToAll(SharedPreferences prefs,boolean entering){
+        Style style=selection(prefs,entering);
         SharedPreferences.Editor edit=prefs.edit();
-        for(ToolAnimation tool:values()){tool.put(edit,true,enter);tool.put(edit,false,exit);}
+        for(ToolAnimation tool:values())tool.put(edit,entering,style);
         edit.apply();
     }
 }

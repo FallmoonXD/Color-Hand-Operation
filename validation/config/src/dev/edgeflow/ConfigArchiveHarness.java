@@ -370,10 +370,15 @@ public final class ConfigArchiveHarness {
   check(quick.active(source,true)==replica.ToolAnimation.Style.VOLUME&&widgets.active(source,false)==replica.ToolAnimation.Style.CENTER,"missing tool animations inherit each tool's native style");
   quick.select(prefs,true,replica.ToolAnimation.Style.SIDEBAR);quick.select(prefs,false,replica.ToolAnimation.Style.SLIDE);
   check(widgets.selection(prefs,true)==replica.ToolAnimation.Style.DEFAULT,"individual selection does not touch another tool");
-  int commits=prefs.commits;quick.applyToAll(prefs);
-  check(prefs.commits==commits+1,"all tools and both phases commit together");
+  widgets.select(prefs,false,replica.ToolAnimation.Style.ANCHOR);
+  int commits=prefs.commits;quick.applyToAll(prefs,true);
+  check(prefs.commits==commits+1,"bulk entry is one write");
+  check(widgets.selection(prefs,false)==replica.ToolAnimation.Style.ANCHOR,"bulk entry preserves another tool's exit");
+  widgets.select(prefs,true,replica.ToolAnimation.Style.NONE);
+  commits=prefs.commits;quick.applyToAll(prefs,false);
+  check(prefs.commits==commits+1,"bulk exit is one write");
   for(replica.ToolAnimation tool:replica.ToolAnimation.values())
-   check(tool.selection(prefs,true)==replica.ToolAnimation.Style.SIDEBAR&&tool.selection(prefs,false)==replica.ToolAnimation.Style.SLIDE,"bulk motion pair "+tool.id);
+   check(tool.selection(prefs,true)==(tool==widgets?replica.ToolAnimation.Style.NONE:replica.ToolAnimation.Style.SIDEBAR)&&tool.selection(prefs,false)==replica.ToolAnimation.Style.SLIDE,"phase-only copy "+tool.id);
   widgets.select(prefs,false,replica.ToolAnimation.Style.NONE);
   Memory dest=new Memory("tool-motion-restore");ConfigArchive.restore(dest,ConfigArchive.export(source));
   check(widgets.active(dest,false)==replica.ToolAnimation.Style.NONE&&quick.active(dest,false)==replica.ToolAnimation.Style.SLIDE,"per-tool overrides survive backup independently");
