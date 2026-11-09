@@ -98,7 +98,9 @@ public final class ColorPopupMenu implements AutoCloseable {
         build();
         window=new MenuWindow(); window.setContentView(card); window.setFocusable(focusable);
         if(windowLayoutType!=0)window.setWindowLayoutType(windowLayoutType);
-        window.setOutsideTouchable(true); window.setTouchable(true); window.setBackgroundDrawable(null);
+        boolean shareDrag=launcher!=null&&!focusable;
+        window.setOutsideTouchable(!shareDrag);window.setTouchable(true);if(shareDrag)window.setTouchModal(false);
+        window.setBackgroundDrawable(null);
         window.setElevation(dp(12)); window.setAnimationStyle(0);
         window.setEnterTransition(null); window.setExitTransition(null);
         window.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);

@@ -23,7 +23,7 @@ public final class WidgetOverlay {
         panel = new WidgetPanel(service, dialog.getWindow(), anchor, true, (provider, id, bound, existing, page) -> {
             service.startActivity(WidgetActivity.setupIntent(service, provider, id, bound, existing, page, this.anchor));
             remove();
-        });
+        },this::remove);
         dialog.setOnDismissListener(d -> remove());
     }
 
@@ -64,7 +64,7 @@ public final class WidgetOverlay {
 
     public static void dismissAll() { if (current != null) current.remove(); }
     private void back() { if (!closing && !panel.backInEditor()) close(); }
-    private void outside() { if (!panel.hasEditor()) close(); }
+    private void outside() { if (!panel.dismissMenuOnOutside()&&!panel.hasEditor()) close(); }
     private void close() {
         if (closing || removed) return;
         closing = true;

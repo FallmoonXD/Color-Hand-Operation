@@ -21,6 +21,7 @@ public final class WidgetActivity extends Activity {
     private static WeakReference<WidgetActivity> current = new WeakReference<>(null);
     private WidgetPanel panel;
     private ColorMotion motion;
+    private final PanelOutsideTouch outsideTouch=new PanelOutsideTouch();
     private float[] anchor;
     private int pending = -1, targetPage;
     private ComponentName provider;
@@ -51,7 +52,7 @@ public final class WidgetActivity extends Activity {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         anchor = NativeState.intentGesture(this, state);
         fromOverlay = SETUP.equals(getIntent().getAction());
-        panel = new WidgetPanel(this, getWindow(), anchor, false, this::startSetup);
+        panel = new WidgetPanel(this, getWindow(), anchor, false, this::startSetup,this::finish);
         if (state != null) {
             pending = state.getInt("pending", -1);
             existing = state.getBoolean("existing");
@@ -94,7 +95,9 @@ public final class WidgetActivity extends Activity {
     private void configure() {
         AppWidgetProviderInfo info = AppWidgetManager.getInstance(this).getAppWidgetInfo(pending);
         if (info == null || !info.provider.equals(provider)) { endSetup(false); return; }
-        if (info.configure == null) { endSetup(true); return; }
+        if (info.configure == null || (!existing && (info.widgetFeatures & AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL)!=0)) {
+            endSetup(true); return;
+        }
         try { panel.host.startAppWidgetConfigureActivityForResult(this, pending, 0, CONFIGURE, null); }
         catch (RuntimeException failure) {
             Toast.makeText(this, "插件设置无法打开", Toast.LENGTH_SHORT).show();
@@ -159,6 +162,12 @@ public final class WidgetActivity extends Activity {
     @Override protected void onPause() { panel.dismissEditors(); super.onPause(); }
     @Override protected void onStop() { panel.stop(); super.onStop(); }
     @Override public void onBackPressed(){if(panel==null||!panel.backInEditor())super.onBackPressed();}
+    @Override public boolean dispatchTouchEvent(android.view.MotionEvent event){
+        if(panel!=null&&!fromOverlay&&outsideTouch.consume(getWindow().getDecorView(),event,()->{
+            if(!panel.dismissMenuOnOutside()&&!panel.hasEditor())finish();
+        }))return true;
+        return super.dispatchTouchEvent(event);
+    }
     @Override public void finish() {
         if (closing) return;
         closing = true;

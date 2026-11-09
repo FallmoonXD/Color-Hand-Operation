@@ -13,7 +13,7 @@ from PIL import Image
 import device as d
 
 PACKAGE='dev.edgeflow.widgettest'
-OUT=d.B/'launcher-widgets'
+OUT=d.B/'widget-drag'
 
 def fixture(folder):
     root=Path(__file__).resolve().parents[1]
@@ -68,65 +68,116 @@ def go(index):
     raise AssertionError('Could not reach temporary page')
 def confirm_remove_page():
     page_menu();d.click_item('移除当前页面',True);d.wait_node('移除当前页面？');d.click('移除');time.sleep(.5)
-def add_widget():
+def add_widget(label='CHO 验证插件'):
+    before={o['id'] for o in data()}
     page_menu();d.click_item('添加插件',True)
     d.click('搜索应用或插件');d.sh('input','text','CHO')
-    d.click_item('CHO 验证插件，CHO 验证插件',True)
+    d.click_item(label+'，CHO 验证插件',True)
     deadline=time.monotonic()+10
     while time.monotonic()<deadline:
-        found=[o for o in data() if o['page']==state()['page']]
+        found=[o for o in data() if o['id'] not in before]
         if found and d.widget_indicator() is not None:return found[0]['id']
         tree=d.ui()
         approve=next((n for n in tree.iter('node') if n.get('package') not in (None,d.P) and
                      n.get('text') in ('创建','允许','添加','Create','Allow') and n.get('clickable')=='true' and d.visible(n)),None)
         if approve is not None:d.tap(approve)
     raise AssertionError('Fixture binding not completed')
+def geometry(wid):
+    return next(o for o in data() if o['id']==wid)
+def plugin(wid):
+    return d.wait_node('插件 '+str(wid))
+def event(kind,x,y):
+    d.sh('input','motionevent',kind,str(round(x)),str(round(y)))
+def await_page(index,count):
+    return d.wait_node(f'第 {index+1} 页，共 {count} 页')
+def pause_on(wid):
+    x,y=center(plugin(wid));event('DOWN',x,y);time.sleep(.7);return x,y
 def exercise(before):
-    pages=before['pages'];page=before['page']
-    open_panel()
-    dot=d.wait_widget_panel();assert dot.get('clickable')!='true';d.tap(dot);time.sleep(.25)
-    assert not any(n.get('content-desc')=='添加插件' for n in d.ui().iter('node'))
-    add_page();assert state()['pages']==pages+1 and state()['page']==pages
-    dots=d.wait_widget_panel();l,t,r,b=d.bounds(d.wait_node('插件页面'));dl,dt,dr,db=d.bounds(dots)
-    # Center, top/side outer padding and the empty footer all invoke the same menu.
-    for x,y in [((l+r)//2,(t+b)//2),((l+r)//2,t-5),(l-6,(t+b)//2),((dl+dr)//2,db+5)]:
-        hold(x,y);rows,bounds=action_card('添加插件')
-        assert [n.get('content-desc') for n in rows]==['添加插件','添加页面','移除当前页面']
-        shot('blank-menu',bounds);back()
-    wid=add_widget()
-    cell='插件 '+str(wid);node=d.wait_node(cell);label=d.wait_node('验证插件 · 0')
-    d.tap(label);d.wait_node('验证插件 · 1')
-    cl,ct,cr,cb=d.bounds(d.wait_node('插件页面'));footer=d.bounds(d.wait_widget_panel())
-    hold((cl+cr)//2,cb-15);action_card('添加插件');back();d.wait_node('验证插件 · 1')
-    hold(*center(node));rows,bounds=action_card('调整大小');shot('plugin-menu',bounds)
-    d.click_item('调整大小',True);time.sleep(.45)
-    # The frame owns touch while resizing.
-    def geometry():return next(o for o in data() if o['id']==wid)
-    def frame():
-        tree=d.ui()
-        assert any(n.get('resource-id')=='com.android.launcher:id/widget_resize_frame' for n in tree.iter('node'))
-        return d.bounds(d.wait_node(cell))
-    def drag(edge,dx,dy,cancel=False):
-        l,t,r,b=frame();x=l+28 if edge=='left' else (l+r)//2;y=b-28 if edge=='bottom' else (t+b)//2
-        if cancel:
-            for ev,px,py in [('DOWN',x,y),('MOVE',x+dx,y+dy),('CANCEL',x+dx,y+dy)]:d.sh('input','motionevent',ev,str(px),str(py))
-        else:d.sh('input','swipe',str(x),str(y),str(x+dx),str(y+dy),'420')
-        time.sleep(.4)
-    cl,ct,cr,cb=d.bounds(d.wait_node('插件页面'));cw=(cr-cl)//4;ch=(cb-ct)//4
-    shot('resize',frame());shot('panel',(cl,ct,cr,footer[3]));drag('left',cw,0);assert (geometry()['x'],geometry()['w'])==(1,3)
-    drag('bottom',0,-ch);assert geometry()['h']==1
-    saved=geometry();drag('left',-cw,0,True);assert geometry()==saved
-    back();d.wait_node('验证插件 · 1')
-    # The long press, including its release, never launches the RemoteViews click.
-    hold(*center(d.wait_node(cell)));d.click_item('移除插件',True);d.click('取消');d.wait_node('验证插件 · 1')
-    add_page();second=add_widget();go(pages)
-    page_menu();d.click_item('移除当前页面',True);d.click('取消');assert geometry()==saved
-    confirm_remove_page();assert state()['pages']==pages+1 and all(o['id']!=wid for o in data())
-    assert state()['page']==pages and any(o['id']==second and o['page']==pages for o in data())
-    hold(*center(d.wait_node('插件 '+str(second))));d.click_item('移除插件',True);d.click('移除');time.sleep(.55)
-    assert all(o['id']!=second for o in data())
-    confirm_remove_page();go(page);assert state()==before
-    print('PASS native row and frame IDs, empty areas, footer swipes, provider click ownership, white resize, cancellation, page removal and initial layout')
+    n=before['pages'];original_page=before['page']
+    open_panel();add_page()
+    dots=d.wait_widget_panel();cl,ct,cr,cb=d.bounds(d.wait_node('插件页面'))
+    cw=(cr-cl)/4;ch=(cb-ct)/4;dl,dt,dr,db=d.bounds(dots)
+    assert dots.get('clickable')!='true'
+    for x,y in [((cl+cr)//2,ct-5),(cl-5,(ct+cb)//2),((dl+dr)//2,db+5)]:
+        hold(x,y);rows,b=action_card('添加插件');assert [r.get('content-desc') for r in rows]==['添加插件','添加页面','移除当前页面']
+        shot('page-menu',b)
+        im=Image.open(OUT/'page-menu.png').convert('L');sizes=[]
+        for row in rows[1:]:
+            icon=next(v for v in row.iter('node') if v.get('resource-id')=='com.android.launcher:id/popup_list_window_item_icon')
+            x1,y1,x2,y2=d.bounds(icon);box=im.crop((x1-b[0],y1-b[1],x2-b[0],y2-b[1])).point(lambda v:255 if v<175 else 0).getbbox()
+            sizes.append((box[2]-box[0],box[3]-box[1]))
+        assert max(abs(a-b) for a,b in zip(*sizes))<=1,sizes
+        back()
+    first=add_widget();second=add_widget()
+    assert geometry(first)['x']==0 and geometry(second)['x']==2
+    d.tap(d.wait_node('验证插件 · 0'));d.wait_node('验证插件 · 1')
+    # Hold without lifting: both frame and the provider-specific menu must already be visible.
+    ax,ay=pause_on(first)
+    rows,menu_bounds=action_card('移除插件')
+    assert [r.get('content-desc') for r in rows]==['移除插件']
+    bounds=d.bounds(plugin(first));shot('long-press',(cl,ct,cr,max(bounds[3],menu_bounds[3])))
+    def corner_pixels(bounds):
+        l,t,r,b=bounds;im=Image.open(BytesIO(subprocess.check_output(d.A+['exec-out','screencap','-p']))).convert('RGB')
+        return sum(1 for rgb in im.crop((r-100,b-100,r-12,b-12)).get_flattened_data() if min(rgb)>248)
+    assert corner_pixels(bounds)>100,'Resize arc missing while native menu is visible'
+    event('MOVE',ax+50,ay+4);event('MOVE',ax+2*cw,ay);time.sleep(.25);event('UP',ax+2*cw,ay);time.sleep(.45)
+    assert geometry(first)['x']==2 and geometry(second)['x']==0,'Continuous long drag did not swap the two slots'
+    d.wait_node('验证插件 · 1')
+    print('PASS same-pointer long press to swap and provider click ownership',flush=True)
+    # After releasing the original press, grab the trailing lower arc with the popup still present.
+    x,y=pause_on(first);event('UP',x,y);action_card('移除插件')
+    l,t,r,b=d.bounds(plugin(first));gx,gy=r-20,b-20
+    event('DOWN',gx,gy);event('MOVE',gx,gy+ch);time.sleep(.15);event('UP',gx,gy+ch);time.sleep(.35)
+    assert geometry(first)['h']==2,'Corner resize required a second menu selection'
+    old=geometry(first).copy();l,t,r,b=d.bounds(plugin(first));gx,gy=r-20,b-20
+    event('DOWN',gx,gy);event('MOVE',gx-cw,gy-ch);event('CANCEL',gx-cw,gy-ch);time.sleep(.25)
+    assert geometry(first)==old;back()
+    print('PASS direct corner resize and cancel',flush=True)
+    add_page();third=add_widget();go(n);time.sleep(.8)
+    def cross(cancel):
+        x,y=pause_on(first);event('MOVE',x+45,y);event('MOVE',cr-10,y)
+        # Move away before a second edge dwell. An accessibility dump can take longer than a dwell.
+        time.sleep(.57)
+        tx,ty=cl+cw,ct+.5*ch;event('MOVE',tx,ty);await_page(n+1,n+2)
+        event('CANCEL' if cancel else 'UP',tx,ty);time.sleep(.85)
+    snapshot=state();cross(True);assert state()==snapshot
+    wpx,hpx=d.current_display_size();scale=632/wpx
+    remote='/data/local/tmp/cho-widget-exchange.mp4';raw=OUT/'exchange-raw.mp4'
+    rec=subprocess.Popen(d.A+['shell','screenrecord','--size',f'632x{round(hpx*scale/2)*2}','--bit-rate','8000000','--time-limit','7',remote])
+    try:
+        time.sleep(.5);cross(False);assert rec.wait(timeout=10)==0
+        subprocess.run(d.A+['pull',remote,str(raw)],check=True,capture_output=True)
+    finally:
+        if rec.poll() is None:rec.terminate()
+        d.sh('rm','-f',remote)
+    subprocess.run(['ffmpeg','-y','-loglevel','error','-i',str(raw),'-vf',
+                    f'crop={round((cr-cl)*scale/2)*2}:{round((db-ct)*scale/2)*2}:{round(cl*scale)}:{round(ct*scale)}',
+                    '-fps_mode','vfr','-enc_time_base','1:90000','-an','-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',str(OUT/'exchange.mp4')],check=True)
+    assert (geometry(first)['page'],geometry(first)['x'])==(n+1,0),(state()['page'],geometry(first),geometry(third))
+    assert (geometry(third)['page'],geometry(third)['x'])==(n,2),(geometry(first),geometry(third))
+    print('PASS cross-page swap of unlike sizes, cancel restores the original page and bindings',flush=True)
+    # Hold over the trailing empty workspace and cancel: a speculative page is never saved.
+    snapshot=state();x,y=pause_on(first);event('MOVE',x+45,y);event('MOVE',cr-10,y)
+    await_page(n+2,n+3);event('CANCEL',cr-10,y);time.sleep(.9);assert state()==snapshot
+    configurable=add_widget('CHO 可设置插件')
+    x,y=pause_on(configurable);event('UP',x,y);rows,bounds=action_card('设置')
+    assert [r.get('content-desc') for r in rows]==['设置','编辑插件','移除插件']
+    assert corner_pixels(d.bounds(plugin(configurable)))<100,'Fixed widget received a resize handle'
+    shot('provider-menu',bounds);d.click_item('设置',True);d.click('关闭提供方设置');time.sleep(.5)
+    if d.widget_indicator() is None:open_panel()
+    x,y=pause_on(configurable);event('UP',x,y);d.click_item('编辑插件',True);d.click('完成配置 '+str(configurable))
+    d.wait_widget_panel();assert geometry(configurable)['page']==n+1
+    print('PASS real provider settings shortcut and reconfiguration of the existing ID',flush=True)
+    for edge,target,count in [(cr-10,n+2,n+3),(cl+10,n+1,n+3)]:
+        x,y=pause_on(first);event('MOVE',x+42,y);event('MOVE',edge,y);time.sleep(.58)
+        tx,ty=cl+cw,ct+ch;event('MOVE',tx,ty);await_page(target,count);event('UP',tx,ty);time.sleep(.85)
+        assert geometry(first)['page']==target and state()['pages']==count,(target,geometry(first))
+    go(n+2);confirm_remove_page()
+    print('PASS extending the workspace by dropping, dragging back and removing the empty page',flush=True)
+    go(n);confirm_remove_page()
+    assert state()['pages']==n+1 and geometry(first)['page']==n and geometry(configurable)['page']==n
+    confirm_remove_page();go(original_page);assert state()==before
+    print('PASS page removal/renumbering and original layout restored',flush=True)
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True);before=state();prefs=d.preferences()

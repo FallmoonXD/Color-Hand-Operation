@@ -8,7 +8,17 @@ import android.content.Intent;
 import android.widget.RemoteViews;
 
 /** Isolated interactive provider for the host's click/long-press/resize regression. */
-public final class Provider extends AppWidgetProvider {
+public class Provider extends AppWidgetProvider {
+    public static final class Configurable extends Provider {}
+    public static final class Settings extends android.app.Activity {
+        @Override protected void onCreate(android.os.Bundle saved){
+            super.onCreate(saved);int id=getIntent().getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,-1);
+            android.widget.Button done=new android.widget.Button(this);
+            done.setText(id>=0?"完成配置 "+id:"关闭提供方设置");
+            done.setOnClickListener(v->{setResult(RESULT_OK,new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id));finish();});
+            setContentView(done);
+        }
+    }
     private static final String CLICK="dev.edgeflow.widgettest.CLICK";
     @Override public void onReceive(Context context,Intent intent){
         if(!CLICK.equals(intent.getAction())){super.onReceive(context,intent);return;}
@@ -23,7 +33,7 @@ public final class Provider extends AppWidgetProvider {
     private void update(Context c,AppWidgetManager manager,int id){
         RemoteViews view=new RemoteViews(c.getPackageName(),R.layout.plugin);
         view.setTextViewText(R.id.content,"验证插件 · "+c.getSharedPreferences("clicks",0).getInt("count",0));
-        Intent click=new Intent(c,Provider.class).setAction(CLICK).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
+        Intent click=new Intent(c,getClass()).setAction(CLICK).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
         view.setOnClickPendingIntent(R.id.content,PendingIntent.getBroadcast(c,id,click,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT));
         manager.updateAppWidget(id,view);
     }

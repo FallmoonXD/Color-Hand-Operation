@@ -2,7 +2,6 @@ package replica;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
@@ -35,7 +34,7 @@ final class LauncherWidgetStyle {
         if(launcher==null){inflater=null;return;}
         inflater=LayoutInflater.from(launcher).cloneInContext(launcher);
         inflater.setFactory((name,context,attrs)->{
-            if(name.equals("com.android.launcher3.AppWidgetResizeFrame"))return new FrameLayout(context,attrs);
+            if(name.equals("com.android.launcher.layout.ItemResizeFrame"))return new WidgetSelectionFrame(host,this);
             if(name.equals("com.coui.appcompat.view.COUILinearLayout"))return new LinearLayout(context,attrs);
             return null;
         });
@@ -89,7 +88,7 @@ final class LauncherWidgetStyle {
             launcherShortcut=false;
         }
         if(!launcherShortcut)glyph.setTint(color("launcher_edit_shortcut_fg_color",0xe5000000));
-        icon.setImageDrawable(glyph);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        icon.setImageDrawable(glyph);if(label.equals("添加页面"))icon.setRotation(45);icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         title.setTextColor(color("coui_popup_list_window_text_color_normal_light",Color.BLACK));title.setText(label);
         title.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         row.setContentDescription(label);row.setFocusable(true);row.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
@@ -100,36 +99,9 @@ final class LauncherWidgetStyle {
         });
         row.setBackground(ColorDialogBuilder.touchBackground(host,Color.TRANSPARENT,12));return row;
     }
-    View resizeFrame(FrameLayout cell){
-        View nativeFrame=inflate("app_widget_resize_frame",cell);
-        FrameLayout frame=nativeFrame instanceof FrameLayout f?f:null;
-        View borderView=frame==null?null:frame.findViewById(id("id","widget_resize_frame"));
-        ImageView border=borderView instanceof ImageView i?i:null;
-        String[] handles={"widget_resize_left_handle","widget_resize_top_handle","widget_resize_right_handle","widget_resize_bottom_handle"};
-        int[] gravities={Gravity.LEFT|Gravity.CENTER_VERTICAL,Gravity.TOP|Gravity.CENTER_HORIZONTAL,
-                Gravity.RIGHT|Gravity.CENTER_VERTICAL,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL};
-        if(border==null){
-            frame=new FrameLayout(host);border=new ImageView(host);frame.addView(border,new FrameLayout.LayoutParams(-1,-1));
-        }
-        int stroke=color("item_resize_frame_dark_color",0x99ffffff),white=color("item_resize_handle_dark_color",Color.WHITE);
-        Drawable outline=border.getDrawable();
-        GradientDrawable shape=outline instanceof GradientDrawable?(GradientDrawable)outline.mutate():new GradientDrawable();
-        shape.setColor(Color.TRANSPARENT);shape.setCornerRadius(dp(20));shape.setStroke(dim("item_resize_frame_stroke_width_min",2),stroke);
-        border.setImageDrawable(shape);border.setScaleType(ImageView.ScaleType.FIT_XY);
-        Drawable handle=drawable("ic_widget_resize_handle");
-        int size=handle==null?dp(19):Math.max(1,handle.getIntrinsicWidth());
-        FrameLayout.LayoutParams edge=new FrameLayout.LayoutParams(-1,-1);
-        edge.setMargins(size/2,size/2,size/2,size/2);border.setLayoutParams(edge);
-        for(int i=0;i<handles.length;i++){
-            View gripView=frame.findViewById(id("id",handles[i]));
-            ImageView grip=gripView instanceof ImageView image?image:null;
-            if(grip==null){grip=new ImageView(host);frame.addView(grip);}
-            Drawable dot=drawable("ic_widget_resize_handle");
-            if(dot==null){GradientDrawable circle=new GradientDrawable();circle.setShape(GradientDrawable.OVAL);circle.setColor(white);dot=circle;}
-            grip.setImageDrawable(dot);grip.setImageTintList(ColorStateList.valueOf(white));
-            grip.setLayoutParams(new FrameLayout.LayoutParams(size,size,gravities[i]));
-        }
-        frame.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-        return frame;
+    WidgetSelectionFrame selectionFrame(FrameLayout cell){
+        View nativeLayout=inflate("item_resize_frame",cell);
+        return nativeLayout instanceof WidgetSelectionFrame frame?frame:new WidgetSelectionFrame(host,this);
     }
+    int integer(String name,int fallback){int key=id("integer",name);return key==0?fallback:launcher.getResources().getInteger(key);}
 }

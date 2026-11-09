@@ -5,5 +5,11 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget"/>
         </receiver>
+        <receiver android:name=".Provider$Configurable" android:label="@string/options" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/configurable"/>
+            <meta-data android:name="oplus.appwidget.shortcuts" android:resource="@xml/shortcuts"/>
+        </receiver>
+        <activity android:name=".Provider$Settings" android:exported="true"/>
     </application>
 </manifest>

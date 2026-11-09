@@ -31,6 +31,8 @@ public final class MotionInstrumentation extends Instrumentation {
                 result.putString("input","PASS attached controls, reversal, exit callback ownership, transformed glide targets and synchronized previews");
                 Class<?> track=isolated.loadClass("replica.VolumeTrackLightCheck");
                 result.putString("upper_track",(String)track.getMethod("run",Instrumentation.class,Activity.class).invoke(null,this,host));
+                Class<?> frame=isolated.loadClass("replica.WidgetOutlineCheck");
+                result.putString("widget_outline",(String)frame.getMethod("run",Context.class).invoke(null,host));
             }
         }catch(Throwable error){result.putString("error",android.util.Log.getStackTraceString(error));}
         finally{if(host!=null){Activity end=host;runOnMainSync(end::finish);}}

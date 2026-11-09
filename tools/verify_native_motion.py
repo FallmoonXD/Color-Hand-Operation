@@ -39,6 +39,7 @@ def run(out):
         result=d.sh('am','instrument','-w',package+'/replica.MotionInstrumentation')
         print(result,flush=True)
         assert ('live ColorOS motion comparisons' in result and 'PASS attached controls' in result and 'upper-track GPU comparisons' in result
+                and 'launcher selection path' in result
                 and 'INSTRUMENTATION_CODE: -1' in result)
     finally:
         installed=d.sh('pm','path',package).strip().removeprefix('package:')
