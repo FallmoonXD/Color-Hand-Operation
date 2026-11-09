@@ -19,6 +19,10 @@ public final class ColorPopupGeometry {
     public static Placement place(int left, int top, int right, int bottom,
             int anchorLeft, int anchorTop, int anchorRight, int anchorBottom,
             int wantedWidth, int wantedHeight, boolean alignRight, int gap, int margin, int minimumHeight) {
+        return place(left,top,right,bottom,anchorLeft,anchorTop,anchorRight,anchorBottom,wantedWidth,wantedHeight,alignRight,gap,margin,minimumHeight,false);
+    }
+    static Placement place(int left,int top,int right,int bottom,int anchorLeft,int anchorTop,int anchorRight,int anchorBottom,
+            int wantedWidth,int wantedHeight,boolean alignRight,int gap,int margin,int minimumHeight,boolean centered){
         if (right<=left || bottom<=top) throw new IllegalArgumentException("Empty popup bounds");
         int mx=Math.min(Math.max(0,margin),(right-left-1)/2);
         int my=Math.min(Math.max(0,margin),(bottom-top-1)/2);
@@ -31,7 +35,7 @@ public final class ColorPopupGeometry {
         int side=useAbove?above:below;
         boolean overlap=side<Math.min(desired,Math.max(1,minimumHeight));
         int height=overlap?desired:Math.min(desired,side);
-        int x=clamp(alignRight?anchorRight-width:anchorLeft,left,right-width);
+        int x=clamp(centered?anchorLeft+(anchorRight-anchorLeft-width)/2:alignRight?anchorRight-width:anchorLeft,left,right-width);
         int y=clamp(useAbove?anchorTop-gap-height:anchorBottom+gap,top,bottom-height);
         float pivotX=Math.max(0,Math.min(width,(anchorLeft+(anchorRight-anchorLeft)*.5f)-x));
         float pivotY=overlap?Math.max(0,Math.min(height,(anchorTop+(anchorBottom-anchorTop)*.5f)-y)):(useAbove?height:0);

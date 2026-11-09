@@ -29,7 +29,7 @@ public final class ConfigArchive {
   String description(){
    return "将应用 "+preferences.length()+" 项设置，并替换快速工具的 "+tools.size()+" 个布局项。"
      +(launcher!=null?"\n快速启动布局将一并导入。":"")+(shortcuts!=null?"\n键盘快捷方式将一并导入。":"")
-     +"\n现有小组件绑定会保留。";
+     +"\n现有插件绑定会保留。";
   }
  }
  static Import prepareImport(JSONObject o)throws Exception{

@@ -7,7 +7,7 @@ import device as d
 from verify_panel_exit import record, measure
 
 
-TOOLS = {'quick_tools':'快速工具','widgets':'小组件','quick_launcher':'快速启动','task_switcher':'任务切换器',
+TOOLS = {'quick_tools':'快速工具','widgets':'插件','quick_launcher':'快速启动','task_switcher':'任务切换器',
          'virtual_touchpad':'虚拟触控板','navigation_panel':'虚拟导航键','keyboard_shortcuts':'键盘快捷方式',
          'volume_buttons':'音量按钮','screen_magnifier':'屏幕放大镜','screen_free_move':'屏幕自由移动',
          'screen_timeout':'屏幕超时','app_launcher':'应用启动器（兼容）'}
@@ -81,7 +81,7 @@ def main():
         video=base/'quick-sidebar-in-slide-out.mp4'
         duration=record('快速工具','outside',video);report=measure(video)
         assert 330<=duration<=410 and report['intermediate_frames']>=3, (duration,report)
-        record('小组件','outside',base/'widget-no-exit.mp4')
+        record('插件','outside',base/'widget-no-exit.mp4')
         print('PASS preview, independent phases, one-tap apply to 12 tools, isolated edit, actual slide and immediate dismiss')
         (base/'result.json').write_text(json.dumps({'window_exit_ms':duration,'mid_frames':report['intermediate_frames']}),encoding='utf8')
     finally:

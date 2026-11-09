@@ -79,9 +79,10 @@ public final class MainActivity extends Activity {
   if(trial!=null)trial.activate();
   resumeAnimationPreviews();
   if(restoreChoice!=null){
-   boolean columns=restoreChoice.equals("columns");restoreChoice=null;
-   if(screen.equals(columns?"launcher":"tasks"))scaffold.root.post(()->{
-    if(uiActive&&screen.equals(columns?"launcher":"tasks"))chooseCount(columns);
+   String choice=restoreChoice;boolean columns=choice.equals("columns");restoreChoice=null;
+   String owner=choice.equals("widget_height")?"widgets":columns?"launcher":"tasks";
+   if(screen.equals(owner))scaffold.root.post(()->{
+    if(uiActive&&screen.equals(owner)){if(choice.equals("widget_height"))widgetHeight();else chooseCount(columns);}
    });
   }
  }
@@ -105,7 +106,7 @@ public final class MainActivity extends Activity {
   }
   if(screen.equals("actions")||screen.equals("app_gestures")||isHandlePage(screen)||screen.equals("home"))
    return getSharedPreferences("edgeflow_launcher",0).getString("layout_v2","");
-  if(screen.equals("widgets"))return Boolean.toString(getSharedPreferences("replica_widgets",0).getBoolean("loop",false));
+  if(screen.equals("widgets")){SharedPreferences w=getSharedPreferences("replica_widgets",0);return w.getBoolean("loop",false)+"/"+w.getInt("height_v4",-1);}
   if(screen.equals("tools"))return Boolean.toString(prefs.getBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,false));
   if(screen.equals("launcher")){android.content.SharedPreferences store=getSharedPreferences("edgeflow_launcher",0);return LauncherLayout.load(store).recent+":"+store.getInt("columns",4);}
   if(screen.equals("tasks"))return Integer.toString(getSharedPreferences("edgeflow_launcher",0).getInt("recent_limit",10));
@@ -165,7 +166,7 @@ public final class MainActivity extends Activity {
   replica.ToolAnimationPreview.Loop loop=animationPreviews;
   if(uiActive&&loop!=null)pageMotion.whenSettled(()->{if(uiActive&&loop==animationPreviews)loop.start();});
  }
- private String pageTitle(){if(animationTool()!=null)return animationTool().title+"动画";if(rangeHandle()!=null)return "触钮范围";return switch(screen){case "trial"->"手势试划";case "overrides"->"按应用设置";case "override_picker"->"选择应用";case "app_gestures"->packageTitle(overridePackage);case "panels"->"面板与工具";case "tool_animations"->"动画设置";case "ranges"->"触钮范围";case "actions"->"选择操作";case "left","right","extra_left","extra_right","extra2_left","extra2_right"->handleTitle(screen);case "advanced"->"高级设置";case "gestures"->"手势设置";case "angle"->"手势角度";case "exceptions"->"应用例外";case "touchpad"->"虚拟触控板";case "navigation"->"虚拟导航键";case "launcher"->"快速启动";case "tasks"->"任务切换器";case "widgets"->"小组件";case "tools"->"快速工具";case "keyboard"->"键盘快捷方式";case "navigation_action"->"选择导航动作";case "action_app"->"启动指定应用";case "action_shortcut"->"应用快捷方式";case "permissions"->"权限与后台运行";case "backup"->"备份与恢复";case "widget_migration"->"小组件迁移结果";case "about"->"关于 "+appName();default->appName();};}
+ private String pageTitle(){if(animationTool()!=null)return animationTool().title+"动画";if(rangeHandle()!=null)return "触钮范围";return switch(screen){case "trial"->"手势试划";case "overrides"->"按应用设置";case "override_picker"->"选择应用";case "app_gestures"->packageTitle(overridePackage);case "panels"->"面板与工具";case "tool_animations"->"动画设置";case "ranges"->"触钮范围";case "actions"->"选择操作";case "left","right","extra_left","extra_right","extra2_left","extra2_right"->handleTitle(screen);case "advanced"->"高级设置";case "gestures"->"手势设置";case "angle"->"手势角度";case "exceptions"->"应用例外";case "touchpad"->"虚拟触控板";case "navigation"->"虚拟导航键";case "launcher"->"快速启动";case "tasks"->"任务切换器";case "widgets"->"插件";case "tools"->"快速工具";case "keyboard"->"键盘快捷方式";case "navigation_action"->"选择导航动作";case "action_app"->"启动指定应用";case "action_shortcut"->"应用快捷方式";case "permissions"->"权限与后台运行";case "backup"->"备份与恢复";case "widget_migration"->"插件迁移结果";case "about"->"关于 "+appName();default->appName();};}
  private ImageView icon(String name,String description){return icon(name,description,false);}
  private ImageView icon(String name,String description,boolean accent){ImageView view=new ImageView(this);view.setImageDrawable(replica.SystemIcons.raw(this,name));Runnable tint=()->view.setColorFilter(accent?ColorOsTheme.accent(this):ColorOsTheme.text(this));tint.run();ColorOsTheme.watch(view,tint);view.setScaleType(ImageView.ScaleType.FIT_CENTER);view.setContentDescription(description);return view;}
  private LinearLayout card(){return card(content);}
@@ -209,7 +210,7 @@ public final class MainActivity extends Activity {
    remove=button("移除触钮",MainActivity.this::removePair);controls.addView(add,new LinearLayout.LayoutParams(0,-1,1));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,-1,1);rp.leftMargin=dp(12);controls.addView(remove,rp);
    LinearLayout settings=card(body);
    link(settings,"触钮范围","宽度、大小和位置",()->page(HandleSettings.pairCount(prefs)==1&&HandleSettings.linked(prefs,"left")?"range_left":"ranges"));
-   link(settings,"面板与工具","快速工具、小组件和其他手势面板",()->page("panels"));
+   link(settings,"面板与工具","快速工具、插件和其他手势面板",()->page("panels"));
    link(settings,"手势设置","方向、距离和振动",()->page("gestures"));
    link(settings,"高级设置","应用例外与隐藏条件",()->page("advanced"));
    refresh(false);
@@ -246,7 +247,7 @@ public final class MainActivity extends Activity {
    }).show();
  }
  private void moreMenu(View anchor){dismissMenu();openMenu=new ColorPopupMenu(anchor).setItems(new String[]{"权限与后台运行","备份与恢复","恢复默认设置","关于"},n->{switch(n){case 0:page("permissions");break;case 1:page("backup");break;case 2:resetSettings();break;case 3:page("about");break;}}).setDividerBefore(3).show();}
- private void resetSettings(){new ColorDialogBuilder(this).setTitle("恢复默认设置？").setMessage("重置触钮、手势动作和识别设置。面板布局、应用快捷方式和已绑定的小组件保留。").setNegativeButton("取消",null).setPositiveDestructive("恢复",(d,n)->{AppPrefs.resetGestures(this);history.clear();screen="home";scrollPositions.clear();reload();render();}).show();}
+ private void resetSettings(){new ColorDialogBuilder(this).setTitle("恢复默认设置？").setMessage("重置触钮、手势动作和识别设置。面板布局、应用快捷方式和已绑定的插件保留。").setNegativeButton("取消",null).setPositiveDestructive("恢复",(d,n)->{AppPrefs.resetGestures(this);history.clear();screen="home";scrollPositions.clear();reload();render();}).show();}
  private String permissionState(String permission){return checkSelfPermission(permission)==PackageManager.PERMISSION_GRANTED?"已允许":"未允许";}
  private void permissionRow(LinearLayout box,String name,String use,String permission){
   link(box,name,permissionState(permission)+" · "+use,()->{
@@ -268,7 +269,7 @@ public final class MainActivity extends Activity {
   permissionRow(features,"蓝牙","蓝牙快捷开关",android.Manifest.permission.BLUETOOTH_CONNECT);
   link(features,"勿扰访问权限",(getSystemService(NotificationManager.class).isNotificationPolicyAccessGranted()?"已允许":"未允许")+" · 声音模式与勿扰",()->open(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
  }
- private void backup(){if(!archiveStatus.isEmpty())note(archiveStatus);LinearLayout g=card();link(g,"导出配置","手势、面板和快捷键，以及小组件绑定信息",()->openDocument(true));link(g,"导入配置","恢复配置；小组件需要重新绑定",()->openDocument(false));if(new File(getFilesDir(),"migration-widgets-report.json").isFile()){g=card();link(g,"小组件迁移结果","查看需要重新设置的组件",this::showWidgetMigrationReport);}}
+ private void backup(){if(!archiveStatus.isEmpty())note(archiveStatus);LinearLayout g=card();link(g,"导出配置","手势、面板和快捷键，以及插件绑定信息",()->openDocument(true));link(g,"导入配置","恢复配置；插件需要重新绑定",()->openDocument(false));if(new File(getFilesDir(),"migration-widgets-report.json").isFile()){g=card();link(g,"插件迁移结果","查看需要重新设置的组件",this::showWidgetMigrationReport);}}
  private void about(){
   String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(PackageManager.NameNotFoundException ignored){}
   LinearLayout identity=card();identity.setGravity(Gravity.CENTER_HORIZONTAL);identity.setPadding(dp(16),dp(28),dp(16),dp(24));
@@ -356,7 +357,7 @@ public final class MainActivity extends Activity {
   link(card(),"动画设置","工具的入场和退场动画",()->page("tool_animations"));
   LinearLayout launch=group("面板"),controls=group("操作工具");
   link(launch,"快速工具","亮度、媒体和快捷开关",()->page("tools"));
-  link(launch,"小组件","分页、尺寸和组件设置",()->page("widgets"));
+  link(launch,"插件","分页、尺寸和插件设置",()->page("widgets"));
   link(launch,"快速启动","应用、动作和文件夹",()->page("launcher"));
   link(launch,"任务切换器","最近任务与预览",()->page("tasks"));
   link(controls,"虚拟触控板","指针和触摸操作",()->page("touchpad"));
@@ -817,7 +818,23 @@ public final class MainActivity extends Activity {
     on->prefs.edit().putBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,on).apply());
   link(g,"预览快速工具",null,()->preview("quick_tools"));
  }
- private void widgetSettings(){android.content.SharedPreferences store=getSharedPreferences("replica_widgets",0);LinearLayout g=card();storeToggle(g,"循环翻页","从最后一页继续翻到第一页",store.getBoolean("loop",false),on->store.edit().putBoolean("loop",on).apply());g=card();link(g,"打开小组件面板","长按编辑页面和组件",()->preview("widgets"));}
+ private static final int[] WIDGET_HEIGHTS={250,330,400};
+ private static final String[] WIDGET_HEIGHT_NAMES={"紧凑","标准","宽敞"};
+ private void widgetSettings(){
+  SharedPreferences store=getSharedPreferences("replica_widgets",0);LinearLayout g=card();
+  int h=store.getInt("height_v4",-1);String current=h<0?"默认":h+" dp";
+  for(int i=0;i<WIDGET_HEIGHTS.length;i++)if(WIDGET_HEIGHTS[i]==h)current=WIDGET_HEIGHT_NAMES[i];
+  storeToggle(g,"循环翻页","从最后一页继续翻到第一页",store.getBoolean("loop",false),on->store.edit().putBoolean("loop",on).apply());
+  link(g,"弹窗高度",current,this::widgetHeight);
+  link(card(),"打开插件面板","长按插件编辑，长按空白处管理页面",()->preview("widgets"));
+ }
+ private void widgetHeight(){
+  SharedPreferences store=getSharedPreferences("replica_widgets",0);int h=store.getInt("height_v4",-1),checked=-1;
+  for(int i=0;i<WIDGET_HEIGHTS.length;i++)if(WIDGET_HEIGHTS[i]==h)checked=i;
+  openChoice="widget_height";new ColorDialogBuilder(this).setTitle("弹窗高度").setSingleChoiceItems(WIDGET_HEIGHT_NAMES,checked,
+    (dialog,index)->{store.edit().putInt("height_v4",WIDGET_HEIGHTS[index]).apply();dialog.dismiss();})
+    .setNegativeButton("取消",null).setOnDismissListener(d->openChoice=null).show();
+ }
  private interface BooleanEdit{void save(boolean value);}
  private void storeToggle(LinearLayout box,String title,String detail,boolean checked,BooleanEdit edit){LinearLayout r=row(box,title,detail);ColorSwitch sw=new ColorSwitch(this);sw.setChecked(checked);sw.setContentDescription(title);r.addView(sw);sw.setOnCheckedChangeListener((v,on)->{edit.save(on);renderedPageData=pageData();});r.setOnClickListener(v->sw.setChecked(!sw.isChecked()));}
  private void launcherSettings(){
@@ -1007,15 +1024,15 @@ public final class MainActivity extends Activity {
   try(InputStream in=new FileInputStream(new File(getFilesDir(),"migration-widgets-report.json"))){
    JSONObject report=new JSONObject(readLimited(in));
    String state=switch(report.optString("status")){
-    case "imported"->"已迁移";case "partial"->"部分迁移完成";case "destination_not_empty"->"已有小组件，未覆盖";
-    case "nothing_imported"->"没有迁入的小组件";default->"未完成";};
+    case "imported"->"已迁移";case "partial"->"部分迁移完成";case "destination_not_empty"->"已有插件，未覆盖";
+    case "nothing_imported"->"没有迁入的插件";default->"未完成";};
    LinearLayout summary=group(state);
    row(summary,"已迁移",Integer.toString(report.optInt("importedCount")));row(summary,"失败",Integer.toString(report.optInt("failedCount")));
-   row(summary,"需要组件设置",Integer.toString(report.optInt("configurationCount")));
+   row(summary,"需要插件设置",Integer.toString(report.optInt("configurationCount")));
    if(!report.optString("reason").isEmpty())note(report.optString("reason"));
-   migrationItems("未迁移的小组件",report.optJSONArray("failed"));
-   JSONArray pending=report.optJSONArray("needsConfiguration");migrationItems("需要设置的小组件",pending);
-   if(pending!=null&&pending.length()>0){link(card(),"打开小组件面板","长按组件进入编辑，再选择组件设置",()->preview("widgets"));}
+   migrationItems("未迁移的插件",report.optJSONArray("failed"));
+   JSONArray pending=report.optJSONArray("needsConfiguration");migrationItems("需要设置的插件",pending);
+   if(pending!=null&&pending.length()>0){link(card(),"打开插件面板","长按插件，选择编辑插件",()->preview("widgets"));}
   }catch(Exception failure){note("无法读取迁移结果。");}
  }
  private void migrationItems(String title,JSONArray entries)throws JSONException{
@@ -1024,7 +1041,7 @@ public final class MainActivity extends Activity {
   for(int i=0;i<entries.length();i++){
    JSONObject entry=entries.getJSONObject(i);String raw=entry.optString("component"),reason=entry.optString("reason");
    ComponentName name=raw.isEmpty()?null:ComponentName.unflattenFromString(raw);
-   String label=name==null?"小组件":name.getPackageName();
+   String label=name==null?"插件":name.getPackageName();
    if(name!=null)try{label=getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(name.getPackageName(),0)).toString();}
    catch(PackageManager.NameNotFoundException ignored){}
    String detail=raw+(reason.isEmpty()?"":"\n"+reason);

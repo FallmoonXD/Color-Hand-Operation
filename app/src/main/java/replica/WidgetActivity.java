@@ -86,7 +86,7 @@ public final class WidgetActivity extends Activity {
             else startActivityForResult(new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, name), BIND);
         } catch (RuntimeException failure) {
-            Toast.makeText(this, "无法绑定此小组件", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "无法绑定此插件", Toast.LENGTH_SHORT).show();
             endSetup(false);
         }
     }
@@ -97,7 +97,7 @@ public final class WidgetActivity extends Activity {
         if (info.configure == null) { endSetup(true); return; }
         try { panel.host.startAppWidgetConfigureActivityForResult(this, pending, 0, CONFIGURE, null); }
         catch (RuntimeException failure) {
-            Toast.makeText(this, "组件设置无法打开", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "插件设置无法打开", Toast.LENGTH_SHORT).show();
             endSetup(false);
         }
     }
@@ -158,6 +158,7 @@ public final class WidgetActivity extends Activity {
     @Override protected void onStart() { super.onStart(); if (!fromOverlay) panel.start(); }
     @Override protected void onPause() { panel.dismissEditors(); super.onPause(); }
     @Override protected void onStop() { panel.stop(); super.onStop(); }
+    @Override public void onBackPressed(){if(panel==null||!panel.backInEditor())super.onBackPressed();}
     @Override public void finish() {
         if (closing) return;
         closing = true;

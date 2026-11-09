@@ -8,6 +8,7 @@ The node check detects page reconstruction; it does not prove pixel-perfect moti
 import argparse
 import json
 import math
+import os
 import re
 import time
 import xml.etree.ElementTree as ET
@@ -87,9 +88,18 @@ def gesture_plan(state, tree, width, height, density):
 
 def all_preferences():
     result = {}
-    names = d.sh('run-as', d.P, 'ls', 'shared_prefs').splitlines()
+    release=os.environ.get('CHO_TEST_READ_RELEASE_PREFS')=='1'
+    if release:
+        user=d.sh('am','get-current-user').strip()
+        assert user.isdecimal()
+        base=f'/data/user/{user}/{d.P}/shared_prefs/'
+        names=d.sh('su','-c','ls '+base).splitlines()
+    else:
+        names=d.sh('run-as',d.P,'ls','shared_prefs').splitlines()
     for name in sorted(n for n in names if n.endswith('.xml')):
-        tree = ET.fromstring(d.sh('run-as', d.P, 'cat', 'shared_prefs/' + name))
+        assert re.fullmatch(r'[\w.\-]+',name)
+        raw=d.sh('su','-c','cat '+base+name) if release else d.sh('run-as',d.P,'cat','shared_prefs/'+name)
+        tree = ET.fromstring(raw)
         entries = {}
         for n in tree:
             value = sorted(child.text or '' for child in n) if n.tag == 'set' else n.text or '' if n.tag == 'string' else n.get('value')
@@ -185,7 +195,7 @@ def run(args):
     assert 'layout_v3' in baseline.get('replica_widgets.xml', {}), 'Widget layout must already be initialized; this test will not migrate it'
     try:
         if args.page != 'current':
-            d.main_link({'gestures': '手势设置', 'widgets': '小组件设置', 'exceptions': '应用例外', 'launcher': '快速启动设置'}[args.page])
+            d.main_link({'gestures': '手势设置', 'widgets': '插件设置', 'exceptions': '应用例外', 'launcher': '快速启动设置'}[args.page])
         await_activity(d.P + '/.MainActivity')
         before = stable_page()
         metrics = d.sh('wm', 'size');width, height = map(int, re.findall(r'(\d+)x(\d+)', metrics)[-1])
@@ -211,7 +221,7 @@ def run(args):
         raise
     finally:
         # Close only our still-open widget panel; do not navigate or reset arbitrary UI.
-        if d.widget_page_menu() is not None:
+        if d.widget_indicator() is not None:
             d.sh('input', 'keyevent', '4');time.sleep(.4)
         changes = preference_diff(baseline, all_preferences())
         report['preferences_unchanged'] = not changes;report['preference_changes'] = changes

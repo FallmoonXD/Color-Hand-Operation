@@ -6,8 +6,7 @@ import device as d
 
 def marker(name):
     return next((n for n in d.ui().iter('node') if n.get('package') == d.P and d.visible(n)
-                 and (name in (n.get('text'), n.get('content-desc'))
-                      or (name == '页面菜单' and n.get('content-desc', '').endswith(name)))), None)
+                 and name in (n.get('text'), n.get('content-desc'))), None)
 
 
 def check(title, opened, close=None):
@@ -41,7 +40,7 @@ if __name__ == '__main__':
     prefs = d.preferences()
     try:
         check('快速工具', '媒体音量')
-        check('小组件', '页面菜单')
+        check('插件', '插件页面')
         check('任务切换器', '系统最近任务')
         check('虚拟导航键', '关闭虚拟导航键', '关闭虚拟导航键')
         check('虚拟触控板', '光标居中', '关闭')

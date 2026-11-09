@@ -91,8 +91,8 @@ try:
     assert theme()['blur'];d.shot('coloros-final-tools-material-restored')
     results['material_live_toggle']=True
     d.sh('input','tap','630','2550');time.sleep(.4)
-    d.sh('input','swipe','5','1900','455','1450','1100');d.wait_node('第 1 页，共 1 页；页面菜单')
-    d.shot('coloros-final-widgets');d.click('第 1 页，共 1 页；页面菜单');d.wait_node('添加小组件');d.shot('coloros-final-widget-menu')
+    d.sh('input','swipe','5','1900','455','1450','1100');d.wait_widget_panel()
+    d.shot('coloros-final-widgets');d.open_widget_page_menu();d.shot('coloros-final-widget-menu')
     d.sh('input','keyevent','4');time.sleep(.3);d.sh('input','tap','630','2550');results['widgets_and_menu']=True
 finally:
     for key,value in settings.items():setting(key,value)

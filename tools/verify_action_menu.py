@@ -15,13 +15,13 @@ with PreferenceTrial({'edgeflow':{key,'target_app_'+key,'target_shortcut_'+key},
  opener();tree=d.ui();choices=[n.get('content-desc').split('，')[0] for n in tree.iter('node') if n.get('class')=='android.widget.RadioButton' and n.get('content-desc')]
  assert len(choices)==62,(len(choices),choices)
  assert choices[0]=='无'
- assert choices[-9:]==['快速工具','小组件','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式','启动指定应用','应用快捷方式'],choices[-9:]
+ assert choices[-9:]==['快速工具','插件','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式','启动指定应用','应用快捷方式'],choices[-9:]
  first=d.wait_node('无');assert d.bounds(first)[0]==112,d.bounds(first)
  out['action_count_and_grouped_order']=len(choices);out['leading_content_inset_dp']=24
  d.shot('action-menu-overview');d.click_item('设置应用快捷方式',True)
  d.wait_node('应用快捷方式');assert not sheet_visible();back();d.wait_node('短距离滑动');assert not sheet_visible();assert d.preferences()==before
  out['shortcut_subpage_back_does_not_reopen_sheet']=True
- for title in ['快速工具','小组件','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式']:
+ for title in ['快速工具','插件','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式']:
   print('Checking settings return:',title,flush=True)
   opener();d.click_item('设置'+title,True);d.wait_node(title);assert not sheet_visible()
   if title=='快速工具':d.click_item('编辑按钮',True);d.wait_node('快速工具');back();d.wait_node('编辑按钮')

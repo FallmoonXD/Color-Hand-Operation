@@ -75,7 +75,7 @@ ColorOS 的 `COUIPopupListWindow.setUseBackgroundBlur()` 把开关传给内外�
 | OHO+ 手势波形 | 两个固定窄绘制窗口，`GestureWaveView` 用 Canvas 画曲线与方向箭头。箭头在当前触点上方三个图标高度，靠近上下边缘时限位 | 左右侧、六个方向、长短滑、取消、屏幕边缘和回弹。面板锚点仍取真实触点 |
 | 快速工具与 `ToolsActivity` | `ToolsBackdrop` / `ColorOsSurface` 承担主窗口背景，按钮、媒体胶囊和 `GlassSeekBar` 绘制在其上。激活态使用主题强调色 | 左右触发位置、亮度/音量/媒体可读性、首帧、连续打开关闭、子菜单与视频焦点 |
 | 音量浮层 | `VolumeOverlay` 在窗口或附着 View 上挂现有样式 2，图标和音量轨道保持前景清晰 | 音量变化、长按、超时退出、模糊/轮廓分别关闭后的文字对比度 |
-| 小组件面板 | `WidgetOverlay` 使用可接收返回的无障碍窗口。外壳由 `PanelStyle.window()` 处理，组件内容交给 `SizedWidgetHostView` / RemoteViews，移动和缩放把手用 Canvas | host ID `17672`、分页、尺寸上报、点击 provider、编辑取消。与快速工具一样，普通打开时底下的 Activity 应保持 resumed |
+| 小组件面板 | `WidgetOverlay` 使用可接收返回的无障碍窗口。外壳由 `PanelStyle.window()` 处理，组件内容交给 `SizedWidgetHostView` / RemoteViews，长按菜单和缩放框使用桌面资源 | host ID `17672`、分页、尺寸上报、点击 provider、编辑取消。与快速工具一样，普通打开时底下的 Activity 应保持 resumed |
 | 快速启动 | 主 Dialog 使用样式 2。应用和文件夹图标采用真实图标、合成缩略图、普通文字及 Ripple | 页数、图标异步加载、编辑态与浏览态、悬停抬手选择以及子菜单关闭 |
 | 任务切换 | 外壳用主窗口材质。已有系统任务快照作为图片内容，读不到快照时显示应用图标 | 任务消失、受保护内容、刷新/关闭时释放位图、焦点和取消旧查询 |
 | 虚拟触控板、虚拟导航键 | 外壳采用共享窗口材质。触控面、指针、按键与状态采用 Canvas、系统矢量和按钮 Drawable | 光标窗口不可触摸，注入时面板临时让出输入，手势完成/取消后恢复。导航键横竖排列和命中区独立验证 |

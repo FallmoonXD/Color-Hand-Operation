@@ -16,7 +16,7 @@ d.open_action_chooser('right');tree=d.ui();assert not any(n.get('text')=='需要
 d.shot('retained-menu-compact')
 with PreferenceTrial({'edgeflow':{key,'target_app_'+key,'target_shortcut_'+key},'edgeflow_launcher':{'shortcut_labels'}}):
  before=d.preferences();d.find_item('设置应用快捷方式',True);identity=sheet().get('node-hash');window=sheet().get('window-id');snapshot=visible_rows();d.shot('retained-menu-bottom')
- for title in ['快速工具','小组件','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式']:
+ for title in ['快速工具','插件','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式']:
   print('Checking retained settings:',title,flush=True)
   d.click_item('设置'+title,True);d.wait_node(title);no_sheet()
   if title=='快速工具':d.click_item('编辑按钮',True);d.wait_node('快速工具');back();d.wait_node('编辑按钮');no_sheet()

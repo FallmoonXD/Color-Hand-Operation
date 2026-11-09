@@ -39,7 +39,10 @@ public final class ColorPopupMenu implements AutoCloseable {
     private final Context context;
     private final Activity owner;
     private final HashSet<Integer> separators=new HashSet<>(), destructive=new HashSet<>();
-    private final ArrayList<TextView> rows=new ArrayList<>();
+    private final ArrayList<View> rows=new ArrayList<>();
+    private LauncherWidgetStyle launcher;
+    private String[] icons;
+    private android.graphics.Point anchorPoint;
     private final ArrayList<View> rules=new ArrayList<>();
     private String[] labels=new String[0];
     private CharSequence title, message;
@@ -81,6 +84,10 @@ public final class ColorPopupMenu implements AutoCloseable {
     public ColorPopupMenu setDividerBefore(int... positions){checkMutable();for(int i:positions)separators.add(i);return this;}
     public ColorPopupMenu setDestructive(int... positions){checkMutable();for(int i:positions)destructive.add(i);return this;}
     public ColorPopupMenu setOnDismiss(Runnable callback){checkMutable();onDismiss=callback;return this;}
+    ColorPopupMenu launcher(LauncherWidgetStyle style,String[] drawables,android.graphics.Point point){
+        checkMutable();if(drawables.length!=labels.length)throw new IllegalArgumentException("One icon per menu item");
+        launcher=style;icons=drawables.clone();anchorPoint=point;rowHeightDp=40;return this;
+    }
     private void checkMutable(){if(showing||closed)throw new IllegalStateException("Configure a new popup before showing it");}
     public boolean isShowing(){return showing&&!closed;}
 
@@ -133,11 +140,21 @@ public final class ColorPopupMenu implements AutoCloseable {
 
     private void build(){
         card=new MenuCard(context);card.setClipToOutline(true);
-        surface=new SettingsSurface(card,SettingsSurface.Kind.POPUP,20,null);
+        if(launcher==null)surface=new SettingsSurface(card,SettingsSurface.Kind.POPUP,20,null);
+        else card.setBackground(launcher.menuBackground());
         ScrollView scroll=new ScrollView(context);scroll.setFillViewport(false);scroll.setVerticalScrollBarEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);scroll.setBackgroundColor(Color.TRANSPARENT);
         content=new LinearLayout(context);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(8),dp(8),dp(8),dp(8));
         scroll.addView(content,new ScrollView.LayoutParams(-1,-2));card.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
+        if(launcher!=null){
+            content.setPadding(0,dp(8),0,dp(8));
+            for(int i=0;i<labels.length;i++){
+                View row=launcher.menuRow(content,labels[i],icons[i]);final int index=i;
+                row.setOnClickListener(v->{if(!closing&&!closed){pending=index;beginDismiss();}});
+                rows.add(row);content.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            }
+            return;
+        }
         if(!TextUtils.isEmpty(title)){
             heading=label(title,16,500);heading.setPadding(dp(12),dp(10),dp(12),dp(6));heading.setMaxLines(3);heading.setAccessibilityHeading(true);
             content.addView(heading,new LinearLayout.LayoutParams(-1,-2));
@@ -165,11 +182,11 @@ public final class ColorPopupMenu implements AutoCloseable {
     private TextView label(CharSequence text,int sp,int weight){TextView v=new TextView(context);v.setText(text);v.setTextSize(sp);v.setTypeface(ColorOsTheme.typeface(context,weight));v.setGravity(Gravity.START);v.setEllipsize(TextUtils.TruncateAt.END);return v;}
     private void addRule(){View rule=new View(context);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,Math.max(1,dp(.5f)));lp.setMargins(dp(12),dp(4),dp(12),dp(4));content.addView(rule,lp);rules.add(rule);}
     private void refreshColors(){
-        if(card==null)return;
+        if(card==null||launcher!=null)return;
         surface.refresh();
         if(heading!=null){heading.setTextColor(ColorOsTheme.text(context));heading.setTypeface(ColorOsTheme.typeface(context,500));}
         if(description!=null){description.setTextColor(ColorOsTheme.secondary(context));description.setTypeface(ColorOsTheme.typeface(context,400));}
-        for(int i=0;i<rows.size();i++){TextView row=rows.get(i);row.setTextColor(destructive.contains(i)?ColorOsTheme.error(context):ColorOsTheme.text(context));row.setTypeface(ColorOsTheme.typeface(context,400));row.setBackground(ColorDialogBuilder.touchBackground(context,Color.TRANSPARENT,12));}
+        for(int i=0;i<rows.size();i++){TextView row=(TextView)rows.get(i);row.setTextColor(destructive.contains(i)?ColorOsTheme.error(context):ColorOsTheme.text(context));row.setTypeface(ColorOsTheme.typeface(context,400));row.setBackground(ColorDialogBuilder.touchBackground(context,Color.TRANSPARENT,12));}
         for(View rule:rules)rule.setBackgroundColor(ColorOsTheme.dark(context)?0x18ffffff:0x10000000);
     }
 
@@ -178,16 +195,22 @@ public final class ColorPopupMenu implements AutoCloseable {
         if(!validOwner()||!anchor.isAttachedToWindow()){if(!first)dismissImmediately();return false;}
         Rect bounds=ColorWindowSpace.available(context,anchor),a=new Rect();
         if(!anchor.getLocalVisibleRect(a)||bounds.isEmpty()){if(!first)dismissImmediately();return false;}
+        if(anchorPoint!=null){
+            int x=Math.max(a.left,Math.min(a.right-1,anchorPoint.x)),y=Math.max(a.top,Math.min(a.bottom-1,anchorPoint.y));
+            a.set(x,y,x+1,y+1);
+        }
         int[] position=new int[2];anchor.getLocationOnScreen(position);a.offset(position[0],position[1]);
         int limit=Math.max(1,bounds.width()-dp(32));
         int desired=dp(168);
-        for(TextView row:rows)desired=Math.max(desired,(int)Math.ceil(row.getPaint().measureText(String.valueOf(row.getText())))+dp(40));
+        if(launcher!=null)desired=launcher.dim("popup_menu_width",216);
+        else for(View item:rows){TextView row=(TextView)item;desired=Math.max(desired,(int)Math.ceil(row.getPaint().measureText(String.valueOf(row.getText())))+dp(40));}
         if(heading!=null||description!=null)desired=Math.max(desired,dp(232));
         int width=Math.min(limit,Math.min(dp(256),desired));
         content.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
         boolean rtl=anchor.getLayoutDirection()==View.LAYOUT_DIRECTION_RTL;
+        int gap=launcher==null?dp(8):anchorPoint==null?launcher.dim("popup_vertical_padding_for_card_and_widget",16):launcher.dim("popup_padding_top",8);
         ColorPopupGeometry.Placement next=ColorPopupGeometry.place(bounds.left,bounds.top,bounds.right,bounds.bottom,
-                a.left,a.top,a.right,a.bottom,width,content.getMeasuredHeight(),alignEnd!=rtl,dp(8),dp(16),dp(rowHeightDp));
+                a.left,a.top,a.right,a.bottom,width,content.getMeasuredHeight(),alignEnd!=rtl,gap,dp(16),dp(rowHeightDp),launcher!=null);
         boolean changed=placement==null||placement.x!=next.x||placement.y!=next.y||placement.width!=next.width||placement.height!=next.height;
         placement=next;
         card.setPivotX(next.pivotX);card.setPivotY(next.pivotY);
@@ -200,7 +223,7 @@ public final class ColorPopupMenu implements AutoCloseable {
     private void beginDismiss(){
         if(closed||closing)return;
         if(!showing||!validOwner()||!card.isAttachedToWindow()){finishDismiss(false);return;}
-        closing=true;for(TextView row:rows)row.setEnabled(false);
+        closing=true;for(View row:rows)row.setEnabled(false);
         animate(false,()->finishDismiss(true));
     }
     /** Lifecycle cancellation never dispatches a queued selection. */
@@ -228,7 +251,7 @@ public final class ColorPopupMenu implements AutoCloseable {
     private void setReveal(float alpha){
         // A translucent parent puts the blur drawable in an offscreen layer until the
         // last frame. Fade its compositor region and the menu contents independently.
-        surface.setRevealAlpha(alpha);
+        if(surface!=null)surface.setRevealAlpha(alpha);else card.getBackground().setAlpha(Math.round(255*alpha));
         content.setAlpha(alpha);
     }
     private void animate(boolean enter,Runnable done){

@@ -53,14 +53,14 @@ final class WidgetProviderPicker implements AutoCloseable {
     WidgetProviderPicker(Context owner,Consumer<AppWidgetProviderInfo> selection){
         this.owner=owner;this.selection=selection;
         content=new LinearLayout(owner);content.setOrientation(LinearLayout.VERTICAL);
-        search=ColorDialogBuilder.editText(owner,"搜索应用或小组件");search.setSingleLine(true);
-        search.setContentDescription("搜索应用或小组件");
+        search=ColorDialogBuilder.editText(owner,"搜索应用或插件");search.setSingleLine(true);
+        search.setContentDescription("搜索应用或插件");
         content.addView(search,new LinearLayout.LayoutParams(-1,-2));
         status=new TextView(owner);status.setGravity(Gravity.CENTER);status.setTextSize(14);
         status.setPadding(dp(16),dp(24),dp(16),dp(24));status.setMinHeight(dp(96));
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         list=new ListView(owner);ColorDialogBuilder.styleList(list);list.setAdapter(adapter);
-        list.setContentDescription("可添加的小组件");
+        list.setContentDescription("可添加的插件");
         LinearLayout.LayoutParams listParams=new LinearLayout.LayoutParams(-1,Math.min(dp(380),Math.max(dp(144),owner.getResources().getDisplayMetrics().heightPixels/2)));
         listParams.topMargin=dp(8);content.addView(list,listParams);
         list.addOnLayoutChangeListener((view,left,top,right,bottom,oldLeft,oldTop,oldRight,oldBottom)->{
@@ -110,7 +110,7 @@ final class WidgetProviderPicker implements AutoCloseable {
                 }
                 Collator collator=Collator.getInstance(Locale.getDefault());
                 result.sort((a,b)->{int order=collator.compare(a.app,b.app);if(order==0)order=a.info.provider.getPackageName().compareTo(b.info.provider.getPackageName());if(order==0)order=collator.compare(a.label,b.label);return order==0?a.info.provider.flattenToString().compareTo(b.info.provider.flattenToString()):order;});
-            }catch(Exception failure){error="无法读取小组件列表 · 点按重试";}
+            }catch(Exception failure){error="无法读取插件列表 · 点按重试";}
             final String message=error;
             main.post(()->{
                 if(closed||token!=generation)return;
@@ -125,10 +125,10 @@ final class WidgetProviderPicker implements AutoCloseable {
         rowsVersion++;filtered.clear();String query=search.getText().toString().trim().toLowerCase(Locale.ROOT);
         if(!loading&&!failed)for(Entry entry:entries)if(query.isEmpty()||entry.search.contains(query))filtered.add(entry);
         boolean empty=filtered.isEmpty();
-        if(loading)status.setText("正在加载小组件…");
-        else if(failed)status.setText("无法读取小组件列表 · 点按重试");
-        else if(entries.isEmpty())status.setText("当前没有可添加的小组件");
-        else if(empty)status.setText("没有找到匹配的小组件");
+        if(loading)status.setText("正在加载插件…");
+        else if(failed)status.setText("无法读取插件列表 · 点按重试");
+        else if(entries.isEmpty())status.setText("当前没有可添加的插件");
+        else if(empty)status.setText("没有找到匹配的插件");
         // The ListView always occupies the same natural region. Empty/loading/error content is
         // an unselectable row, so query results cannot move the search field or footer.
         adapter.notifyDataSetChanged();

@@ -6,7 +6,7 @@ import dev.edgeflow.AppPrefs;
 /** Stable IDs are used in gesture settings and exported configuration. */
 public enum ToolAnimation {
     QUICK_TOOLS("quick_tools","快速工具",Style.VOLUME),
-    WIDGETS("widgets","小组件",Style.CENTER),
+    WIDGETS("widgets","插件",Style.CENTER),
     LAUNCHER("quick_launcher","快速启动",Style.CENTER),
     TASKS("task_switcher","任务切换器",Style.CENTER),
     TOUCHPAD("virtual_touchpad","虚拟触控板",Style.CENTER),

@@ -73,14 +73,20 @@ def wait_node(s,timeout=6):
   time.sleep(.2)
  raise AssertionError('No visible node: '+s)
 
-def widget_page_menu():
+def widget_indicator():
  return next((n for n in ui().iter('node') if n.get('package')==P
-              and n.get('content-desc','').endswith('页面菜单') and visible(n)),None)
+              and re.fullmatch(r'第 \d+ 页，共 \d+ 页',n.get('content-desc','')) and visible(n)),None)
+
+def open_widget_page_menu():
+ dots=wait_widget_panel()
+ l,t,r,b=bounds(dots);x,y=str((l+r)//2),str((t+b)//2)
+ sh('input','swipe',x,y,x,y,'750')
+ return wait_node('添加插件')
 
 def wait_widget_panel(shown=True,timeout=8):
  deadline=time.monotonic()+timeout
  while time.monotonic()<deadline:
-  menu=widget_page_menu()
+  menu=widget_indicator()
   if (menu is not None)==shown:return menu
   time.sleep(.15)
  raise AssertionError('Unexpected widget panel visibility: '+str(shown))
@@ -229,11 +235,12 @@ def panel_settings(title):
 def range_settings(handle='left'):
  open_handle(handle);click_item('触钮范围',True);wait_node('大小')
 
-PREVIEWS={'快速工具':'预览快速工具','小组件':'打开小组件面板','快速启动':'编辑快速启动','任务切换器':'预览任务切换器','虚拟触控板':'预览触控板','虚拟导航键':'右侧边缘','键盘快捷方式':'预览键盘快捷方式'}
-SETTINGS_ALIASES={'快速工具设置':'快速工具','小组件设置':'小组件','快速启动设置':'快速启动','任务切换器设置':'任务切换器','触控板设置':'虚拟触控板','导航键设置':'虚拟导航键','键盘快捷方式设置':'键盘快捷方式'}
+PREVIEWS={'快速工具':'预览快速工具','插件':'打开插件面板','快速启动':'编辑快速启动','任务切换器':'预览任务切换器','虚拟触控板':'预览触控板','虚拟导航键':'右侧边缘','键盘快捷方式':'预览键盘快捷方式'}
+SETTINGS_ALIASES={'快速工具设置':'快速工具','插件设置':'插件','快速启动设置':'快速启动','任务切换器设置':'任务切换器','触控板设置':'虚拟触控板','导航键设置':'虚拟导航键','键盘快捷方式设置':'键盘快捷方式'}
 
 def main_link(s):
  """Compatibility routing preserves callers' old settings-versus-preview intent."""
+ if s in ('小组件','小组件设置'):s=s.replace('小组件','插件')
  if s in HANDLE_ALIASES:return open_handle(HANDLE_ALIASES[s])
  if s in SETTINGS_ALIASES:return panel_settings(SETTINGS_ALIASES[s])
  if s in PREVIEWS:panel_settings(s);click_item(PREVIEWS[s],True);return
@@ -242,7 +249,7 @@ def main_link(s):
  if s=='应用例外':click_item('高级设置',True);click_item('应用例外',True);return
  if s in ('关于','关于 Color Hand Operation','恢复默认设置','备份与恢复','权限与后台运行'):
   click('更多选项');click('关于' if s=='关于 Color Hand Operation' else s);return
- if s in ('导出配置','导入配置','小组件迁移结果'):
+ if s in ('导出配置','导入配置','插件迁移结果'):
   click('更多选项');click('备份与恢复');click_item(s,True);return
  raise AssertionError('No OHO navigation route for old main link: '+s)
 

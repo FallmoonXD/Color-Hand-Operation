@@ -41,7 +41,7 @@ try:
     for side,x,end in [('left',5,455),('right',1259,809)]:
         current_volume=d.vol();d.sh('input','swipe',str(x),'1900',str(end),'1450','80');time.sleep(.25)
         assert d.vol()==current_volume+1,(side,d.vol(),current_volume)
-        assert d.widget_page_menu() is None,'Fast release bypassed long duration'
+        assert d.widget_indicator() is None,'Fast release bypassed long duration'
         d.sh('input','tap','630','2550');time.sleep(.65)
         d.sh('cmd','media_session','volume','--stream','3','--set',str(current_volume))
     result['fast_far_release_is_short_both_sides']=True

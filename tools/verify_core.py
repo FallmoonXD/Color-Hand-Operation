@@ -17,8 +17,8 @@ try:
  r['four_volume_gestures']=True
  for x,ex in [(5,455),(1259,809)]:
   prior=d.resumed();swipe(x,1900,ex,1450);menu=d.wait_widget_panel();assert d.resumed()==prior
-  d.tap(menu);d.wait_node('添加小组件');d.sh('input','keyevent','4');time.sleep(.4)
-  assert d.widget_page_menu() is not None
+  d.open_widget_page_menu();d.sh('input','keyevent','4');time.sleep(.4)
+  assert d.widget_indicator() is not None
   d.sh('input','keyevent','4');d.wait_widget_panel(False);assert d.resumed()==prior
  r['both_widget_gestures_and_menu']=True
  home();swipe(5,1400,205,1400,250);assert any(app_card(n) for n in d.ui().iter('node'));home();r['left_recents']=True

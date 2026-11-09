@@ -18,7 +18,7 @@ public final class WidgetOverlay {
         this.anchor = anchor.clone();
         dialog = new PanelOverlayDialog(service, this::back, this::outside);
         WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
-        lp.setTitle(service.getString(dev.edgeflow.R.string.app_name) + " 小组件");
+        lp.setTitle(service.getString(dev.edgeflow.R.string.app_name) + " 插件");
         dialog.getWindow().setAttributes(lp);
         panel = new WidgetPanel(service, dialog.getWindow(), anchor, true, (provider, id, bound, existing, page) -> {
             service.startActivity(WidgetActivity.setupIntent(service, provider, id, bound, existing, page, this.anchor));
@@ -48,7 +48,7 @@ public final class WidgetOverlay {
         } catch (RuntimeException failure) {
             dismissAll();
             android.util.Log.w("EdgeWidgets", "Cannot open widget panel", failure);
-            android.widget.Toast.makeText(service, "无法打开小组件面板", android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(service, "无法打开插件面板", android.widget.Toast.LENGTH_SHORT).show();
         }
     }
 
