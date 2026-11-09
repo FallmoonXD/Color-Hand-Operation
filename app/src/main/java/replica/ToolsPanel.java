@@ -98,21 +98,20 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         ImageView sun=icon("brightness_icon",PanelStyle.accent(this));autoIcon=sun;sun.setContentDescription("自动亮度");sun.setOnClickListener(v->command("settings put system screen_brightness_mode "+(Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1?0:1)));brightness.addView(sun,new LinearLayout.LayoutParams(dp(35),dp(34)));
         SeekBar light=new GlassSeekBar(this);LinearLayout.LayoutParams lightParams=new LinearLayout.LayoutParams(0,dp(38),1);if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f)lightParams.rightMargin=dp(8);else lightParams.leftMargin=dp(8);brightness.addView(light,lightParams);brightnessControl=new BrightnessControl(this,light);
         if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){brightness.removeView(sun);brightness.addView(sun);}
-        LinearLayout media=new LinearLayout(this);media.setOrientation(LinearLayout.VERTICAL);media.setPadding(dp(12),dp(6),dp(12),dp(10));media.setBackground(PanelStyle.mediaSurface(this));
+        VolumeTrackLight.Surface media=new VolumeTrackLight.Surface(this,22);media.setOrientation(LinearLayout.VERTICAL);media.setPadding(dp(12),dp(6),dp(12),dp(10));media.setBackground(PanelStyle.mediaSurface(this));
         LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,dp(96));mp.topMargin=dp(14);panel.addView(media,mp);
         LinearLayout vr=row();media.addView(vr);speaker=icon("volume_media",Color.WHITE);vr.addView(speaker,new LinearLayout.LayoutParams(dp(35),dp(34)));
         speaker.setOnClickListener(v->adjustMediaVolume(AudioManager.ADJUST_TOGGLE_MUTE));
-        speaker.setBackground(new MediaPressRipple(this,14));
-        vr.setOnClickListener(v->speaker.performClick());vr.setBackground(new MediaPressRipple(this,14));vr.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        vr.setOnClickListener(v->speaker.performClick());vr.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         SeekBar volume=new GlassSeekBar(this,true);liveVolume=volume;volume.setContentDescription("媒体音量");tintSlider(volume);volume.setMax(audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));volume.setProgress(audio.getStreamVolume(AudioManager.STREAM_MUSIC));LinearLayout.LayoutParams volumeParams=new LinearLayout.LayoutParams(0,dp(34),1);if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f)volumeParams.rightMargin=dp(8);else volumeParams.leftMargin=dp(8);vr.addView(volume,volumeParams);
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}public void onProgressChanged(SeekBar b,int v,boolean user){if(user)setMediaVolume(v);}});
         if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){vr.removeView(speaker);vr.addView(speaker);}
+        media.setTrack(volume);
         LinearLayout controls=row();LinearLayout.LayoutParams controlsParams=new LinearLayout.LayoutParams(-1,dp(36));controlsParams.topMargin=dp(10);media.addView(controls,controlsParams);
         String[] symbols={"player_prev","player_play","player_next","ic_volume_up","ic_volume_down"};
         String[] labels={"上一首","播放／暂停","下一首","音量增加","音量减小"};int[] keys={88,85,87,24,25};
         for(int i=0;i<keys.length;i++){
             int key=keys[i];ImageView t=icon(symbols[i],Color.WHITE);t.setContentDescription(labels[i]);t.setTooltipText(labels[i]);
-            t.setBackground(new MediaPressRipple(this,14));
             controls.addView(t,new LinearLayout.LayoutParams(0,dp(36),1));
             if(key==24||key==25)new RepeatPress(t,()->adjustMediaVolume(key==24?AudioManager.ADJUST_RAISE:AudioManager.ADJUST_LOWER));
             else{

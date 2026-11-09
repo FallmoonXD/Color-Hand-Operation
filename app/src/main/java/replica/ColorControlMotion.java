@@ -8,10 +8,15 @@ import android.view.View;
 final class ColorControlMotion implements Runnable {
     private final View host;
     private final ColorControlPhysics state;
+    private final double positionThreshold,velocityThreshold;
     private float target,response=.3f,bounce;
     private long last,start;
     private boolean running;
-    ColorControlMotion(View host,float initial){this.host=host;state=new ColorControlPhysics(initial);target=initial;}
+    ColorControlMotion(View host,float initial){this(host,initial,.001,.01);}
+    ColorControlMotion(View host,float initial,double positionThreshold,double velocityThreshold){
+        this.host=host;state=new ColorControlPhysics(initial);target=initial;
+        this.positionThreshold=positionThreshold;this.velocityThreshold=velocityThreshold;
+    }
     float value(){return (float)state.position;}
     boolean running(){return running;}
     static float durationScale(View host){
@@ -35,7 +40,7 @@ final class ColorControlMotion implements Runnable {
         if(!running)return;float scale=durationScale(host);
         if(!host.isAttachedToWindow()||!host.isShown()||scale<=0){snap(target);return;}
         long now=SystemClock.uptimeMillis();double dt=Math.max(0,(now-last)/1000d/scale);last=now;state.step(target,response,bounce,dt);
-        if((Math.abs(state.position-target)<.001&&Math.abs(state.velocity)<.01)||now-start>5000*scale){snap(target);return;}
+        if((Math.abs(state.position-target)<positionThreshold&&Math.abs(state.velocity)<velocityThreshold)||now-start>5000*scale){snap(target);return;}
         host.invalidate();host.postOnAnimation(this);
     }
 }

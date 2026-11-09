@@ -68,7 +68,7 @@ public final class VolumeOverlay {
  private VolumeOverlay(Context c,float[] anchor){
   context=c;manager=(WindowManager)c.getSystemService(Context.WINDOW_SERVICE);systemWindow=new SystemVolumeWindow(c);
   AudioManager audio=(AudioManager)c.getSystemService(Context.AUDIO_SERVICE);
-  view=new LinearLayout(c){
+  view=new VolumeTrackLight.Surface(c,22){
    @Override public boolean dispatchTouchEvent(MotionEvent event){
     return closing||(dialog==null&&outsideTouch(event))||super.dispatchTouchEvent(event);
    }
@@ -111,7 +111,7 @@ public final class VolumeOverlay {
   }
  }
 
- private ImageView button(String name,String description){ImageView t=new ImageView(context);t.setImageDrawable(SystemIcons.raw(context,name));t.setColorFilter(android.graphics.Color.WHITE);t.setScaleType(ImageView.ScaleType.FIT_CENTER);t.setPadding(PanelStyle.dp(context,14),PanelStyle.dp(context,19),PanelStyle.dp(context,14),PanelStyle.dp(context,19));t.setContentDescription(description);t.setBackground(new MediaPressRipple(context,19));return t;}
+ private ImageView button(String name,String description){ImageView t=new ImageView(context);t.setImageDrawable(SystemIcons.raw(context,name));t.setColorFilter(android.graphics.Color.WHITE);t.setScaleType(ImageView.ScaleType.FIT_CENTER);t.setPadding(PanelStyle.dp(context,14),PanelStyle.dp(context,19),PanelStyle.dp(context,14),PanelStyle.dp(context,19));t.setContentDescription(description);return t;}
 
  private void armFallback(int millis){
   if(closing||systemWindow.tracked())return;

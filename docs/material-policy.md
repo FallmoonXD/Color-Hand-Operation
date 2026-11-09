@@ -52,3 +52,9 @@ Run `validation/material-policy/run.ps1` from `standalone`. It extracts and comp
 These checks do not execute the OEM Binder capture service, GPU shaders, Window blur or actual on-screen theme transitions. Root owns those device tests. The shared native bridge already unbinds after approximately 15 seconds with zero clients; this change stops capture immediately and leaves that existing bounded idle grace period intact. It does not add a new persistent service or loop.
 
 The old sampled-background compatibility renderer releases its cached sample when blur is disabled and requires a fresh sample afterward. Production surfaces use the live native pipeline. Displayed hardware bitmaps are dereferenced rather than forcibly recycled because RenderThread may still hold them; only unpublished pending buffers are explicitly recycled.
+
+## Volume track press feedback
+
+The reference on PKR110 is the upper draggable track in the compact system volume window. Its `OplusVolumeSeekBar` passes touch events to `OplusVolumeSeekBarSpotLightHelper` and draws the light after the track. `SEEK_BAR_SIDE` selects COUI's `TYPE_TRANSLUCENT_SMALL_2` preset. It uses an AGSL light field blended with `OVERLAY`. The radius grows from 100 to 500 physical pixels at a light height of 200 pixels. Peak intensity is 0.4 in light mode and 0.2 in dark mode. Release adds up to 1,000 pixels of spread as intensity falls.
+
+CHO applies this effect to the media capsule and the independent volume capsule in their own coordinates. The media slider clips the effect to its track and handles its own touch sequence. The controls keep their existing dimensions and follow CHO's material blur setting. `tools/verify_native_motion.py` draws CHO and the installed side-track drawable into the same hardware pixels on consecutive frames, covering light and dark backgrounds, a held touch, a displaced touch and release.
