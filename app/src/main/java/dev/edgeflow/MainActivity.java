@@ -16,6 +16,7 @@ public final class MainActivity extends Activity {
  private final HashMap<String,Runnable> directionSummaries=new HashMap<>();
  private boolean checkingUpdate,updateFailed;
  private boolean motionEntering=true;
+ private replica.ToolAnimationPreview.Loop animationPreviews;
  private String updateStatus="";
  private ReleaseUpdate availableUpdate;
  private final android.content.SharedPreferences.OnSharedPreferenceChangeListener pagePreferenceChanged=(store,key)->{if(pageHost!=null)pageHost.post(()->{if(uiActive&&!isFinishing()&&!isDestroyed()&&!Objects.equals(renderedPageData,pageData()))render();});};
@@ -75,6 +76,7 @@ public final class MainActivity extends Activity {
   if(themeDirty||!first&&!Objects.equals(renderedPageData,pageData()))render();
   else{if(!first&&homeControls!=null)homeControls.refresh(false);refreshGeometryPreview();}
   if(trial!=null)trial.activate();
+  resumeAnimationPreviews();
   if(restoreChoice!=null){
    boolean columns=restoreChoice.equals("columns");restoreChoice=null;
    if(screen.equals(columns?"launcher":"tasks"))scaffold.root.post(()->{
@@ -84,6 +86,7 @@ public final class MainActivity extends Activity {
  }
  @Override public void onPause(){
   uiActive=false;if(trial!=null)trial.deactivate();dismissMenu();
+  if(animationPreviews!=null)animationPreviews.stop();
   dismissColorPalette();if(content!=null)android.transition.TransitionManager.endTransitions(content);endGeometryPreview();pageMotion.cancel();super.onPause();
  }
  @Override public void onStop(){endGeometryPreview();super.onStop();}
@@ -129,6 +132,7 @@ public final class MainActivity extends Activity {
  }
  private TextView text(String s,int sp,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(sp);t.setTextColor(color);t.setTypeface(ColorOsTheme.typeface(this,400));t.setIncludeFontPadding(false);t.setGravity(Gravity.CENTER_VERTICAL);return t;}
  private void render(){
+  if(animationPreviews!=null){animationPreviews.stop();animationPreviews=null;}
   if(trial!=null){trial.deactivate();trial=null;}
   if(themeDirty&&chooser!=null)chooser.scaffold=null;
   closeAppDirectory();closeShortcutPage();dismissMenu();homeControls=null;colorSwatches.clear();directionSummaries.clear();themeDirty=false;
@@ -152,6 +156,11 @@ public final class MainActivity extends Activity {
   }
   int y=scrollPositions.getOrDefault(screen,0);ScrollView currentScroll=scroller;if(y>0)currentScroll.post(()->currentScroll.scrollTo(0,y));
   pageMotion.show(pageHost,scaffold.root,transition);transition=0;renderedPageData=pageData();refreshGeometryPreview();
+  resumeAnimationPreviews();
+ }
+ private void resumeAnimationPreviews(){
+  replica.ToolAnimationPreview.Loop loop=animationPreviews;
+  if(uiActive&&loop!=null)pageMotion.whenSettled(()->{if(uiActive&&loop==animationPreviews)loop.start();});
  }
  private String pageTitle(){if(animationTool()!=null)return animationTool().title+"动画";if(rangeHandle()!=null)return "触钮范围";return switch(screen){case "trial"->"手势试划";case "overrides"->"按应用设置";case "override_picker"->"选择应用";case "app_gestures"->packageTitle(overridePackage);case "panels"->"面板与工具";case "tool_animations"->"动画设置";case "ranges"->"触钮范围";case "actions"->"选择操作";case "left","right","extra_left","extra_right","extra2_left","extra2_right"->handleTitle(screen);case "advanced"->"高级设置";case "gestures"->"手势设置";case "angle"->"手势角度";case "exceptions"->"应用例外";case "touchpad"->"虚拟触控板";case "navigation"->"虚拟导航键";case "launcher"->"快速启动";case "tasks"->"任务切换器";case "widgets"->"小组件";case "tools"->"快速工具";case "keyboard"->"键盘快捷方式";case "navigation_action"->"选择导航动作";case "action_app"->"启动指定应用";case "action_shortcut"->"应用快捷方式";case "permissions"->"权限与后台运行";case "backup"->"备份与恢复";case "widget_migration"->"小组件迁移结果";case "about"->"关于 "+appName();default->appName();};}
  private ImageView icon(String name,String description){return icon(name,description,false);}
@@ -389,7 +398,7 @@ public final class MainActivity extends Activity {
    tab.setOnClickListener(v->{if(motionEntering!=enter){motionEntering=enter;render();}});
    tabs.addView(tab,new LinearLayout.LayoutParams(0,dp(40),1));
   }
-  note("点左图预览，点名称选择。");
+  animationPreviews=new replica.ToolAnimationPreview.Loop(scaffold.root);
   LinearLayout footer=card(scaffold.page);LinearLayout.LayoutParams fp=(LinearLayout.LayoutParams)footer.getLayoutParams();
   fp.setMargins(dp(16),0,dp(16),dp(8));footer.setLayoutParams(fp);
   TextView pair=text(copyPair(tool),13,secondary);pair.setGravity(Gravity.CENTER);pair.setPadding(dp(8),dp(6),dp(8),0);footer.addView(pair);
@@ -397,11 +406,14 @@ public final class MainActivity extends Activity {
   all.setTextColor(ColorOsTheme.accent(this));footer.addView(all,new LinearLayout.LayoutParams(-1,dp(48)));
   LinearLayout options=card();ArrayList<replica.ColorRadioButton> radios=new ArrayList<>();
   replica.ToolAnimation.Style selected=tool.selection(prefs,motionEntering);
+  replica.ToolAnimation.Style otherPhase=tool.active(this,!motionEntering);
   for(replica.ToolAnimation.Style style:replica.ToolAnimation.choices(motionEntering)){
    divider(options);
    LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(9),dp(8),dp(9));
    row.setBackground(ColorDialogBuilder.touchBackground(this,card,14));options.addView(row,new LinearLayout.LayoutParams(-1,-2));
-   replica.ToolAnimationPreview preview=new replica.ToolAnimationPreview(this,tool.resolve(style),motionEntering);
+   replica.ToolAnimation.Style candidate=tool.resolve(style);
+   replica.ToolAnimationPreview preview=new replica.ToolAnimationPreview(this,motionEntering?candidate:otherPhase,
+           motionEntering?otherPhase:candidate,animationPreviews);
    preview.setContentDescription("预览"+style.title+(motionEntering?"入场":"退场"));
    row.addView(preview,new LinearLayout.LayoutParams(dp(72),dp(48)));
    LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(dp(12),0,0,0);
@@ -420,9 +432,8 @@ public final class MainActivity extends Activity {
    row.setOnClickListener(v->{
     tool.select(prefs,motionEntering,style);
     for(replica.ColorRadioButton item:radios){item.setChecked(item==radio);((View)item.getParent()).setStateDescription(item.isChecked()?"已选择":"未选择");}
-    pair.setText(copyPair(tool));renderedPageData=pageData();preview.play();
+    pair.setText(copyPair(tool));renderedPageData=pageData();
    });
-   if(style==selected)preview.post(()->pageMotion.whenSettled(()->{if(preview.isAttachedToWindow()&&radio.isChecked())preview.play();}));
   }
   note("选择「工具默认」时，各工具采用自己的样式。");
  }

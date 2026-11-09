@@ -33,15 +33,6 @@ public final class ToolMotionPlayer {
         if(pendingLayout!=null){target.removeCallbacks(pendingLayout);pendingLayout=null;}
         if(animator!=null){animator.removeAllListeners();animator.removeAllUpdateListeners();animator.cancel();animator=null;}
     }
-    void poster(Style style,boolean enter){
-        if(!ValueAnimator.areAnimatorsEnabled()||style==Style.NONE||style==Style.SCREEN){shown();return;}
-        if(enter)prepare();else shown();
-        play(style,enter,null);
-        if(animator!=null){
-            float fraction=enter?(style==Style.CENTER||style==Style.SLIDE?.38f:.22f):style==Style.VOLUME?.14f:.32f;
-            animator.setCurrentPlayTime(Math.round(animator.getDuration()*fraction));cancel();
-        }
-    }
     private void setAlpha(float value){alpha=Math.max(0,Math.min(1,value));opacity.accept(alpha);}
     private void pivot(float x,float y){
         target.setTranslationX(target.getTranslationX()+(1-target.getScaleX())*(target.getPivotX()-x));
@@ -58,12 +49,45 @@ public final class ToolMotionPlayer {
             pendingLayout=()->{pendingLayout=null;if(target.isAttachedToWindow())play(style,true,done);};
             target.postOnAnimation(pendingLayout);return;
         }
+        animator=buildPhase(style,enter);
+        if(animator==null){
+            if(enter)shown();else setAlpha(0);
+            if(done!=null)done.run();return;
+        }
+        animator.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator a){animator=null;if(done!=null)done.run();}});
+        animator.start();
+    }
+    /** A thumbnail samples these same frames without starting a second clock. */
+    final class PreviewPhase {
+        private final ValueAnimator frames;
+        private final boolean entering;
+        private final float pivotX,pivotY;
+        final long duration;
+        private PreviewPhase(Style style,boolean enter){
+            entering=enter;
+            if(enter)prepare();else shown();
+            frames=style==Style.NONE?null:buildPhase(style,enter);
+            duration=frames==null?0:frames.getDuration();
+            pivotX=target.getPivotX();pivotY=target.getPivotY();
+        }
+        void sample(long time){
+            if(time>=duration){
+                if(entering)shown();else setAlpha(0);
+                return;
+            }
+            target.setPivotX(pivotX);target.setPivotY(pivotY);
+            frames.setCurrentFraction(time/(float)duration);
+        }
+    }
+    PreviewPhase previewPhase(Style style,boolean enter){return new PreviewPhase(style,enter);}
+    private ValueAnimator buildPhase(Style style,boolean enter){
         int w=Math.max(1,target.getWidth()),h=Math.max(1,target.getHeight());
         int[] loc=new int[2];target.getLocationOnScreen(loc);
         float originX=loc[0]-target.getTranslationX()-(1-target.getScaleX())*target.getPivotX();
         float originY=loc[1]-target.getTranslationY()-(1-target.getScaleY())*target.getPivotY();
         float density=target.getResources().getDisplayMetrics().density;
         float unit=miniature?w/260f:density;
+        float pixelsPerDrawnPixel=density/unit;
         float edgeGap=miniature?w*.14f:left?originX:PanelGeometry.screen(target.getContext()).x-originX-w;
         boolean edge=style==Style.VOLUME||style==Style.EXPANDED_VOLUME||style==Style.SIDEBAR||style==Style.ANCHOR||style==Style.SLIDE;
         float pivotY=edge&&Float.isFinite(anchorY)?Math.max(0,Math.min(h,anchorY-originY)):h*.5f;
@@ -105,30 +129,32 @@ public final class ToolMotionPlayer {
         float endAlpha=enter?1:hiddenAlpha==1?startAlpha:0;
         ColorSpringTrack width,height,travel,fade;
         if(style==Style.SIDEBAR){
-            width=ColorSpringTrack.sidebar(startX*w,endX*w,enter,false,true);
-            height=ColorSpringTrack.sidebar(startY*h,endY*h,enter,false,false);
-            travel=ColorSpringTrack.sidebar(startDx,endDx,enter,true,false);
+            // The native spring settles in physical pixels. Solve at full size
+            // before projecting onto the tile, or a thumbnail settles too early.
+            width=ColorSpringTrack.sidebar(startX*w*pixelsPerDrawnPixel,endX*w*pixelsPerDrawnPixel,enter,false,true);
+            height=ColorSpringTrack.sidebar(startY*h*pixelsPerDrawnPixel,endY*h*pixelsPerDrawnPixel,enter,false,false);
+            travel=ColorSpringTrack.sidebar(startDx*pixelsPerDrawnPixel,endDx*pixelsPerDrawnPixel,enter,true,false);
             fade=null;duration=Math.max(width.durationMs,Math.max(height.durationMs,travel.durationMs));
         }else if(style==Style.ANCHOR){
             width=ColorSpringTrack.popupScale(startX,enter);height=ColorSpringTrack.popupScale(startY,enter);
             fade=ColorSpringTrack.popupOpacity(startAlpha,enter);travel=null;
             duration=Math.max(fade.durationMs,Math.max(width.durationMs,height.durationMs));
         }else{width=height=travel=fade=null;}
-        if(duration==0){if(enter)shown();else setAlpha(0);if(done!=null)done.run();return;}
+        if(duration==0)return null;
         final float length=duration;
-        animator=ValueAnimator.ofFloat(0,length);animator.setDuration(duration);animator.setInterpolator(new LinearInterpolator());
-        animator.addUpdateListener(a->{
+        ValueAnimator frames=ValueAnimator.ofFloat(0,length);frames.setDuration(duration);frames.setInterpolator(new LinearInterpolator());
+        frames.addUpdateListener(a->{
             float t=(float)a.getAnimatedValue(),f=curve==null?t/length:curve.getInterpolation(t/length);
             float x=lerp(startX,endX,f),y=lerp(startY,endY,f),offset=lerp(startDx,endDx,f),opacityValue=lerp(startAlpha,endAlpha,f);
             if(style==Style.SIDEBAR){
-                x=width.valueAt(t)/w;y=height.valueAt(t)/h;offset=travel.valueAt(t);
+                x=width.valueAt(t)/(w*pixelsPerDrawnPixel);y=height.valueAt(t)/(h*pixelsPerDrawnPixel);
+                offset=travel.valueAt(t)/pixelsPerDrawnPixel;
                 float widthProgress=endX==startX?f:(x-startX)/(endX-startX);
                 opacityValue=lerp(startAlpha,endAlpha,Math.max(0,Math.min(1,widthProgress)));
             }else if(style==Style.ANCHOR){x=width.valueAt(t);y=height.valueAt(t);opacityValue=fade.valueAt(t);}
             target.setScaleX(Math.max(0,x));target.setScaleY(Math.max(0,y));target.setTranslationX(offset);target.setTranslationY(lerp(startDy,endDy,f));setAlpha(opacityValue);
         });
-        animator.addListener(new AnimatorListenerAdapter(){@Override public void onAnimationEnd(Animator a){animator=null;if(done!=null)done.run();}});
-        animator.start();
+        return frames;
     }
     private static float lerp(float a,float b,float t){return a+(b-a)*t;}
 }

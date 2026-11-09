@@ -22,12 +22,13 @@ public final class MotionInstrumentation extends Instrumentation {
                 try{
                     Object count=check.getMethod("run",Context.class).invoke(null,context);
                     result.putString("motion","PASS "+count+" live ColorOS motion comparisons");
+                    result.putString("preview_ms",(String)check.getMethod("previewDurations",Context.class).invoke(null,context));
                 }catch(Throwable error){result.putString("error",android.util.Log.getStackTraceString(error));}
             });
             if(!result.containsKey("error")){
                 host=startActivitySync(new android.content.Intent(context,MotionActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
                 check.getMethod("interactions",Instrumentation.class,Activity.class).invoke(null,this,host);
-                result.putString("input","PASS attached controls, reversal, exit callback ownership and transformed glide targets");
+                result.putString("input","PASS attached controls, reversal, exit callback ownership, transformed glide targets and synchronized previews");
             }
         }catch(Throwable error){result.putString("error",android.util.Log.getStackTraceString(error));}
         finally{if(host!=null){Activity end=host;runOnMainSync(end::finish);}}

@@ -224,6 +224,7 @@ public final class NativeMotionCheck {
                 near("sidebar spring "+channel,((Number)field(state,"a")).doubleValue(),ours.valueAt(ms),.003);
             }
         }
+        previewSprings(context,force);
         View sample=new View(context);sample.layout(0,0,200,160);
         for(boolean left:new boolean[]{true,false})for(ToolAnimation.Style entry:ToolAnimation.choices(true)){
             if(entry==ToolAnimation.Style.DEFAULT)continue;
@@ -249,6 +250,32 @@ public final class NativeMotionCheck {
             }
         }
     }
+    private static int nativeSettleTime(Class<?> force,float from,float to,float response,float bounce)throws Exception{
+        Object spring=force.getConstructor(float.class).newInstance(to);
+        force.getMethod("l",float.class).invoke(spring,response);
+        force.getMethod("i",float.class).invoke(spring,bounce);
+        java.lang.reflect.Method step=force.getMethod("q",double.class,double.class,long.class);
+        for(int ms=0;ms<3000;ms++){
+            Object state=step.invoke(spring,(double)from,0d,(long)ms);
+            if(Math.abs(((Number)field(state,"a")).doubleValue()-to)<.75
+                    &&Math.abs(((Number)field(state,"b")).doubleValue())<.75*62.5)return ms;
+        }
+        throw new AssertionError("The stock sidebar spring did not settle");
+    }
+    private static void previewSprings(Context context,Class<?> force)throws Exception{
+        float density=context.getResources().getDisplayMetrics().density,w=260*density,h=w*6/7;
+        for(boolean enter:new boolean[]{true,false}){
+            int width=nativeSettleTime(force,enter?4*density:w,enter?w:4*density,enter?.4f:.45f,enter?.35f:.15f);
+            int height=nativeSettleTime(force,enter?60*density:h,enter?h:60*density,enter?.5f:.45f,enter?.25f:.15f);
+            int travel=nativeSettleTime(force,enter?w*.14f:0,enter?0:w*.14f,enter?.6f:.4f,enter?.3f:.15f);
+            for(int size:new int[]{35,70,140}){
+                View sample=new View(context);sample.layout(0,0,size,size*6/7);
+                ToolMotionPlayer player=new ToolMotionPlayer(sample,false,Float.NaN,true,sample::setAlpha);
+                ToolMotionPlayer.PreviewPhase phase=player.previewPhase(ToolAnimation.Style.SIDEBAR,enter);
+                near("sidebar duration at thumbnail width "+size,Math.max(width,Math.max(height,travel)),phase.duration,1);
+            }
+        }
+    }
     public static int run(Context system)throws Exception{
         int flags=Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY;
         Context settings=system.createPackageContext("com.android.settings",flags);
@@ -258,6 +285,19 @@ public final class NativeMotionCheck {
             for(String channel:new String[]{"fill","mark","pulse","tick-pulse"})
                 if(!(radio&&channel.equals("tick-pulse")))choice(settings,radio,on,channel);
         return checks;
+    }
+    public static String previewDurations(Context context){
+        View card=new View(context);
+        card.layout(0,0,PanelStyle.dp(context,35),PanelStyle.dp(context,30));
+        ToolMotionPlayer player=new ToolMotionPlayer(card,false,Float.NaN,true,card::setAlpha);
+        StringBuilder times=new StringBuilder();
+        for(ToolAnimation.Style style:ToolAnimation.choices(true)){
+            if(style==ToolAnimation.Style.DEFAULT)continue;
+            if(times.length()>0)times.append(", ");
+            times.append(style.id).append('=').append(player.previewPhase(style,true).duration)
+                    .append('/').append(player.previewPhase(style,false).duration);
+        }
+        return times.toString();
     }
     public static void interactions(android.app.Instrumentation test,android.app.Activity host)throws Exception{
         ColorSwitch[] toggle=new ColorSwitch[1];ColorCheckBox[] check=new ColorCheckBox[1];ColorRadioButton[] radio=new ColorRadioButton[1];ColorSlider[] slider=new ColorSlider[1];
@@ -318,7 +358,44 @@ public final class NativeMotionCheck {
         android.os.SystemClock.sleep(ColorMotion.MATERIAL_MS+40);
         if(field(material[0],"materialFade")!=null||((Number)field(material[0],"mix")).floatValue()!=1)
             throw new AssertionError("A detached material received stale fade updates");
-        glideTargets(test,host);
+        glideTargets(test,host);synchronizedPreviews(test,host);
+    }
+    private static void synchronizedPreviews(android.app.Instrumentation test,android.app.Activity host)throws Exception{
+        android.widget.LinearLayout[] page={null};
+        ToolAnimationPreview.Loop[] loop={null};ToolAnimationPreview[] rows=new ToolAnimationPreview[3];
+        test.runOnMainSync(()->{
+            page[0]=new android.widget.LinearLayout(host);page[0].setOrientation(1);
+            loop[0]=new ToolAnimationPreview.Loop(page[0]);
+            ToolAnimation.Style[] styles={ToolAnimation.Style.VOLUME,ToolAnimation.Style.CENTER,ToolAnimation.Style.NONE};
+            for(int i=0;i<rows.length;i++){
+                rows[i]=new ToolAnimationPreview(host,styles[i],styles[i],loop[0]);page[0].addView(rows[i],260,160);
+            }
+            host.setContentView(page[0]);loop[0].start();
+        });
+        test.waitForIdleSync();android.os.SystemClock.sleep(85);
+        java.util.concurrent.atomic.AtomicReference<Throwable> failure=new java.util.concurrent.atomic.AtomicReference<>();
+        test.runOnMainSync(()->{
+            try{
+                android.animation.ValueAnimator clock=(android.animation.ValueAnimator)field(loop[0],"clock");
+                long exit=ColorMotion.VOLUME_IN_MS+ToolAnimationPreview.Loop.OPEN_HOLD_MS;
+                near("latest exit fixes round duration",exit+ColorMotion.VOLUME_OUT_MS,clock.getDuration(),0);
+                View volume=rows[0].getChildAt(0),center=rows[1].getChildAt(0),instant=rows[2].getChildAt(0);
+                clock.setCurrentPlayTime(0);
+                near("simultaneous volume start",0,volume.getAlpha(),0);near("simultaneous center start",0,center.getAlpha(),0);
+                near("instant show",1,instant.getAlpha(),0);
+                clock.setCurrentPlayTime(250);near("short entry holds",1,center.getAlpha(),0);
+                near("volume at the same time",Math.min(1,ColorMotion.VOLUME_IN.getInterpolation(250f/ColorMotion.VOLUME_IN_MS)),volume.getAlpha(),.001);
+                clock.setCurrentPlayTime(exit-1);near("all visible before exit",1,instant.getAlpha(),0);
+                clock.setCurrentPlayTime(exit);near("instant exit",0,instant.getAlpha(),0);near("shared start of exit",1,center.getAlpha(),.001);
+                clock.setCurrentPlayTime(exit+150);
+                near("short exit holds",0,center.getAlpha(),0);
+                near("volume still closing",1-ColorMotion.VOLUME_OUT.getInterpolation(150f/ColorMotion.VOLUME_OUT_MS),volume.getAlpha(),.001);
+                clock.setCurrentPlayTime(clock.getDuration());near("final exit hidden",0,volume.getAlpha(),0);
+                loop[0].stop();near("clock released on leaving",0,field(loop[0],"clock")==null?0:1,0);
+            }catch(Throwable error){failure.set(error);}
+            finally{loop[0].stop();}
+        });
+        if(failure.get()!=null)throw new AssertionError(failure.get());
     }
     private static void glideTargets(android.app.Instrumentation test,android.app.Activity host)throws Exception{
         java.util.concurrent.atomic.AtomicReference<Throwable> failure=new java.util.concurrent.atomic.AtomicReference<>();

@@ -59,8 +59,9 @@ def main():
     initial=d.preferences();before=selections()
     try:
         enter('quick_tools')
+        assert not any('点左图预览' in n.get('text','') for n in d.ui().iter('node'))
         d.click_item('预览智能侧边栏入场',True)
-        assert selections()==before, 'Preview changed preferences'
+        assert selections()==before, 'Replaying the previews changed preferences'
         choose('enter','sidebar');choose('exit','slide')
         assert selections()==dict(before,**{'tool_motion/quick_tools/enter':'sidebar','tool_motion/quick_tools/exit':'slide'})
         assert not any(n.get('text')=='展开音量面板' and d.visible(n) for n in d.ui().iter('node'))
