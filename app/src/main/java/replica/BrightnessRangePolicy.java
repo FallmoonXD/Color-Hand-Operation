@@ -29,12 +29,8 @@ final class BrightnessRangePolicy {
         }
         return null;
     }
-    static String command(Range range,boolean oplusMultibits,int progress){
+    static String command(Range range,int progress){
         if(range==null)throw new IllegalStateException("Unknown brightness range");
-        int raw=range.raw(progress);
-        String result="settings put system screen_brightness "+raw;
-        // AOSP uses an adjustment fraction here. A raw level is valid only with an
-        // explicitly confirmed Oplus multibits feature, never merely max > 255.
-        return oplusMultibits?result+" && settings put system screen_auto_brightness_adj "+raw+".0":result;
+        return "settings put system screen_brightness "+range.raw(progress);
     }
 }

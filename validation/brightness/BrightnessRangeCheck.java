@@ -22,10 +22,9 @@ public final class BrightnessRangeCheck {
         check(BrightnessRangePolicy.probe(()->{throw new ClassNotFoundException();},()->{throw new NoClassDefFoundError();})==null,"all missing sources yield unknown, never 2..4095");
         calls[0]=0;BrightnessRangePolicy.Range first=BrightnessRangePolicy.probe(()->range,()->{calls[0]++;return fallback;});
         check(first==range&&calls[0]==0,"valid dynamic Settings range takes priority");
-        check(BrightnessRangePolicy.command(range,false,2726).equals("settings put system screen_brightness 2728"),"unknown/false Oplus capability never writes raw auto adjustment");
-        check(BrightnessRangePolicy.command(range,true,2726).equals("settings put system screen_brightness 2728 && settings put system screen_auto_brightness_adj 2728.0"),"confirmed multibits keeps tested linear write and checks first command");
-        check(!BrightnessRangePolicy.command(BrightnessRangePolicy.values(0,65535),false,1000).contains("adj"),"large range alone does not prove raw adjustment semantics");
-        try{BrightnessRangePolicy.command(null,true,100);throw new AssertionError("unknown must fail");}catch(IllegalStateException expected){checks++;}
+        check(BrightnessRangePolicy.command(range,2726).equals("settings put system screen_brightness 2728"),"unknown/false Oplus capability never writes raw auto adjustment");
+        check(!BrightnessRangePolicy.command(BrightnessRangePolicy.values(0,65535),1000).contains("adj"),"large range alone does not prove raw adjustment semantics");
+        try{BrightnessRangePolicy.command(null,100);throw new AssertionError("unknown must fail");}catch(IllegalStateException expected){checks++;}
         check(range.same(BrightnessRangePolicy.values(2,4095))&&!range.same(fallback)&&!range.same(null),"only matching bounds retain queued range identity");
         System.out.println("PASS "+checks+" production brightness range/command assertions");
     }

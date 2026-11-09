@@ -14,7 +14,7 @@ def method(signature):
  while depth:
   depth+=(source[at]=='{')-(source[at]=='}');at+=1
  return source[start:at]
-methods=['private synchronized void updateRange(','public void sync(','private void unavailable(','private void describe(','private void write(','private void drainWrites(','public void close(']
+methods=['private synchronized void updateRange(','public void sync(','private void unavailable(','private void describe(','private void write(','private synchronized boolean valid(','private void drainWrites(','public void close(']
 code='\n'.join(method(name) for name in methods).replace('PendingRootCommand','FakeRootCommand')
 template=Path(__file__).with_name('BrightnessControlCheck.template.java').read_text(encoding='utf-8')
 (OUT/'BrightnessControlCheck.java').write_text(template.replace('/* PRODUCTION */',code),encoding='utf-8')

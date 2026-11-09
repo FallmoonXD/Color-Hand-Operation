@@ -208,7 +208,7 @@ public final class MainActivity extends Activity {
    add=button("添加触钮",()->{int n=HandleSettings.pairCount(prefs);if(n>=3)return;endGeometryPreview();HandleSettings.addPair(prefs);refresh(true);reload();});
    remove=button("移除触钮",MainActivity.this::removePair);controls.addView(add,new LinearLayout.LayoutParams(0,-1,1));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,-1,1);rp.leftMargin=dp(12);controls.addView(remove,rp);
    LinearLayout settings=card(body);
-   link(settings,"触钮范围","调整边缘触钮的宽度、大小和位置",()->page(HandleSettings.pairCount(prefs)==1&&HandleSettings.linked(prefs,"left")?"range_left":"ranges"));
+   link(settings,"触钮范围","宽度、大小和位置",()->page(HandleSettings.pairCount(prefs)==1&&HandleSettings.linked(prefs,"left")?"range_left":"ranges"));
    link(settings,"面板与工具","快速工具、小组件和其他手势面板",()->page("panels"));
    link(settings,"手势设置","方向、距离和振动",()->page("gestures"));
    link(settings,"高级设置","应用例外与隐藏条件",()->page("advanced"));
@@ -326,7 +326,7 @@ public final class MainActivity extends Activity {
   divider(longActions);View longLine=longActions.getChildAt(longActions.getChildCount()-1);LinearLayout longRows=new LinearLayout(this);longRows.setOrientation(LinearLayout.VERTICAL);longActions.addView(longRows);directionRows(longRows,id,true);longRows.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);longLine.setVisibility(longer.isChecked()?View.VISIBLE:View.GONE);
   longer.setOnCheckedChangeListener((v,on)->{prefs.edit().putBoolean(id+"_long_enabled",on).apply();beginListChange(content);longRows.setVisibility(on?View.VISIBLE:View.GONE);longLine.setVisibility(on?View.VISIBLE:View.GONE);reload();});switchRow.setOnClickListener(v->longer.setChecked(!longer.isChecked()));
   LinearLayout adjust=group("触钮设置");LinearLayout align=row(adjust,"对齐触钮","左侧和右侧保持相同的尺寸和位置");ColorSwitch linked=new ColorSwitch(this);linked.setChecked(HandleSettings.linked(prefs,id));linked.setContentDescription("对齐触钮");align.addView(linked);
-  link(adjust,"触钮范围","调整边缘触钮的宽度、大小和位置",()->page("range_"+id));
+  link(adjust,"触钮范围","宽度、大小和位置",()->page("range_"+id));
   linked.setOnCheckedChangeListener((v,on)->{
    endGeometryPreview();if(on)HandleSettings.write(prefs,id,HandleSettings.read(prefs,id),true);
    prefs.edit().putBoolean(HandleSettings.linkedKey(id),on).apply();reload();refreshGeometryPreview();

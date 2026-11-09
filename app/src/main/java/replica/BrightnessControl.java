@@ -8,6 +8,8 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.widget.SeekBar;
 import android.widget.Toast;
+import android.view.MotionEvent;
+import java.util.ArrayDeque;
 import dev.edgeflow.PendingRootCommand;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,15 +26,19 @@ public final class BrightnessControl {
     private boolean dragging,dragInvalidated,started,warnedUnavailable;
     private volatile boolean writing,closed;
     private volatile State state;
-    private Request pending;
+    private final ArrayDeque<Request> pending=new ArrayDeque<>();
     private PendingRootCommand inFlight;
+    private QuickControlsSession session;
+    private boolean cancelled,warmAttempted;
+    private long gesture,failedGesture=-1;
+    private enum Phase {DRAG,SAVE,CANCEL}
     private static final class State {
         final BrightnessRangePolicy.Range range;final boolean multibits;
         State(BrightnessRangePolicy.Range range,boolean multibits){this.range=range;this.multibits=multibits;}
     }
     private static final class Request {
-        final State state;final int progress;
-        Request(State state,int progress){this.state=state;this.progress=progress;}
+        final State state;final int progress;final Phase phase;final long gesture;
+        Request(State state,int progress,Phase phase,long gesture){this.state=state;this.progress=progress;this.phase=phase;this.gesture=gesture;}
     }
     private final ContentObserver observer=new ContentObserver(handler){
         @Override public void onChange(boolean self){if(!closed){readRange();sync();}}
@@ -44,11 +50,18 @@ public final class BrightnessControl {
     };
     public BrightnessControl(Context context,SeekBar slider){
         this.context=context;this.slider=slider;readRange();sync();
+        slider.setOnTouchListener((v,e)->{
+            if(e.getActionMasked()==MotionEvent.ACTION_DOWN)cancelled=false;
+            if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)cancelled=true;
+            return false;
+        });
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-            public void onStartTrackingTouch(SeekBar view){dragging=true;dragInvalidated=state==null;}
-            public void onProgressChanged(SeekBar view,int progress,boolean user){if(user&&!dragInvalidated)write(progress);}
+            public void onStartTrackingTouch(SeekBar view){gesture++;dragging=true;dragInvalidated=state==null;}
+            public void onProgressChanged(SeekBar view,int progress,boolean user){
+                if(user&&!dragInvalidated&&!cancelled){if(!dragging)gesture++;write(progress,dragging?Phase.DRAG:Phase.SAVE);}
+            }
             public void onStopTrackingTouch(SeekBar view){
-                if(!dragInvalidated)write(view.getProgress());
+                if(!dragInvalidated)write(view.getProgress(),cancelled?Phase.CANCEL:Phase.SAVE);
                 dragging=false;dragInvalidated=false;sync();
             }
         });
@@ -81,7 +94,8 @@ public final class BrightnessControl {
         if (closed || (range == null && state == null)) return;
         if (state != null && range != null && range.same(state.range) && multibits == state.multibits) return;
         state = range == null ? null : new State(range, multibits);
-        pending = null;
+        pending.clear();
+        if(session!=null){session.close();session=null;}warmAttempted=false;
         if (inFlight != null) inFlight.cancel();
         if (dragging) dragInvalidated = true;
     }
@@ -106,37 +120,54 @@ public final class BrightnessControl {
         String value=Math.round(slider.getProgress()*100f/(current.range.max-current.range.min))+"%";
         slider.setStateDescription(value);slider.setContentDescription("屏幕亮度 "+value);
     }
-    private void write(int progress){
+    private void write(int progress,Phase phase){
         if(closed||dragInvalidated)return;
         State current=state;
         if(current==null){unavailable("无法确认亮度范围，暂不可调整");return;}
         describe();
         synchronized(this){
-            if(closed||state!=current)return;
-            pending=new Request(current,progress);if(writing)return;writing=true;
+            if(closed||state!=current||failedGesture==gesture)return;
+            // New points replace unsent drag samples, never a previous gesture's release.
+            if(!pending.isEmpty()&&pending.peekLast().phase==Phase.DRAG)pending.removeLast();
+            pending.addLast(new Request(current,progress,phase,gesture));if(writing)return;writing=true;
         }
         try{worker.submit(this::drainWrites);}
-        catch(RejectedExecutionException stopped){synchronized(this){pending=null;writing=false;}}
+        catch(RejectedExecutionException stopped){synchronized(this){pending.clear();writing=false;}}
+    }
+    private synchronized boolean valid(Request request){
+        return !closed&&state==request.state&&(request.phase!=Phase.DRAG||pending.isEmpty());
     }
     private void drainWrites(){
         while (true) {
             Request request;
-            PendingRootCommand command;
+            QuickControlsSession display=null;
+            PendingRootCommand command=null;
             synchronized (this) {
-                if (closed || pending == null) { pending = null; writing = false; break; }
-                request = pending;
-                pending = null;
+                if (closed || pending.isEmpty()) { pending.clear(); writing = false; break; }
+                request = pending.removeFirst();
                 if (request.state != state) continue;
-                command = new PendingRootCommand(BrightnessRangePolicy.command(state.range, state.multibits, request.progress));
-                inFlight = command;
+                if(state.multibits){
+                    if(session==null)session=new QuickControlsSession(context,state.range);
+                    display=session;
+                }else{
+                    if(request.phase==Phase.CANCEL)continue;
+                    command=new PendingRootCommand(BrightnessRangePolicy.command(state.range,request.progress));
+                    inFlight=command;
+                }
             }
             try {
-                command.run(() -> {
-                    synchronized (this) { return !closed && state == request.state && pending == null; }
-                });
+                if(display!=null){
+                    String operation=request.phase==Phase.CANCEL?"cancel":
+                            (request.phase==Phase.SAVE?"save ":"drag ")+request.state.range.raw(request.progress);
+                    display.apply(operation,()->valid(request));
+                }else command.run(()->valid(request));
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
             } catch (Exception failure) {
+                synchronized(this){
+                    if(display!=null&&display==session){session.close();session=null;}
+                    failedGesture=request.gesture;pending.removeIf(next->next.gesture==request.gesture);
+                }
                 handler.post(() -> {
                     if (!closed && state == request.state) Toast.makeText(context,"亮度调整未完成",Toast.LENGTH_SHORT).show();
                 });
@@ -150,11 +181,31 @@ public final class BrightnessControl {
         if(closed||started)return;started=true;
         context.getContentResolver().registerContentObserver(Settings.System.getUriFor("screen_brightness"),false,observer);
         context.getContentResolver().registerContentObserver(Settings.System.getUriFor(RANGE_KEY),false,observer);sync();
+        prewarm();
+    }
+    synchronized void prewarm(){
+        // The glass helper may finish its already-authorized root startup after this panel opens.
+        if(!closed&&!warmAttempted&&session==null&&(NativeBlur.online||QuickControlsSession.canPrewarm())){
+            warmAttempted=true;
+            QuickControlsSession warm=new QuickControlsSession(context,state!=null&&state.multibits?state.range:null);session=warm;
+            worker.submit(()->{try{warm.connect();}catch(Exception error){
+                synchronized(this){warm.close();if(session==warm)session=null;}
+            }});
+        }
+    }
+    int mediaKey(){
+        QuickControlsSession target;
+        synchronized(this){target=session;}
+        if(target!=null&&target.isReady())try{return target.mediaKey();}
+        catch(Exception unavailable){
+            synchronized(this){if(session==target){target.close();session=null;}}
+        }
+        return android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
     }
     public void stop(){if(!started)return;started=false;context.getContentResolver().unregisterContentObserver(observer);}
     public void close(){
         if(closed)return;
-        synchronized(this){closed=true;pending=null;if(inFlight!=null)inFlight.cancel();}
-        stop();handler.removeCallbacksAndMessages(null);slider.setOnSeekBarChangeListener(null);worker.shutdown();
+        synchronized(this){closed=true;pending.clear();if(session!=null){session.close();session=null;}if(inFlight!=null)inFlight.cancel();}
+        stop();handler.removeCallbacksAndMessages(null);slider.setOnTouchListener(null);slider.setOnSeekBarChangeListener(null);worker.shutdown();
     }
 }

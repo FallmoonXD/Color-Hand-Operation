@@ -48,8 +48,24 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private AudioManager audio; private BrightnessControl brightnessControl; private float[] gesture;
     private SeekBar liveVolume; private ImageView autoIcon,speaker,playPause; private final Handler liveHandler=new Handler();
+    private final android.database.ContentObserver brightnessMode=new android.database.ContentObserver(liveHandler){
+        @Override public void onChange(boolean self){refresh();}
+    };
     private VolumeDrag pendingDrag;
     private Boolean shownMuted,shownPlaying;
+    private boolean watchingPlayback;
+    private final Runnable refreshPlayback=()->{if(!closed)showPlaying(audio.isMusicActive());};
+    private final AudioManager.AudioPlaybackCallback playback=new AudioManager.AudioPlaybackCallback(){
+        @Override public void onPlaybackConfigChanged(java.util.List<android.media.AudioPlaybackConfiguration> active){
+            playbackChanged();
+        }
+    };
+    private void playbackChanged(){
+        if(closed)return;
+        // An unprivileged callback can omit or anonymize tracks, including muted media.
+        // Read the stream itself, and allow the mixer one more update after a transport command.
+        refreshPlayback.run();liveHandler.removeCallbacks(refreshPlayback);liveHandler.postDelayed(refreshPlayback,48);
+    }
     private final Runnable liveRefresh=new Runnable(){public void run(){if(closed)return;refresh();liveHandler.postDelayed(this,500);}};
     private String closeTarget;
     private boolean torch;
@@ -86,7 +102,8 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,dp(96));mp.topMargin=dp(14);panel.addView(media,mp);
         LinearLayout vr=row();media.addView(vr);speaker=icon("volume_media",Color.WHITE);vr.addView(speaker,new LinearLayout.LayoutParams(dp(35),dp(34)));
         speaker.setOnClickListener(v->adjustMediaVolume(AudioManager.ADJUST_TOGGLE_MUTE));
-        vr.setOnClickListener(v->speaker.performClick());vr.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        speaker.setBackground(new MediaPressRipple(this,14));
+        vr.setOnClickListener(v->speaker.performClick());vr.setBackground(new MediaPressRipple(this,14));vr.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         SeekBar volume=new GlassSeekBar(this,true);liveVolume=volume;volume.setContentDescription("媒体音量");tintSlider(volume);volume.setMax(audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));volume.setProgress(audio.getStreamVolume(AudioManager.STREAM_MUSIC));LinearLayout.LayoutParams volumeParams=new LinearLayout.LayoutParams(0,dp(34),1);if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f)volumeParams.rightMargin=dp(8);else volumeParams.leftMargin=dp(8);vr.addView(volume,volumeParams);
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}public void onProgressChanged(SeekBar b,int v,boolean user){if(user)setMediaVolume(v);}});
         if(gesture[0]<getResources().getDisplayMetrics().widthPixels/2f){vr.removeView(speaker);vr.addView(speaker);}
@@ -95,11 +112,15 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         String[] labels={"上一首","播放／暂停","下一首","音量增加","音量减小"};int[] keys={88,85,87,24,25};
         for(int i=0;i<keys.length;i++){
             int key=keys[i];ImageView t=icon(symbols[i],Color.WHITE);t.setContentDescription(labels[i]);t.setTooltipText(labels[i]);
+            t.setBackground(new MediaPressRipple(this,14));
             controls.addView(t,new LinearLayout.LayoutParams(0,dp(36),1));
             if(key==24||key==25)new RepeatPress(t,()->adjustMediaVolume(key==24?AudioManager.ADJUST_RAISE:AudioManager.ADJUST_LOWER));
             else{
                 if(key==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)playPause=t;
-                t.setOnClickListener(v->dev.edgeflow.ActionExecutor.dispatchMediaKey(audio,key));
+                t.setOnClickListener(v->worker.execute(()->{
+                    dev.edgeflow.ActionExecutor.dispatchMediaKey(audio,key==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE?brightnessControl.mediaKey():key);
+                    if(key==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)runOnUiThread(this::playbackChanged);
+                }));
             }
         }
         for(int r=0;r<3;r++){
@@ -110,7 +131,10 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         }
         backdrop.preserve(media,PanelStyle.dp(this,22),0);backdrop.preserve(sun,PanelStyle.dp(this,22),0);backdrop.preserve(light,0,dp(25));
         for(ImageView tile:toolViews.values())backdrop.preserve(tile,PanelStyle.dp(this,22),0);
-        refresh();brightnessControl.start();liveHandler.post(liveRefresh);
+        try{audio.registerAudioPlaybackCallback(playback,liveHandler);watchingPlayback=true;}
+        catch(SecurityException unavailable){android.util.Log.d("ReplicaTools","Playback notifications unavailable");}
+        getContentResolver().registerContentObserver(Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS_MODE),false,brightnessMode);
+        refresh();brightnessControl.start();liveHandler.postDelayed(liveRefresh,500);
         ColorOsTheme.watch(panel,()->{if(closed)return;if(autoIcon!=null){autoIcon.setTag(null);autoIcon.invalidate();}for(ImageView tile:toolViews.values()){tile.setTag(null);tile.invalidate();}refresh();});
     }
     /** This firmware rejects setStreamVolume for this package, but permits adjustments.
@@ -142,7 +166,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
                     if(audio.getStreamVolume(AudioManager.STREAM_MUSIC)==current)throw new IllegalStateException("Volume did not change");
                 }
             }catch(RuntimeException error){volumeFailed(error);}
-            finally{synchronized(ToolsPanel.this){if(pendingDrag==this)pendingDrag=null;}runOnUiThread(ToolsPanel.this::refresh);}
+            finally{synchronized(ToolsPanel.this){if(pendingDrag==this)pendingDrag=null;}runOnUiThread(ToolsPanel.this::refreshVolume);}
         }
     }
     private synchronized void adjustMediaVolume(int direction){
@@ -159,7 +183,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
                         audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,0);
                 }else audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,direction,0);
             }catch(RuntimeException error){volumeFailed(error);}
-            runOnUiThread(this::refresh);
+            runOnUiThread(this::refreshVolume);
         });
     }
     private boolean mediaSilent(){return audio.isStreamMute(AudioManager.STREAM_MUSIC)||audio.getStreamVolume(AudioManager.STREAM_MUSIC)==0;}
@@ -175,16 +199,23 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
     private void tintSlider(SeekBar v){v.setProgressTintList(ColorStateList.valueOf(0xff3979ff));v.setThumbTintList(ColorStateList.valueOf(0xff3979ff));}
     private TextView label(String text,int size){TextView t=new TextView(this);t.setText(text);t.setGravity(Gravity.CENTER);t.setTextSize(size);t.setTextColor(0xff3979ff);return t;}
     private int lastRinger=-1;
-    private void refresh(){
+    private void refreshVolume(){
         if(closed||audio==null)return;
         if(liveVolume!=null&&!liveVolume.isPressed())liveVolume.setProgress(audio.getStreamVolume(3));
-        boolean muted=mediaSilent(),playing=audio.isMusicActive();
+        boolean muted=mediaSilent();
         if(!Boolean.valueOf(muted).equals(shownMuted)){
             mediaButton(speaker,muted?"volume_media_mute":"volume_media",muted?"取消媒体静音":"媒体静音");shownMuted=muted;
         }
+    }
+    private void showPlaying(boolean playing){
         if(!Boolean.valueOf(playing).equals(shownPlaying)){
             mediaButton(playPause,playing?"player_pause":"player_play",playing?"暂停":"播放");shownPlaying=playing;
         }
+    }
+    private void refresh(){
+        if(closed||audio==null)return;
+        if(brightnessControl!=null)brightnessControl.prewarm();
+        refreshVolume();refreshPlayback.run();
         if(autoIcon!=null){boolean on=Settings.System.getInt(getContentResolver(),"screen_brightness_mode",0)==1;autoIcon.setSelected(on);if(!Boolean.valueOf(on).equals(autoIcon.getTag())){autoIcon.setBackground(PanelStyle.toolButton(this,on));autoIcon.setTag(on);}autoIcon.setColorFilter(Color.WHITE);}
 
         boolean accentActions=AppPrefs.get(this).getBoolean(AppPrefs.QUICK_TOOLS_ACTION_ACCENT,false);
@@ -256,5 +287,5 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
                 break;
         }
     }
-    public void closeResources(){if(closed)return;closed=true;for(AlertDialog child:new java.util.ArrayList<>(childDialogs))ColorDialogBuilder.dismissImmediately(child);childDialogs.clear();liveHandler.removeCallbacksAndMessages(null);MaterialBackdrop.release(this);if(brightnessControl!=null)brightnessControl.close();if(cameras!=null&&cameraId!=null)cameras.unregisterTorchCallback(torchCallback);worker.shutdown();}
+    public void closeResources(){if(closed)return;closed=true;for(AlertDialog child:new java.util.ArrayList<>(childDialogs))ColorDialogBuilder.dismissImmediately(child);childDialogs.clear();getContentResolver().unregisterContentObserver(brightnessMode);if(watchingPlayback)audio.unregisterAudioPlaybackCallback(playback);liveHandler.removeCallbacksAndMessages(null);MaterialBackdrop.release(this);if(brightnessControl!=null)brightnessControl.close();if(cameras!=null&&cameraId!=null)cameras.unregisterTorchCallback(torchCallback);worker.shutdown();}
 }

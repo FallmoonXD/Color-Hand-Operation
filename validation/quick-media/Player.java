@@ -43,7 +43,8 @@ public final class Player extends Activity {
             @Override public void onSkipToPrevious(){Log.i("ChoMediaTest","PREVIOUS");}
             @Override public boolean onMediaButtonEvent(Intent i){
                 KeyEvent event=i.getParcelableExtra(Intent.EXTRA_KEY_EVENT,KeyEvent.class);
-                if(event!=null&&event.getKeyCode()==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE){
+                if(event!=null)Log.i("ChoMediaTest","KEY "+event.getKeyCode()+" "+event.getAction());
+                if(!getIntent().getBooleanExtra("standard",false)&&event!=null&&event.getKeyCode()==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE){
                     if(event.getAction()==KeyEvent.ACTION_DOWN)setPlaying(!playing);
                     return true;
                 }
@@ -56,8 +57,8 @@ public final class Player extends Activity {
     private void setPlaying(boolean value){
         playing=value;
         if(value)track.play();else track.pause();
-        long actions=PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_PLAY_PAUSE
-                |PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS;
+        long actions=PlaybackState.ACTION_PLAY_PAUSE|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS;
+        if(!getIntent().getBooleanExtra("toggleOnly",false))actions|=PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE;
         session.setPlaybackState(new PlaybackState.Builder().setActions(actions).setState(
                 value?PlaybackState.STATE_PLAYING:PlaybackState.STATE_PAUSED,0,value?1:0).build());
         String text=value?"PLAYING":"PAUSED"; label.setText(text); Log.i("ChoMediaTest",text);

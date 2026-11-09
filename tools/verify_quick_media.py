@@ -89,6 +89,33 @@ def exercise():
     assert not muted() and d.vol()>0
 
 
+def timed_controls(toggle_only):
+    d.sh('am','force-stop',PACKAGE)
+    d.sh('am','start','-W','-n',PACKAGE+'/.Player','--ez','standard',str(not toggle_only).lower(),
+         '--ez','toggleOnly',str(toggle_only).lower())
+    for label,action,key in [('暂停','PAUSED',85 if toggle_only else 127),('播放','PLAYING',85 if toggle_only else 126),
+                             ('上一首','PREVIOUS',88),('下一首','NEXT',87)]:
+        left,top,right,bottom=d.bounds(d.wait_node(label))
+        marker='tap'+str(time.monotonic_ns())
+        log=subprocess.Popen(d.A+['logcat','-T','1','-v','epoch','-s','ChoMediaTap:I','ChoMediaTest:I'],
+                             stdout=subprocess.PIPE,encoding='utf8',errors='replace')
+        try:
+            time.sleep(.1)
+            d.sh('sh','-c',f'log -t ChoMediaTap {marker}; input tap {(left+right)//2} {(top+bottom)//2}')
+            time.sleep(.65)
+        finally:
+            log.terminate()
+            lines,_=log.communicate()
+        events=[(float(t),message.strip()) for t,message in re.findall(r'(?m)^\s*([\d.]+)\s+.*?\b(?:ChoMediaTap|ChoMediaTest)\s*:\s*(.*)$',lines)]
+        start=next(t for t,message in events if message==marker)
+        pressed=[message for t,message in events if t>=start and message.startswith('KEY ') and message.endswith(' 0')]
+        completed=[t for t,message in events if t>=start and message==action]
+        assert pressed==[f'KEY {key} 0'] and len(completed)==1,(label,events)
+        ms=round((completed[0]-start)*1000)
+        assert 0<=ms<240,(label,ms)
+        print('PASS','toggle-only' if toggle_only else 'transport',label,ms,'ms',flush=True)
+
+
 def main():
     assert not d.sh('pm','list','packages',PACKAGE).strip(), 'Test player package is already installed'
     assert not muted(), 'Start with an unmuted media stream so its previous audible level can be restored'
@@ -98,6 +125,8 @@ def main():
         subprocess.run(d.A+['install','--no-incremental',str(apk)],check=True)
         try:
             exercise()
+            timed_controls(False)
+            timed_controls(True)
         finally:
             d.sh('am','force-stop',PACKAGE)
             installed = d.sh('pm','path',PACKAGE).strip().removeprefix('package:')
