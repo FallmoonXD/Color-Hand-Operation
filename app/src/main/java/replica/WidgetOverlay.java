@@ -18,18 +18,19 @@ public final class WidgetOverlay {
         this.anchor = anchor.clone();
         dialog = new PanelOverlayDialog(service, this::back, this::outside);
         WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
-        lp.setTitle(service.getString(dev.edgeflow.R.string.app_name) + " 插件");
+        lp.setTitle(service.getString(dev.edgeflow.R.string.app_name) + " 小组件面板");
         dialog.getWindow().setAttributes(lp);
-        panel = new WidgetPanel(service, dialog.getWindow(), anchor, true, (provider, id, bound, existing, page) -> {
-            service.startActivity(WidgetActivity.setupIntent(service, provider, id, bound, existing, page, this.anchor));
+        panel = new WidgetPanel(service, dialog.getWindow(), anchor, true, (provider, profile, id, bound, existing, page) -> {
+            service.startActivity(WidgetActivity.setupIntent(service, provider, profile, id, bound, existing, page, this.anchor));
             remove();
         },this::remove);
         dialog.setOnDismissListener(d -> remove());
     }
 
     public static void show(AccessibilityService service, float[] anchor) {
-        if (WidgetActivity.setupInProgress() || !service.getSystemService(PowerManager.class).isInteractive()
+        if (!service.getSystemService(PowerManager.class).isInteractive()
                 || service.getSystemService(KeyguardManager.class).isKeyguardLocked()) return;
+        if (WidgetActivity.resumeSetup()) return;
         if (current != null && !current.closing) {
             current.anchor = anchor.clone();
             if(current.motion!=null)current.motion.reanchor(anchor[0]<PanelGeometry.screen(service).x/2f,anchor[1]);
@@ -48,7 +49,7 @@ public final class WidgetOverlay {
         } catch (RuntimeException failure) {
             dismissAll();
             android.util.Log.w("EdgeWidgets", "Cannot open widget panel", failure);
-            android.widget.Toast.makeText(service, "无法打开插件面板", android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(service, "无法打开小组件面板", android.widget.Toast.LENGTH_SHORT).show();
         }
     }
 

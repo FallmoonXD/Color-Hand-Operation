@@ -2,7 +2,7 @@ package replica;
 import android.app.*;import android.appwidget.*;import android.content.*;import android.os.*;import android.view.*;import android.widget.*;import android.text.*;import org.json.*;import java.util.*;
 /** Shared widget layout and editors, hosted either in an overlay or in the settings preview. */
 final class WidgetPanel extends android.view.ContextThemeWrapper {
- interface Setup { void request(ComponentName provider,int id,boolean bound,boolean existing,int page); }
+ interface Setup { void request(ComponentName provider,UserHandle profile,int id,boolean bound,boolean existing,int page); }
  private final Window window;
  private final boolean overlay;
  private final Setup setup;
@@ -11,7 +11,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
  private final AppWidgetManager manager;
  private final SharedPreferences prefs;
  private JSONArray items;
- private int page,pages,selected=-1,boardHeight;
+ private int page,pages,selected=-1,columns,rows;
  private float[] gesture;
  private boolean editing,closed,listening;
  private PanelRoot root;private FrameLayout stage;private WidgetDeck deck;private PageDots dots;
@@ -19,7 +19,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
  private Drag drag;
  private final int scrollZone,dropMin,dropMax;
  private final LauncherWidgetStyle launcher;
- private ColorPopupMenu editorMenu;private AlertDialog editorDialog;private WidgetProviderPicker providerPicker;private int editorGeneration;
+ private ColorPopupMenu editorMenu,closingMenu;private AlertDialog editorDialog;private WidgetProviderPicker providerPicker;private int editorGeneration;
  private int dp(float n){return PanelStyle.dp(this,n);}
  private void toast(String message){Toast.makeText(this,message,Toast.LENGTH_SHORT).show();}
  WidgetPanel(Context base, Window window, float[] anchor, boolean overlay, Setup setup,Runnable leaveForProvider){
@@ -28,13 +28,17 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   dropMin=launcher.integer("config_dropAnimMinDuration",100);dropMax=launcher.integer("config_dropAnimMaxDuration",500);
   this.window=window;this.overlay=overlay;this.setup=setup;this.leaveForProvider=leaveForProvider;gesture=anchor.clone();
   prefs=getSharedPreferences("replica_widgets",MODE_PRIVATE);manager=AppWidgetManager.getInstance(this);
-  host=new AppWidgetHost(this,WidgetMigration.HOST_ID){@Override protected AppWidgetHostView onCreateView(Context c,int id,AppWidgetProviderInfo info){return new SizedWidgetHostView(c);}};
+  host=new AppWidgetHost(this,WidgetMigration.HOST_ID){
+   @Override protected AppWidgetHostView onCreateView(Context c,int id,AppWidgetProviderInfo info){return new SizedWidgetHostView(c);}
+   @Override protected void onProvidersChanged(){
+    if(root!=null)root.post(()->{if(!closed&&deck!=null&&drag==null){dismissEditors();finishEdit();((Page)deck.current()).sync();}});
+   }
+  };
   readLayout();
  }
  private void readLayout(){
   pages=Math.max(1,prefs.getInt("pages",1));page=Math.max(0,Math.min(pages-1,prefs.getInt("page",0)));
-  int defaultHeight=prefs.contains("layout_v3")?Math.round((getResources().getDisplayMetrics().heightPixels*.474f-dp(44))/getResources().getDisplayMetrics().density):400;
-  boardHeight=prefs.getInt("height_v4",defaultHeight);
+  columns=WidgetLayout.columns(prefs);rows=WidgetLayout.rows(prefs);
   try{items=new JSONArray(prefs.getString("layout_v3","[]"));}catch(JSONException malformed){items=new JSONArray();}
   if(!prefs.contains("layout_v3")){int old=prefs.getInt("alipay_id",-1);if(old>=0&&manager.getAppWidgetInfo(old)!=null)items.put(item(old,0,0,0,4,2));save();}
  }
@@ -53,7 +57,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
  boolean hasEditor(){return editorMenu!=null||editorDialog!=null;}
  boolean dismissMenuOnOutside(){if(editorMenu==null)return false;editorMenu.dismiss();return true;}
  private JSONObject item(int id,int p,int x,int y,int w,int h){JSONObject o=new JSONObject();try{o.put("id",id).put("page",p).put("x",x).put("y",y).put("w",w).put("h",h);}catch(Exception ignored){}return o;}
- private void save(){prefs.edit().putString("layout_v3",items.toString()).putInt("pages",Math.max(1,pages)).putInt("page",page).putInt("height_v4",boardHeight).apply();}
+ private void save(){prefs.edit().putString("layout_v3",items.toString()).putInt("pages",Math.max(1,pages)).putInt("page",page).apply();}
  private boolean saveRemoval(JSONArray next,int count,int current){
   // Once the host releases an ID, restoring its old grid entry cannot restore the binding.
   if(!prefs.edit().putString("layout_v3",next.toString()).putInt("pages",count).putInt("page",current).commit()){
@@ -73,6 +77,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
  void dismissEditors(){
   editorGeneration++;
   ColorPopupMenu menu=editorMenu;editorMenu=null;if(menu!=null)menu.dismissImmediately();
+  menu=closingMenu;closingMenu=null;if(menu!=null)menu.dismissImmediately();
   WidgetProviderPicker picker=providerPicker;providerPicker=null;if(picker!=null)picker.close();
   AlertDialog dialog=editorDialog;editorDialog=null;if(dialog!=null)ColorDialogBuilder.dismissImmediately(dialog);
  }
@@ -87,13 +92,20 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   ColorPopupMenu menu=new ColorPopupMenu(anchor).setTitle(title).setItems(labels,n->{if(usable()&&token==editorGeneration)action.accept(n);}).launcher(launcher,icons,point);
   if(overlay)menu.setWindowLayoutType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
   boolean widget=anchor instanceof Cell;
-  if(widget)menu.setFocusable(false);
+  if(widget){menu.setFocusable(false);((Cell)anchor).showSelectionBackground(true);}
   editorMenu=menu;menu.setOnDismiss(()->{
+   if(widget)((Cell)anchor).showSelectionBackground(false);
+   if(closingMenu==menu)closingMenu=null;
    if(editorMenu==menu){editorMenu=null;if(widget)finishEdit();}
   }).show();
  }
  private void hideMenuForTouch(){
-  ColorPopupMenu menu=editorMenu;editorMenu=null;if(menu!=null)menu.dismissImmediately();
+  ColorPopupMenu menu=editorMenu;
+  if(menu==null)return;
+  editorMenu=null;
+  if(closingMenu!=null)closingMenu.dismissImmediately();
+  closingMenu=menu;
+  menu.dismiss();
  }
  private static String menuIcon(String label){return switch(label){
   case "添加插件" -> "ic_system_shortcut_card_add";
@@ -125,11 +137,10 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
    stage.addView(deck,new FrameLayout.LayoutParams(-1,-1));
    root.addView(dots,new LinearLayout.LayoutParams(-1,launcher.dim("workspace_page_indicator_height",28)));
   }else{root.cancelInput();dismissEditors();finishEdit();}
-  int footer=launcher.dim("workspace_page_indicator_height",28);
-  int available=PanelGeometry.screen(this).y-PanelGeometry.inset(this,"status_bar_height")-PanelGeometry.inset(this,"navigation_bar_height");
-  int height=Math.max(dp(48),Math.min(dp(boardHeight+14),available-footer-dp(20)));
-  stage.getLayoutParams().height=height;stage.requestLayout();deck.reset(page);updateDots(page);
-  int width=Math.round(getResources().getDisplayMetrics().widthPixels*.936f);
+  readLayout();
+  android.graphics.Point board=WidgetLayout.board(this,columns,rows);
+  stage.getLayoutParams().height=board.y;stage.requestLayout();deck.reset(page);updateDots(page);
+  int width=board.x+dp(10);
   root.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
   PanelGeometry.position(this,window,width,root.getMeasuredHeight(),false,gesture);
  }
@@ -162,8 +173,8 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
     if(pages==1&&items.length()==0){toast("已是最后一个空白页");return;}
     int token=editorGeneration;
     String message=pages==1?"此页的插件将被移除，并保留一个空白页。":"此页的插件也将被移除。";
-    showDialog(new GlassDialogBuilder(this).setTitle("移除当前页面？").setMessage(message).setNegativeButton("取消",null)
-     .setPositiveDestructive("移除",(d,which)->{if(usable()&&token==editorGeneration)deletePage();}).create());
+    showDialog(new GlassDialogBuilder(this).setLauncherConfirmation().setTitle("移除当前页面？").setMessage(message).setNegativeButton("取消",null)
+     .setPositiveButton("移除",(d,which)->{if(usable()&&token==editorGeneration)deletePage();}).create());
    }
   });
  }
@@ -192,18 +203,20 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
  private void beginBind(AppWidgetProviderInfo info){
   int id=-1;
   try{
-   id=host.allocateAppWidgetId();boolean bound=manager.bindAppWidgetIdIfAllowed(id,info.provider);
+   id=host.allocateAppWidgetId();boolean bound=manager.bindAppWidgetIdIfAllowed(id,info.getProfile(),info.provider,null);
    if(bound&&(info.configure==null||(info.widgetFeatures&AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL)!=0)){commitWidget(id,page);showAdded(id);}
-   else setup.request(info.provider,id,bound,false,page);
+   else setup.request(info.provider,info.getProfile(),id,bound,false,page);
   }catch(RuntimeException failure){if(id>=0)host.deleteAppWidgetId(id);toast("无法绑定此插件");}
  }
  void commitWidget(int id,int requestedPage){
   readLayout();int target=Math.max(0,Math.min(requestedPage,pages-1));
   AppWidgetProviderInfo info=manager.getAppWidgetInfo(id);
-  int w=info!=null&&info.targetCellWidth>0?Math.min(4,info.targetCellWidth):4;
-  int h=info!=null&&info.targetCellHeight>0?Math.min(4,info.targetCellHeight):2;
+  android.graphics.Point board=WidgetLayout.board(this,columns,rows);
+  WidgetGrid.Cell initial=info==null?new WidgetGrid.Cell(0,0,columns,Math.min(2,rows)):
+    WidgetLayout.initialSize(info,board.x,board.y,columns,rows,dp(16));
+  int w=initial.w,h=initial.h;
   int x=0,y=0;boolean found=false;
-  for(int row=0;row<=4-h&&!found;row++)for(int col=0;col<=4-w;col++)if(free(-1,target,col,row,w,h)){x=col;y=row;found=true;break;}
+  for(int row=0;row<=rows-h&&!found;row++)for(int col=0;col<=columns-w;col++)if(free(-1,target,col,row,w,h)){x=col;y=row;found=true;break;}
   if(!found)target=pages++;page=target;editing=false;selected=-1;items.put(item(id,target,x,y,w,h));save();
  }
  private void showAdded(int id){
@@ -213,7 +226,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   if(deck.index()!=page)deck.go(page,1,false,reveal);
   else{((Page)deck.current()).sync();reveal.run();}
  }
- private boolean free(int id,int p,int x,int y,int w,int h){WidgetGrid.Cell candidate=new WidgetGrid.Cell(x,y,w,h);if(!WidgetGrid.valid(candidate))return false;for(int i=0;i<items.length();i++){JSONObject a=items.optJSONObject(i);if(a==null||a.optInt("id")==id||a.optInt("page")!=p)continue;if(WidgetGrid.overlaps(candidate,new WidgetGrid.Cell(a.optInt("x"),a.optInt("y"),a.optInt("w"),a.optInt("h"))))return false;}return true;}
+ private boolean free(int id,int p,int x,int y,int w,int h){WidgetGrid.Cell candidate=new WidgetGrid.Cell(x,y,w,h);if(!WidgetGrid.valid(candidate,columns,rows))return false;for(int i=0;i<items.length();i++){JSONObject a=items.optJSONObject(i);if(a==null||a.optInt("id")==id||a.optInt("page")!=p)continue;if(WidgetGrid.overlaps(candidate,new WidgetGrid.Cell(a.optInt("x"),a.optInt("y"),a.optInt("w"),a.optInt("h"))))return false;}return true;}
  private JSONObject findItem(int id){for(int i=0;i<items.length();i++){JSONObject item=items.optJSONObject(i);if(item!=null&&item.optInt("id")==id)return item;}return null;}
  private void menu(Cell cell){
   final int id=cell.id();
@@ -223,11 +236,13 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   if(caps.settings!=null){labels.add("设置");actions.add(()->openProvider(caps.settings));}
   if(caps.appearance!=null){labels.add("自定义外观");actions.add(()->openProvider(caps.appearance));}
   if(caps.reconfigure){labels.add("编辑插件");actions.add(()->{
-   if(findItem(id)==null)return;try{setup.request(cell.info.provider,id,true,true,page);}catch(RuntimeException failure){toast("插件设置无法打开");}
+   if(findItem(id)==null)return;try{setup.request(cell.info.provider,cell.info.getProfile(),id,true,true,page);}catch(RuntimeException failure){toast("插件设置无法打开");}
   });}
   labels.add("移除插件");actions.add(()->{int token=editorGeneration;
-   showDialog(new GlassDialogBuilder(this).setTitle("移除此插件？").setMessage("此插件将从当前页面移除。")
-        .setNegativeButton("取消",null).setPositiveDestructive("移除",(d,n)->{if(usable()&&token==editorGeneration)removeWidget(id);}).create());});
+   showDialog(new GlassDialogBuilder(this).setLauncherConfirmation()
+        .setTitle(launcher.text("delet_widget_of_unnamed_alert_title","要移除此插件吗？"))
+        .setMessage(launcher.text("delet_widget_alert_popup_message","移除插件不会删除应用内数据"))
+        .setNegativeButton("取消",null).setPositiveButton("移除",(d,n)->{if(usable()&&token==editorGeneration)removeWidget(id);}).create());});
   popup(cell,null,"插件选项",labels.toArray(new String[0]),n->actions.get(n).run());
  }
  private void openProvider(Intent intent){
@@ -256,9 +271,8 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
     JSONObject item=items.optJSONObject(i);if(item==null||item.optInt("page")!=index)continue;
     int id=item.optInt("id");if(drag!=null&&drag.cell.id()==id)continue;
     AppWidgetProviderInfo info=manager.getAppWidgetInfo(id);
-    if(info==null){cells.remove(id);continue;}
     Cell cell=cells.get(id);
-    if(cell==null||!cell.info.provider.equals(info.provider)){cell=new Cell(item,info);cells.put(id,cell);}
+    if(cell==null||(cell.info==null)!=(info==null)||info!=null&&(!cell.info.provider.equals(info.provider)||!cell.info.getProfile().equals(info.getProfile()))){cell=new Cell(item,info);cells.put(id,cell);}
     needed.add(id);cell.data=item;cell.info=info;cell.caps=null;
     if(cell.getParent()!=this){
      if(cell.getParent() instanceof ViewGroup parent)parent.removeView(cell);
@@ -266,7 +280,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
     }
    }
    for(int i=getChildCount()-1;i>=0;i--){View child=getChildAt(i);
-    if(!(child instanceof Cell cell)||!needed.contains(cell.id()))removeViewAt(i);
+    if(!(child instanceof Cell cell)||!needed.contains(cell.id())||cells.get(cell.id())!=cell)removeViewAt(i);
    }
    if(needed.isEmpty()&&drag==null){
     TextView hint=new TextView(WidgetPanel.this);hint.setText("长按空白处添加插件");hint.setGravity(Gravity.CENTER);hint.setTextSize(14);
@@ -277,24 +291,37 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   @Override protected void onMeasure(int ws,int hs){
    int w=MeasureSpec.getSize(ws),h=MeasureSpec.getSize(hs);setMeasuredDimension(w,h);
    for(int i=0;i<getChildCount();i++){View v=getChildAt(i);int cw=w,ch=h;
-    if(v instanceof Cell cell){WidgetGrid.Cell g=cell.geometry();cw=(g.x+g.w)*w/4-g.x*w/4;ch=(g.y+g.h)*h/4-g.y*h/4;}
+    if(v instanceof Cell cell){android.graphics.Rect bounds=cell.visualBounds(w,h);cw=bounds.width();ch=bounds.height();}
     v.measure(MeasureSpec.makeMeasureSpec(cw,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(ch,MeasureSpec.EXACTLY));
    }
   }
   @Override protected void onLayout(boolean changed,int l,int t,int r,int b){
    for(int i=0;i<getChildCount();i++){View v=getChildAt(i);int x=0,y=0;
-    if(v instanceof Cell cell){WidgetGrid.Cell g=cell.geometry();x=g.x*getWidth()/4;y=g.y*getHeight()/4;}
+    if(v instanceof Cell cell){android.graphics.Rect bounds=cell.visualBounds(getWidth(),getHeight());x=bounds.left;y=bounds.top;}
     v.layout(x,y,x+v.getMeasuredWidth(),y+v.getMeasuredHeight());
    }
   }
+  @Override protected void onSizeChanged(int w,int h,int oldw,int oldh){
+   super.onSizeChanged(w,h,oldw,oldh);
+   for(int i=0;i<getChildCount();i++)if(getChildAt(i) instanceof Cell cell)cell.stopResizeMotion();
+  }
  }
  private final class Cell extends FrameLayout {
-  JSONObject data;AppWidgetProviderInfo info;final AppWidgetHostView widget;WidgetSelectionFrame frame;
+  JSONObject data;AppWidgetProviderInfo info;final SizedWidgetHostView widget;WidgetSelectionFrame frame;
   WidgetGrid.Edit resize;WidgetCapabilities caps;
+  final WidgetResizeMotion resizeMotion;
+  final android.graphics.Rect displayBounds=new android.graphics.Rect();
+  final android.graphics.drawable.Drawable selectionBackground;
+  android.animation.ValueAnimator pressAnimation,selectionAnimation;
   Cell(JSONObject data,AppWidgetProviderInfo info){
    super(WidgetPanel.this);this.data=data;this.info=info;setContentDescription("插件 "+id());setPadding(dp(3),dp(3),dp(3),dp(3));
-   setBackground(PanelStyle.shape(WidgetPanel.this,data.optInt("color",info.provider.getPackageName().equals("com.coloros.alarmclock")?0xff45484f:0),20));
-   widget=host.createView(WidgetPanel.this,id(),info);
+   selectionBackground=launcher.selectionBackground();selectionBackground.setAlpha(0);
+   setBackground(new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{
+     PanelStyle.shape(WidgetPanel.this,data.optInt("color",0),20),
+     selectionBackground}));
+   widget=info==null?new SizedWidgetHostView(WidgetPanel.this):(SizedWidgetHostView)host.createView(WidgetPanel.this,id(),info);
+   if(info==null)widget.showUnavailable();
+   resizeMotion=new WidgetResizeMotion(this,()->widget.setSizeAnimating(false));
    int pad=Math.min(dp(5),Math.min(Math.min(widget.getPaddingLeft(),widget.getPaddingRight()),Math.min(widget.getPaddingTop(),widget.getPaddingBottom())));
    widget.setPadding(pad,pad,pad,pad);addView(widget,new LayoutParams(-1,-1));
    setOnLongClickListener(v->{select(this);menu(this);return true;});
@@ -302,11 +329,63 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   int id(){return data.optInt("id");}
   WidgetGrid.Cell saved(){return new WidgetGrid.Cell(data.optInt("x"),data.optInt("y"),data.optInt("w"),data.optInt("h"));}
   WidgetGrid.Cell geometry(){return resize==null?saved():resize.current();}
+  android.graphics.Rect visualBounds(int width,int height){
+   if(resizeMotion.running())resizeMotion.bounds(displayBounds);
+   else{
+    WidgetGrid.Cell g=geometry();
+    displayBounds.set(g.x*width/columns,g.y*height/rows,(g.x+g.w)*width/columns,(g.y+g.h)*height/rows);
+   }
+   return displayBounds;
+  }
+  void animateResize(){
+   if(!(getParent() instanceof Page owner))return;
+   WidgetGrid.Cell g=geometry();int w=owner.getWidth(),h=owner.getHeight();
+   widget.setSizeAnimating(true);
+   resizeMotion.animateTo(g.x*w/columns,g.y*h/rows,(g.x+g.w)*w/columns-g.x*w/columns,(g.y+g.h)*h/rows-g.y*h/rows);
+   if(!resizeMotion.running())widget.setSizeAnimating(false);
+   owner.requestLayout();
+  }
+  void stopResizeMotion(){resizeMotion.cancel();widget.setSizeAnimating(false);}
+  boolean scrollableContent(View view){
+   if(!(view instanceof ViewGroup group)||view.getVisibility()!=VISIBLE)return false;
+   if(view instanceof AdapterView||view instanceof ScrollView||
+      view.getClass().getName().endsWith(".RecyclerView"))return true;
+   for(int i=0;i<group.getChildCount();i++)if(scrollableContent(group.getChildAt(i)))return true;
+   return false;
+  }
+  void press(boolean down){
+   // Launcher leaves scrollable widget content to its provider during ordinary touches.
+   if(down&&scrollableContent(widget))return;
+   if(pressAnimation!=null)pressAnimation.cancel();
+   animate().cancel();
+   setAlpha(1);
+   float end=down?.95f:1;
+   if(!ColorControlMotion.canAnimate(this)){setScaleX(end);setScaleY(end);return;}
+   pressAnimation=android.animation.ValueAnimator.ofFloat(getScaleX(),end);
+   pressAnimation.setDuration(250);
+   pressAnimation.setInterpolator(new android.view.animation.PathInterpolator(.33f,0,down?.67f:.13f,1));
+   pressAnimation.addUpdateListener(a->{float scale=(float)a.getAnimatedValue();setScaleX(scale);setScaleY(scale);});
+   pressAnimation.start();
+  }
+  void clearPress(){
+   if(pressAnimation!=null){pressAnimation.cancel();pressAnimation=null;}
+   setScaleX(1);setScaleY(1);
+  }
+  void showSelectionBackground(boolean on){
+   if(selectionAnimation!=null)selectionAnimation.cancel();
+   int end=on?255:0;
+   if(!ColorControlMotion.canAnimate(this)){selectionBackground.setAlpha(end);return;}
+   selectionAnimation=android.animation.ValueAnimator.ofInt(selectionBackground.getAlpha(),end);
+   selectionAnimation.setDuration(200);
+   selectionAnimation.setInterpolator(new android.view.animation.PathInterpolator(.33f,0,.67f,1));
+   selectionAnimation.addUpdateListener(a->selectionBackground.setAlpha((int)a.getAnimatedValue()));
+   selectionAnimation.start();
+  }
   WidgetCapabilities capabilities(){
-   if(caps==null)caps=new WidgetCapabilities(WidgetPanel.this,info,deck.getWidth(),deck.getHeight(),saved());return caps;
+   if(caps==null)caps=new WidgetCapabilities(WidgetPanel.this,info,deck.getWidth(),deck.getHeight(),saved(),columns,rows);return caps;
   }
   void setSelectedWidget(boolean on){
-   setSelected(on);
+   setSelected(on);if(!on)showSelectionBackground(false);
    if(!on){if(frame!=null)frame.clear();resize=null;widget.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_AUTO);return;}
    caps=null;WidgetCapabilities available=capabilities();
    if(frame==null){frame=launcher.selectionFrame(this);addView(frame,new LayoutParams(-1,-1));}
@@ -314,18 +393,25 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   }
   boolean grip(float x,float y){return frame!=null&&frame.isShown()&&frame.hit(x-getPaddingLeft(),y-getPaddingTop(),saved());}
   void beginResize(){
+   clearPress();stopResizeMotion();
+   resizeMotion.reset(getLeft(),getTop(),getWidth(),getHeight());
    WidgetCapabilities available=capabilities();
    int edges=(available.horizontal?(getLayoutDirection()==LAYOUT_DIRECTION_RTL?WidgetGrid.LEFT:WidgetGrid.RIGHT):0)|(available.vertical?WidgetGrid.BOTTOM:0);
-   resize=new WidgetGrid.Edit(saved(),edges);frame.sizing(true);
+   resize=new WidgetGrid.Edit(saved(),edges,columns,rows);frame.sizing(true);
   }
   void moveResize(float dx,float dy){
    if(resize==null)return;
-   int x=caps.horizontal?Math.round(4*dx/deck.getWidth()):0,y=caps.vertical?Math.round(4*dy/deck.getHeight()):0;
-   frame.shape(resize.move(x,y,c->caps.permits(c)&&free(id(),page,c.x,c.y,c.w,c.h)));((Page)getParent()).requestLayout();
+   int x=caps.horizontal?Math.round(columns*dx/deck.getWidth()):0,y=caps.vertical?Math.round(rows*dy/deck.getHeight()):0;
+   frame.shape(resize.move(x,y,c->caps.permits(c)&&free(id(),page,c.x,c.y,c.w,c.h)));animateResize();
   }
   void endResize(boolean success){
    if(resize==null)return;WidgetGrid.Cell g=resize.current();resize=null;frame.sizing(false);
-   if(success){putCell(data,page,g);save();}frame.shape(saved());if(getParent() instanceof Page p)p.requestLayout();
+   if(success){putCell(data,page,g);save();}frame.shape(saved());animateResize();
+  }
+  @Override protected void onDetachedFromWindow(){
+   clearPress();stopResizeMotion();
+   if(selectionAnimation!=null){selectionAnimation.cancel();selectionAnimation=null;}
+   selectionBackground.setAlpha(0);super.onDetachedFromWindow();
   }
   @Override public void onInitializeAccessibilityNodeInfo(android.view.accessibility.AccessibilityNodeInfo node){
    super.onInitializeAccessibilityNodeInfo(node);
@@ -337,10 +423,10 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
    WidgetGrid.Cell g=saved();int src=data.optInt("page"),target=src+a.dp;
    if(target<0||target>pages)return null;
    if(a.size){
-    WidgetGrid.Cell c=WidgetGrid.propose(g,a.dx,a.dy,a.dy==0?WidgetGrid.RIGHT:WidgetGrid.BOTTOM);
+    WidgetGrid.Cell c=WidgetGrid.propose(g,a.dx,a.dy,a.dy==0?WidgetGrid.RIGHT:WidgetGrid.BOTTOM,columns,rows);
     return c!=null&&capabilities().permits(c)&&free(id(),src,c.x,c.y,c.w,c.h)?Collections.singletonList(new WidgetDrop.Slot(id(),src,c)):null;
    }
-   return WidgetDrop.plan(slots(),new WidgetDrop.Slot(id(),src,g),target,g.x+a.dx,g.y+a.dy);
+   return WidgetDrop.plan(slots(),new WidgetDrop.Slot(id(),src,g),target,g.x+a.dx,g.y+a.dy,columns,rows);
   }
   @Override public boolean performAccessibilityAction(int action,Bundle args){
    for(GridAction a:GridAction.values())if(a.id==action){
@@ -377,19 +463,20 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
  }
  private void beginDrag(Cell cell,float x,float y){
   hideMenuForTouch();
+  cell.clearPress();cell.stopResizeMotion();
   drag=new Drag(cell,x-cell.getLeft(),y-cell.getTop());cell.setSelectedWidget(false);
   int width=cell.getWidth(),height=cell.getHeight();((Page)cell.getParent()).removeView(cell);
   stage.addView(cell,new FrameLayout.LayoutParams(width,height));cell.layout(0,0,width,height);
-  cell.setElevation(dp(8));float scale=1+launcher.dim("pre_drag_view_scale",6)/(float)Math.max(1,width);
+  cell.setElevation(dp(8));float scale=1.02f; // CustomLauncherAppWidgetHostView.getScaleValueWhenDrag()
   cell.animate().scaleX(scale).scaleY(scale).setDuration(dropMin).start();
  }
  private void updateDrag(float x,float y){
   Drag d=drag;if(d==null)return;
   float left=x-d.grabX,top=y-d.grabY;d.cell.setTranslationX(left);d.cell.setTranslationY(top);
-  int gx=Math.max(0,Math.min(4-d.origin.cell.w,Math.round(4*left/deck.getWidth())));
-  int gy=Math.max(0,Math.min(4-d.origin.cell.h,Math.round(4*top/deck.getHeight())));
+  int gx=Math.max(0,Math.min(columns-d.origin.cell.w,Math.round(columns*left/deck.getWidth())));
+  int gy=Math.max(0,Math.min(rows-d.origin.cell.h,Math.round(rows*top/deck.getHeight())));
   if(d.plannedPage!=d.displayPage||d.targetX!=gx||d.targetY!=gy){
-   d.plannedPage=d.displayPage;d.targetX=gx;d.targetY=gy;d.plan=WidgetDrop.plan(d.slots,d.origin,d.displayPage,gx,gy);previewPositions(d);
+   d.plannedPage=d.displayPage;d.targetX=gx;d.targetY=gy;d.plan=WidgetDrop.plan(d.slots,d.origin,d.displayPage,gx,gy,columns,rows);previewPositions(d);
   }
   int edge=y<0||y>=stage.getHeight()?0:x<=scrollZone?-1:x>=stage.getWidth()-scrollZone?1:0;
   if(d.edge!=edge){int delay=d.edge==0?400:200;d.edge=edge;root.removeCallbacks(edgeTurn);if(edge!=0)root.postDelayed(edgeTurn,delay);}
@@ -400,7 +487,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
    WidgetDrop.Slot target=null;if(d.plan!=null)for(WidgetDrop.Slot s:d.plan)if(s.id==cell.id()){target=s;break;}
    float dx=0,dy=0,alpha=1;
    if(target!=null){if(target.page!=owner.index)alpha=.25f;else{
-    dx=(target.cell.x-cell.saved().x)*deck.getWidth()/4f;dy=(target.cell.y-cell.saved().y)*deck.getHeight()/4f;}}
+    dx=(target.cell.x-cell.saved().x)*deck.getWidth()/(float)columns;dy=(target.cell.y-cell.saved().y)*deck.getHeight()/(float)rows;}}
    cell.animate().translationX(dx).translationY(dy).alpha(alpha).setDuration(dropMin).setInterpolator(WidgetDeck.SCROLL).start();
   }
  }
@@ -429,13 +516,13 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   else ((Page)deck.current()).sync();
   updateDots(page);
   if(d.cell.getParent() instanceof Page container){
-   WidgetGrid.Cell end=d.cell.saved();float dx=left-end.x*deck.getWidth()/4f,dy=top-end.y*deck.getHeight()/4f;
+   WidgetGrid.Cell end=d.cell.saved();float dx=left-end.x*deck.getWidth()/(float)columns,dy=top-end.y*deck.getHeight()/(float)rows;
    d.cell.setTranslationX(dx);d.cell.setTranslationY(dy);
    d.cell.animate().translationX(0).translationY(0).setDuration(Math.min(dropMax,dropMin+Math.round(Math.hypot(dx,dy)*.35f))).setInterpolator(WidgetDeck.SCROLL).start();
   }
  }
  private boolean savePlacement(List<WidgetDrop.Slot> plan,String original,int targetPage){
-  if(!original.equals(prefs.getString("layout_v3","[]")))return false;
+  if(columns!=WidgetLayout.columns(prefs)||rows!=WidgetLayout.rows(prefs)||!original.equals(prefs.getString("layout_v3","[]")))return false;
   try{
    JSONArray copy=new JSONArray(original);if(!copy.toString().equals(items.toString()))return false;
    Map<Integer,WidgetDrop.Slot> changes=new HashMap<>();
@@ -461,7 +548,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   Cell cellAt(float x,float y){
    if(!(deck.current() instanceof Page p))return null;
    float localX=x-stage.getLeft(),localY=y-stage.getTop();
-   for(int i=0;i<p.getChildCount();i++){View child=p.getChildAt(i);if(child instanceof Cell c&&
+   for(int i=0;i<p.getChildCount();i++){View child=p.getChildAt(i);if(child instanceof Cell c&&findItem(c.id())!=null&&
      localX>=c.getLeft()&&localX<c.getRight()&&localY>=c.getTop()&&localY<c.getBottom())return c;}
    return null;
   }
@@ -472,6 +559,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   }
   void cancelInput(){
    removeCallbacks(openMenu);removeCallbacks(edgeTurn);cancelChildren();
+   if(downCell!=null&&drag==null)downCell.press(false);
    if(resizing&&downCell!=null)downCell.endResize(false);
    if(drag!=null)endDrag(false);
    if(paging&&deck!=null)settleSwipe(false,0,false);
@@ -481,7 +569,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
   void longPress(){
    if(!tracking||held||resizing||multiple||paging||closed||root!=this||!isShown())return;
    held=true;cancelChildren();performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-   if(downCell!=null&&downCell.isAttachedToWindow()&&findItem(downCell.id())!=null){select(downCell);menu(downCell);}
+   if(downCell!=null&&downCell.isAttachedToWindow()&&findItem(downCell.id())!=null){downCell.press(false);select(downCell);menu(downCell);}
    else pageMenu(new android.graphics.Point(Math.round(downX),Math.round(downY)));
   }
   private void down(MotionEvent e){
@@ -498,7 +586,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
    }
    if(editing){blocked=true;if(!wasSelected)finishEdit();}
    postDelayed(openMenu,ViewConfiguration.getLongPressTimeout());
-   if(!blocked){childDown=true;super.dispatchTouchEvent(e);}
+   if(!blocked){if(downCell!=null)downCell.press(true);childDown=true;super.dispatchTouchEvent(e);}
   }
   @Override public boolean dispatchTouchEvent(MotionEvent e){
    int action=e.getActionMasked();
@@ -513,7 +601,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
      if(!resizing&&drag==null&&downCell!=null&&(held||blocked&&editing&&selected==downCell.id())){
       cancelChildren();beginDrag(downCell,downX-stage.getLeft(),downY-stage.getTop());
      }else if(!held&&!resizing&&!paging&&drag==null&&pages>1&&Math.abs(dx)>slop&&Math.abs(dx)>Math.abs(dy)*1.2f){
-      cancelChildren();paging=true;finishEdit();
+      cancelChildren();if(downCell!=null)downCell.press(false);paging=true;finishEdit();
      }
     }
     if(drag!=null)updateDrag(lastX-stage.getLeft(),lastY-stage.getTop());
@@ -528,6 +616,7 @@ final class WidgetPanel extends android.view.ContextThemeWrapper {
    }
    if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_CANCEL){
     removeCallbacks(openMenu);tracking=false;boolean up=action==MotionEvent.ACTION_UP;
+    if(downCell!=null&&drag==null&&!resizing)downCell.press(false);
     if(drag!=null){
      boolean inside=lastX>=stage.getLeft()-slop&&lastX<=stage.getRight()+slop&&lastY>=stage.getTop()-slop&&lastY<=stage.getBottom()+slop;
      if(up&&inside)updateDrag(lastX-stage.getLeft(),lastY-stage.getTop());

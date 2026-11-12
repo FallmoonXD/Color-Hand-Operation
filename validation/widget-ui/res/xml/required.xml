@@ -1,0 +1,4 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="80dp" android:minHeight="48dp"
+    android:initialLayout="@layout/plugin" android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" android:configure="dev.edgeflow.widgettest.Provider$Settings" />

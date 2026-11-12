@@ -10,6 +10,31 @@ import android.widget.RemoteViews;
 /** Isolated interactive provider for the host's click/long-press/resize regression. */
 public class Provider extends AppWidgetProvider {
     public static final class Configurable extends Provider {}
+    public static final class Hidden extends Provider {}
+    public static final class Required extends Provider {}
+    public static final class Fixed extends Provider {}
+    public static final class Broken extends Provider {
+        @Override public void onUpdate(Context context,AppWidgetManager manager,int[] ids){
+            for(int id:ids){
+                RemoteViews view=new RemoteViews(context.getPackageName(),R.layout.plugin);
+                view.setBoolean(R.id.content,"setChecked",true);manager.updateAppWidget(id,view);
+            }
+        }
+    }
+    public static final class Rotating extends Provider {
+        @Override public void onUpdate(Context context,AppWidgetManager manager,int[] ids){
+            for(int id:ids){
+                RemoteViews view=new RemoteViews(context.getPackageName(),R.layout.rotating);
+                RemoteViews.RemoteCollectionItems.Builder items=new RemoteViews.RemoteCollectionItems.Builder();
+                items.setHasStableIds(true);items.setViewTypeCount(1);
+                for(int index=0;index<3;index++){
+                    RemoteViews child=new RemoteViews(context.getPackageName(),R.layout.plugin);
+                    child.setTextViewText(R.id.content,"轮播内容 "+(index+1));items.addItem(index,child);
+                }
+                view.setRemoteAdapter(R.id.rotating,items.build());manager.updateAppWidget(id,view);
+            }
+        }
+    }
     public static final class Settings extends android.app.Activity {
         @Override protected void onCreate(android.os.Bundle saved){
             super.onCreate(saved);int id=getIntent().getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,-1);
@@ -31,10 +56,12 @@ public class Provider extends AppWidgetProvider {
         for(int id:ids)update(c,manager,id);
     }
     private void update(Context c,AppWidgetManager manager,int id){
-        RemoteViews view=new RemoteViews(c.getPackageName(),R.layout.plugin);
+        RemoteViews view=new RemoteViews(c.getPackageName(),this instanceof Fixed?R.layout.fixed:R.layout.plugin);
         view.setTextViewText(R.id.content,"验证插件 · "+c.getSharedPreferences("clicks",0).getInt("count",0));
         Intent click=new Intent(c,getClass()).setAction(CLICK).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
-        view.setOnClickPendingIntent(R.id.content,PendingIntent.getBroadcast(c,id,click,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT));
+        PendingIntent action=PendingIntent.getBroadcast(c,id,click,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+        view.setOnClickPendingIntent(R.id.content,action);
+        if(this instanceof Fixed)for(int corner:new int[]{R.id.top_left,R.id.top_right,R.id.bottom_left,R.id.bottom_right})view.setOnClickPendingIntent(corner,action);
         manager.updateAppWidget(id,view);
     }
 }

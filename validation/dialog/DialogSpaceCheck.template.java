@@ -18,6 +18,19 @@ public final class DialogSpaceCheck {
   rect(ColorWindowSpace.available(c,v),0,100,1264,1606,"visible frame covers OEM metrics IME omission");
   v.visible=new Rect(0,100,1264,2680);
   rect(ColorWindowSpace.available(c,v),0,100,1264,2680,"closing keyboard restores space without saved stale height");
+  WindowInsets animated=new WindowInsets();animated.value=new Insets(0,100,0,600);v.visible=new Rect(0,100,1264,1606);
+  rect(ColorWindowSpace.available(c,v,animated),0,100,1264,2180,"animated IME uses intermediate geometry instead of final visible frame");
+  animated.value=new Insets(0,100,0,100);
+  rect(ColorWindowSpace.available(c,v,animated),0,100,1264,2680,"animated keyboard dismissal ignores stale resized frame");
+  animated.value=Insets.NONE;
+  rect(ColorWindowSpace.available(c,v,animated),0,100,1264,2680,"overlay local insets retain task system bars");
+  c.wm.metrics.insets.bars=new Insets(0,100,0,100);c.wm.metrics.insets.value=new Insets(0,100,0,1174);
+  animated.value=new Insets(0,0,0,500);
+  rect(ColorWindowSpace.available(c,v,animated,new Rect(28,240,1236,2680)),0,100,1264,2180,"bounded host IME converted to screen coordinates");
+  animated.value=Insets.NONE;
+  rect(ColorWindowSpace.available(c,v,animated,new Rect(28,240,1236,2680)),0,100,1264,2680,"animation ignores final metrics IME");
+  c.wm.metrics.insets.bars=null;
+  v.visible=new Rect(0,100,1264,2680);
   c.wm.metrics.bounds=new Rect(640,80,1264,1400);c.wm.metrics.insets.value=new Insets(0,20,0,40);
   rect(ColorWindowSpace.available(c,v),640,100,1264,1360,"split-screen origin and task boundary retained");
   c.wm.metrics.bounds=new Rect(0,0,2780,1264);c.wm.metrics.insets.value=new Insets(100,0,80,0);v.visible=new Rect(0,0,2780,1264);
@@ -35,8 +48,8 @@ class Resources {final DisplayMetrics metrics=new DisplayMetrics();DisplayMetric
 class DisplayMetrics {int widthPixels=1264,heightPixels=2780;}
 class WindowManager {final WindowMetrics metrics=new WindowMetrics();boolean fail;WindowMetrics getCurrentWindowMetrics(){if(fail)throw new IllegalStateException();return metrics;}}
 class WindowMetrics {Rect bounds=new Rect(0,0,1264,2780);final WindowInsets insets=new WindowInsets();Rect getBounds(){return bounds;}WindowInsets getWindowInsets(){return insets;}}
-class WindowInsets {Insets value=Insets.NONE;Insets getInsets(int mask){return value;}static class Type {static int systemBars(){return 1;}static int displayCutout(){return 2;}static int ime(){return 4;}}}
-class Insets {static final Insets NONE=new Insets(0,0,0,0);final int left,top,right,bottom;Insets(int l,int t,int r,int b){left=l;top=t;right=r;bottom=b;}}
+class WindowInsets {Insets value=Insets.NONE,bars;Insets getInsets(int mask){return (mask&4)==0&&bars!=null?bars:value;}static class Type {static int systemBars(){return 1;}static int displayCutout(){return 2;}static int ime(){return 4;}}}
+class Insets {static final Insets NONE=new Insets(0,0,0,0);final int left,top,right,bottom;Insets(int l,int t,int r,int b){left=l;top=t;right=r;bottom=b;}static Insets of(int l,int t,int r,int b){return new Insets(l,t,r,b);}static Insets max(Insets first,Insets second){return new Insets(Math.max(first.left,second.left),Math.max(first.top,second.top),Math.max(first.right,second.right),Math.max(first.bottom,second.bottom));}}
 class View {boolean attached=true;Rect visible=new Rect();boolean isAttachedToWindow(){return attached;}void getWindowVisibleDisplayFrame(Rect out){out.set(visible);}}
 class Rect {int left,top,right,bottom;Rect(){}Rect(int l,int t,int r,int b){left=l;top=t;right=r;bottom=b;}Rect(Rect r){set(r);}void set(Rect r){left=r.left;top=r.top;right=r.right;bottom=r.bottom;}boolean isEmpty(){return left>=right||top>=bottom;}void inset(int l,int t,int r,int b){left+=l;top+=t;right-=r;bottom-=b;}boolean intersect(Rect r){if(left<r.right&&r.left<right&&top<r.bottom&&r.top<bottom){left=Math.max(left,r.left);top=Math.max(top,r.top);right=Math.min(right,r.right);bottom=Math.min(bottom,r.bottom);return true;}return false;}int width(){return right-left;}int height(){return bottom-top;}public String toString(){return left+","+top+","+right+","+bottom;}}
 /* PRODUCTION */

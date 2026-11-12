@@ -69,7 +69,7 @@ def record(title, action, path):
     preview = d.PREVIEWS[title]
     d.click_item(preview, True)
     time.sleep(1.1)
-    marker = {'快速工具':'媒体音量', '插件':'插件页面', '快速启动':'完成',
+    marker = {'快速工具':'媒体音量', '小组件面板':'插件页面', '快速启动':'完成',
               '任务切换器':'系统最近任务', '虚拟触控板':'光标居中'}[title]
     def panel_visible():
         return any(n.get('package') == d.P and d.visible(n)
@@ -127,13 +127,13 @@ if __name__ == '__main__':
     out = args.output
     out.mkdir(parents=True, exist_ok=True)
     prefs=d.preferences()
-    tools={'快速工具':'quick_tools','插件':'widgets','任务切换器':'task_switcher',
+    tools={'快速工具':'quick_tools','小组件面板':'widgets','任务切换器':'task_switcher',
            '快速启动':'quick_launcher','虚拟触控板':'virtual_touchpad'}
     level=d.sh('getprop','debug.systemui.gaussblur_level').strip()
     if not level or level=='-1':level=d.sh('getprop','persist.sys.oplus.anim_level').strip()
     volume_duration=250 if int(level or '-1')>3 else 500
     try:
-        cases = [('快速工具', 'outside'), ('快速工具', 'back'), ('插件', 'outside'),
+        cases = [('快速工具', 'outside'), ('快速工具', 'back'), ('小组件面板', 'outside'),
                  ('任务切换器', 'outside'), ('快速启动', 'outside'), ('虚拟触控板', 'close')]
         if args.back_handle:
             cases += [(title, args.back_handle) for title in ('快速工具', '快速启动', '任务切换器')]

@@ -46,7 +46,7 @@ try:
     result['sheet_close_back_and_outside_preserve_mapping']=True
 
     d.click_item('短滑直线向左',True);d.wait_node('选择操作')
-    for title in ['快速工具','插件','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式']:
+    for title in ['快速工具','小组件面板','快速启动','任务切换器','虚拟触控板','虚拟导航键','键盘快捷方式']:
         d.click_item('设置'+title,True);d.wait_node(title);assert d.preferences()==before
         back();d.wait_node('选择操作')
     result['all_seven_action_settings_and_return']=True

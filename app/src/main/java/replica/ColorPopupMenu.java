@@ -225,7 +225,10 @@ public final class ColorPopupMenu implements AutoCloseable {
     private void beginDismiss(){
         if(closed||closing)return;
         if(!showing||!validOwner()||!card.isAttachedToWindow()){finishDismiss(false);return;}
-        closing=true;for(View row:rows)row.setEnabled(false);
+        closing=true;
+        // A widget can move to the drag layer while its old menu finishes closing.
+        anchor.removeOnAttachStateChangeListener(attach);
+        for(View row:rows)row.setEnabled(false);
         animate(false,()->finishDismiss(true));
     }
     /** Lifecycle cancellation never dispatches a queued selection. */

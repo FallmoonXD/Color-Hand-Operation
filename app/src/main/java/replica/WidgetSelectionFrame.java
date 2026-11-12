@@ -41,18 +41,19 @@ final class WidgetSelectionFrame extends FrameLayout {
     }
     @Override protected void onDraw(Canvas c){
         float blend=ColorControlPhysics.clamp(pressed.value()),alpha=ColorControlPhysics.clamp(reveal.value());
-        if(alpha==0)return;
+        if(alpha==0||!resizable)return;
         float edge=thin+(thick-thin)*blend,weight=grip+(wideGrip-grip)*blend,inset=wideGrip*.5f;
         bounds.set(inset,inset,getWidth()-inset,getHeight()-inset);
         float r=Math.max(0,Math.min(radius,Math.min(bounds.width(),bounds.height())*.5f));
         paint.setColor(border);paint.setAlpha(Math.round(android.graphics.Color.alpha(border)*alpha));paint.setStrokeWidth(edge);
         c.drawPath(outline.outline(bounds,r+edge*.5f,spanX,spanY),paint);
-        if(!resizable)return;
         boolean rtl=getLayoutDirection()==View.LAYOUT_DIRECTION_RTL;
         float cx=rtl?bounds.left+r:bounds.right-r,cy=bounds.bottom-r;
         arc.set(cx-r,cy-r,cx+r,cy+r);arc.offset(rtl?-edge*.5f:edge*.5f,edge*.5f);
         paint.setColor(handle);paint.setAlpha(Math.round(android.graphics.Color.alpha(handle)*alpha));paint.setStrokeWidth(weight);
         c.drawArc(arc,rtl?90:0,90,false,paint);
     }
-    @Override protected void onDetachedFromWindow(){reveal.cancel();pressed.cancel();super.onDetachedFromWindow();}
+    @Override protected void onDetachedFromWindow(){
+        reveal.snap(0);pressed.snap(0);super.onDetachedFromWindow();
+    }
 }

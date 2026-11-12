@@ -15,13 +15,14 @@ final class WidgetCapabilities {
     final boolean horizontal,vertical,reconfigure;
     final int minX,minY,maxX,maxY;
     final Intent settings,appearance;
-    WidgetCapabilities(Context c,AppWidgetProviderInfo info,int width,int height,WidgetGrid.Cell current){
+    WidgetCapabilities(Context c,AppWidgetProviderInfo info,int width,int height,WidgetGrid.Cell current,int columns,int rows){
+        if(info==null){horizontal=vertical=reconfigure=false;minX=maxX=current.w;minY=maxY=current.h;settings=appearance=null;return;}
         horizontal=(info.resizeMode&AppWidgetProviderInfo.RESIZE_HORIZONTAL)!=0;
         vertical=(info.resizeMode&AppWidgetProviderInfo.RESIZE_VERTICAL)!=0;
-        minX=horizontal?Math.min(current.w,minSpan(info.minResizeWidth,width)):current.w;
-        minY=vertical?Math.min(current.h,minSpan(info.minResizeHeight,height)):current.h;
-        maxX=horizontal?Math.max(current.w,maxSpan(info.maxResizeWidth,width)):current.w;
-        maxY=vertical?Math.max(current.h,maxSpan(info.maxResizeHeight,height)):current.h;
+        minX=horizontal?Math.min(current.w,minSpan(info.minResizeWidth,width,columns)):current.w;
+        minY=vertical?Math.min(current.h,minSpan(info.minResizeHeight,height,rows)):current.h;
+        maxX=horizontal?Math.max(current.w,maxSpan(info.maxResizeWidth,width,columns)):current.w;
+        maxY=vertical?Math.max(current.h,maxSpan(info.maxResizeHeight,height,rows)):current.h;
         reconfigure=info.configure!=null&&(info.widgetFeatures&AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE)!=0;
         boolean local=Process.myUserHandle().equals(info.getProfile());
         settings=local?readShortcut(c,info):null;
@@ -30,8 +31,8 @@ final class WidgetCapabilities {
                 "com.heytap.browser","com.heytap.browser.settings.component.Style6AppearanceSettingActivity"))
                 .putExtra("source","widgetLongPress")):null;
     }
-    private static int minSpan(int pixels,int side){return Math.max(1,Math.min(4,(int)Math.ceil(4d*pixels/Math.max(1,side))));}
-    private static int maxSpan(int pixels,int side){return pixels<=0?4:Math.max(1,(int)Math.min(4,4L*pixels/Math.max(1,side)));}
+    private static int minSpan(int pixels,int side,int count){return Math.max(1,Math.min(count,(int)Math.ceil((double)count*pixels/Math.max(1,side))));}
+    private static int maxSpan(int pixels,int side,int count){return pixels<=0?count:Math.max(1,(int)Math.min(count,(long)count*pixels/Math.max(1,side)));}
     boolean resizable(){return maxX>minX||maxY>minY;}
     boolean permits(WidgetGrid.Cell c){return c.w>=minX&&c.w<=maxX&&c.h>=minY&&c.h<=maxY;}
     private static Intent readShortcut(Context c,AppWidgetProviderInfo info){

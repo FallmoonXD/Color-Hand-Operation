@@ -7,6 +7,9 @@ import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.UserHandle;
+import android.os.UserManager;
+import android.os.Process;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.TextUtils;
@@ -98,18 +101,30 @@ final class WidgetProviderPicker implements AutoCloseable {
             List<Entry> result=new ArrayList<>();String error=null;
             try{
                 PackageManager pm=app.getPackageManager();
-                for(AppWidgetProviderInfo info:AppWidgetManager.getInstance(app).getInstalledProviders()){
+                AppWidgetManager manager=AppWidgetManager.getInstance(app);
+                List<AppWidgetProviderInfo> providers=new ArrayList<>();
+                for(UserHandle profile:app.getSystemService(UserManager.class).getUserProfiles()){
+                    try{providers.addAll(manager.getInstalledProvidersForProfile(profile));}
+                    catch(SecurityException unavailable){android.util.Log.w("WidgetPicker","Profile is unavailable",unavailable);}
+                }
+                for(AppWidgetProviderInfo info:providers){
                     if(closed||token!=generation||Thread.currentThread().isInterrupted())return;
                     if(info==null||info.provider==null)continue;
+                    // These providers require an app-owned pin/configuration flow or launcher rendering.
+                    if((info.widgetFeatures&AppWidgetProviderInfo.WIDGET_FEATURE_HIDE_FROM_PICKER)!=0)continue;
                     String label=info.provider.getShortClassName(),appLabel=info.provider.getPackageName();Drawable icon=null;
                     try{CharSequence loaded=info.loadLabel(pm);if(!TextUtils.isEmpty(loaded))label=loaded.toString();}catch(RuntimeException ignored){}
-                    try{appLabel=pm.getApplicationLabel(pm.getApplicationInfo(info.provider.getPackageName(),0)).toString();}catch(Exception ignored){}
+                    try{appLabel=pm.getApplicationLabel(info.getActivityInfo().applicationInfo).toString();}catch(Exception ignored){}
                     try{icon=info.loadIcon(app,app.getResources().getDisplayMetrics().densityDpi);}catch(RuntimeException ignored){}
                     if(icon==null)try{icon=pm.getApplicationIcon(info.provider.getPackageName());}catch(Exception ignored){}
+                    if(!Process.myUserHandle().equals(info.getProfile())){
+                        appLabel=pm.getUserBadgedLabel(appLabel,info.getProfile()).toString();
+                        if(icon!=null)icon=pm.getUserBadgedIcon(icon,info.getProfile());
+                    }
                     result.add(new Entry(info,label,appLabel,icon));
                 }
                 Collator collator=Collator.getInstance(Locale.getDefault());
-                result.sort((a,b)->{int order=collator.compare(a.app,b.app);if(order==0)order=a.info.provider.getPackageName().compareTo(b.info.provider.getPackageName());if(order==0)order=collator.compare(a.label,b.label);return order==0?a.info.provider.flattenToString().compareTo(b.info.provider.flattenToString()):order;});
+                result.sort((a,b)->{int order=collator.compare(a.app,b.app);if(order==0)order=a.info.provider.getPackageName().compareTo(b.info.provider.getPackageName());if(order==0)order=a.info.getProfile().toString().compareTo(b.info.getProfile().toString());if(order==0)order=collator.compare(a.label,b.label);return order==0?a.info.provider.flattenToString().compareTo(b.info.provider.flattenToString()):order;});
             }catch(Exception failure){error="无法读取插件列表 · 点按重试";}
             final String message=error;
             main.post(()->{
@@ -147,7 +162,7 @@ final class WidgetProviderPicker implements AutoCloseable {
         public int getViewTypeCount(){return 2;}public int getItemViewType(int position){return filtered.isEmpty()?1:0;}
         public View getView(int position,View reuse,ViewGroup parent){
             if(filtered.isEmpty()){status.setLayoutParams(new AbsListView.LayoutParams(-1,list.getHeight()>0?list.getHeight():dp(380)));return status;}
-            Row row=reuse instanceof Row?(Row)reuse:new Row();Entry e=getItem(position);row.bind(e,position==0||!getItem(position-1).info.provider.getPackageName().equals(e.info.provider.getPackageName()));return row;
+            Row row=reuse instanceof Row?(Row)reuse:new Row();Entry e=getItem(position);row.bind(e,position==0||!getItem(position-1).info.provider.getPackageName().equals(e.info.provider.getPackageName())||!getItem(position-1).info.getProfile().equals(e.info.getProfile()));return row;
         }
     }
 

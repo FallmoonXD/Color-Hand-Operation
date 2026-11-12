@@ -30,6 +30,9 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
  private final HashMap<Integer,DialogInterface.OnClickListener> clicks=new HashMap<>();
  private final java.util.HashSet<Integer> destructive=new java.util.HashSet<>();
  private final boolean glass;
+ private boolean launcherConfirmation,settingsConfirmation;
+ public ColorDialogBuilder setLauncherConfirmation(){launcherConfirmation=true;return this;}
+ public ColorDialogBuilder setSettingsConfirmation(){launcherConfirmation=true;settingsConfirmation=true;return this;}
  private ToolAnimation animationTool;
  private float[] animationAnchor;
  public ColorDialogBuilder setToolAnimation(ToolAnimation tool,float[] anchor){animationTool=tool;animationAnchor=anchor.clone();return this;}
@@ -106,7 +109,17 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   private final Runnable outsideCancel=this::cancelFromOutside;
   private void cancelFromOutside(){if(allowCancel&&outsideDismiss)cancel();}
   private final boolean sheet=items!=null||adapter!=null||content!=null;
+  private final boolean insetSheet=sheet&&needsTextInput();
+  private final boolean bottom=sheet||launcherConfirmation;
+  private final LauncherWidgetStyle launcherStyle=!launcherConfirmation?null:settingsConfirmation?
+    new LauncherWidgetStyle(getContext(),true,"com.android.settings",ColorOsTheme.dark(getContext())?"AppBaseDarkTheme":"AppBaseTheme"):
+    new LauncherWidgetStyle(getContext(),true);
   private LinearLayout root,header,actions;private FrameLayout viewport;private View body;private ListView list;
+  private FrameLayout sheetHost;
+  private final android.graphics.Rect sheetFrame=new android.graphics.Rect();
+  private android.view.WindowInsets appliedInsets;
+  private ColorSheetResizeMotion insetsMotion;
+  private boolean entranceStarted;
   private SettingsSurface surface;
   private TextView heading,description;private ImageView close;private View rule,handle;
   private final HashMap<Integer,Button> buttons=new HashMap<>();
@@ -114,12 +127,27 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   private final java.util.IdentityHashMap<View,int[]> flexible=new java.util.IdentityHashMap<>();
   private ColorMotion motion;private android.animation.ValueAnimator animator;private float reveal;
   private boolean closing,finished,paused,deliveryPending,deliveryCancelled,measuring,allowCancel=true,outsideDismiss=true;
-  private Runnable pendingAction;private int imeBottom,lastWidth=-1,lastHeight=-1,lastBottom=-1;
+  private Runnable pendingAction;private int lastWidth=-1,lastHeight=-1,lastBottom=-1,lastLeft=-1;
   private android.app.Application.ActivityLifecycleCallbacks lifecycle;
   private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
   private final Runnable geometry=()->layoutWindow();
-  private final android.view.ViewTreeObserver.OnGlobalLayoutListener contentLayout=()->{if(!finished){root.removeCallbacks(geometry);root.post(geometry);}};
-  private final Runnable entrance=()->{if(!closing&&!finished){layoutWindow();if(glass&&sheet)NativeMaterial.whenReady(getWindow().getDecorView(),()->{if(!closing&&!finished)animatePanel(true,null);});else if(sheet)animatePanel(true,null);}};
+  private final android.view.ViewTreeObserver.OnGlobalLayoutListener contentLayout=()->{
+   if(!finished&&!closing){
+    if(launcherConfirmation&&description!=null){
+     boolean multiline=description.getLineCount()>1;
+     int alignment=multiline?View.TEXT_ALIGNMENT_VIEW_START:View.TEXT_ALIGNMENT_CENTER,gravity=multiline?Gravity.START:Gravity.CENTER;
+     if(description.getTextAlignment()!=alignment)description.setTextAlignment(alignment);
+     if(description.getGravity()!=gravity)description.setGravity(gravity);
+    }
+    root.removeCallbacks(geometry);root.post(geometry);
+   }
+  };
+  private final Runnable entrance=new Runnable(){public void run(){
+   if(closing||finished||entranceStarted)return;
+   layoutWindow();
+   if(root.getWidth()<=0||root.getHeight()!=lastHeight||root.isLayoutRequested()){root.postOnAnimation(this);return;}
+   entranceStarted=true;poseSheet(0,sheetDistance());root.setVisibility(View.VISIBLE);animatePanel(true,null);
+  }};
   private android.database.DataSetObserver observer;
   ColorDialog(Context c){super(c);}
   @Override public void setCancelable(boolean value){allowCancel=value;super.setCancelable(value);}
@@ -149,10 +177,42 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
     buttons.put(which,button);actions.addView(button);button.setOnClickListener(v->{DialogInterface.OnClickListener click=clicks.get(which);dismissThen(click==null?null:()->click.onClick(this,which));});
    }
    if(buttons.isEmpty()){actions.setPadding(0,0,0,dp(c,12));rule.setVisibility(View.GONE);}
-   setContentView(root);Window window=getWindow();
+   if(launcherConfirmation){
+    root.setPadding(0,0,0,0);rule.setVisibility(View.GONE);
+    int inset=launcherStyle.dim("coui_alert_dialog_message_padding_left",24);
+    viewport.setPadding(inset,0,inset,0);
+    header.setPadding(inset,launcherStyle.dim("coui_alert_dialog_title_margin_top",24),inset,launcherStyle.dim("coui_alert_dialog_title_margin_bottom",6));
+    if(heading!=null){heading.setPadding(0,0,0,0);heading.setIncludeFontPadding(true);}
+    if(description!=null){description.setPadding(0,0,0,launcherStyle.dim("coui_alert_dialog_scroll_padding_bottom_message",16));description.setIncludeFontPadding(true);}
+    int side=launcherStyle.dim("coui_alert_dialog_button_parent_padding_horizontal",16);
+    actions.setPadding(side,launcherStyle.dim("coui_alert_dialog_button_parent_padding_vertical",4),side,launcherStyle.dim("coui_alert_dialog_button_parent_padding_bottom",16));
+    for(Button button:buttons.values()){
+     int minimum=launcherStyle.dim("coui_alert_dialog_button_height",44);
+     button.setMinHeight(minimum);button.setMinimumHeight(minimum);button.setIncludeFontPadding(true);
+     int horizontal=launcherStyle.dim("coui_alert_dialog_button_horizontal_padding",12),vertical=launcherStyle.dim("coui_bottom_alert_dialog_vertical_button_padding_vertical_new",4);
+     button.setPadding(horizontal,vertical,horizontal,vertical);
+    }
+   }
+   if(insetSheet){
+    sheetHost=new FrameLayout(c);root.setClickable(true);root.setVisibility(View.INVISIBLE);
+    insetsMotion=new ColorSheetResizeMotion(root,bounds->{
+     FrameLayout.LayoutParams params=new FrameLayout.LayoutParams(bounds.width(),bounds.height());params.leftMargin=bounds.left;params.topMargin=bounds.top;
+     sheetHost.updateViewLayout(root,params);
+    });
+    sheetHost.addView(root,new FrameLayout.LayoutParams(-1,-2));
+    sheetHost.setOnTouchListener((view,event)->{
+     if(event.getActionMasked()==android.view.MotionEvent.ACTION_UP)cancelFromOutside();return true;
+    });
+    setContentView(sheetHost);
+   }else setContentView(root);
+   Window window=getWindow();
    if(containsTextEditor(root))window.clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
-   window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.setWindowAnimations(0);
-   root.setOnApplyWindowInsetsListener((v,insets)->{int next=insets.getInsets(android.view.WindowInsets.Type.ime()).bottom;if(next!=imeBottom){imeBottom=next;root.removeCallbacks(geometry);root.post(geometry);}return insets;});
+   window.setSoftInputMode(insetSheet?WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING:WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);window.setWindowAnimations(0);
+   View insetsHost=insetSheet?sheetHost:root;
+   insetsHost.setOnApplyWindowInsetsListener((v,insets)->{
+    appliedInsets=insets;
+    if(!closing){root.removeCallbacks(geometry);root.post(geometry);}return insets;
+   });
    root.getViewTreeObserver().addOnGlobalLayoutListener(contentLayout);
    refreshColors();ColorOsTheme.watch(root,()->{refreshColors();root.removeCallbacks(geometry);root.post(geometry);});
   }
@@ -224,19 +284,41 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    return Math.max(Math.max(button.getMinimumWidth(),button.getMinWidth()),textWidth+button.getCompoundPaddingLeft()+button.getCompoundPaddingRight());
   }
   private void layoutWindow(){
-   if(root==null||finished||measuring)return;measuring=true;
+   if(root==null||finished||closing||measuring)return;measuring=true;
    try{
-    Context c=getContext();android.graphics.Rect available=ColorWindowSpace.available(c,root);
+    Context c=getContext();android.graphics.Rect available=insetSheet?ColorWindowSpace.available(c,null,appliedInsets,sheetFrame):ColorWindowSpace.available(c,root);
     int width=Math.max(1,available.width()),height=Math.max(1,available.height());
     ColorSheetGeometry.Bounds bounds=ColorSheetGeometry.fit(width,height,0,0,0,0,0,c.getResources().getDisplayMetrics().density,Integer.MAX_VALUE);
     int panelWidth=sheet?bounds.width:Math.max(1,Math.min(dp(c,392),width-dp(c,40)));
+    if(launcherConfirmation)panelWidth=Math.max(1,Math.min(launcherStyle.dim("coui_dialog_max_width",392),width-2*launcherStyle.dim("coui_dialog_layout_margin_horizontal",16)));
     arrangeButtons(panelWidth);int exact=View.MeasureSpec.makeMeasureSpec(panelWidth,View.MeasureSpec.EXACTLY),free=View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED);header.measure(exact,free);actions.measure(exact,free);
     int chrome=header.getMeasuredHeight()+actions.getMeasuredHeight()+root.getPaddingBottom()+(rule.getVisibility()==View.GONE?0:Math.max(1,dp(c,.5f)));
     int desired=chrome+bodyHeight(panelWidth,Math.max(1,bounds.height-chrome));int panelHeight=Math.min(bounds.height,Math.max(chrome+1,desired));
+    if(insetSheet){
+     android.graphics.Rect stable=ColorWindowSpace.available(c,null,new android.view.WindowInsets.Builder().build());
+     ColorSheetGeometry.Bounds hostBounds=ColorSheetGeometry.fit(stable.width(),stable.height(),0,0,0,0,0,c.getResources().getDisplayMetrics().density,Integer.MAX_VALUE);
+     android.graphics.Rect frame=new android.graphics.Rect(stable.left+hostBounds.left,stable.top,stable.left+hostBounds.left+hostBounds.width,stable.bottom);
+     boolean frameChanged=!sheetFrame.equals(frame);
+     if(frameChanged){
+      sheetFrame.set(frame);WindowManager.LayoutParams attributes=getWindow().getAttributes();
+      attributes.x=frame.left;attributes.y=frame.top;attributes.width=frame.width();attributes.height=frame.height();getWindow().setAttributes(attributes);
+     }
+     int left=available.left+(width-panelWidth)/2-frame.left,top=available.bottom-dp(c,8)-panelHeight-frame.top;
+     if(lastWidth!=panelWidth||lastHeight!=panelHeight||lastBottom!=top||lastLeft!=left){
+      lastWidth=panelWidth;lastHeight=panelHeight;lastBottom=top;lastLeft=left;
+      insetsMotion.move(left,top,panelWidth,panelHeight,entranceStarted&&!frameChanged);
+     }
+     if(!entranceStarted)poseSheet(0,sheetDistance());
+     return;
+    }
     // ADJUST_RESIZE and the floating window's normal fit-insets policy place it above
     // the IME/system bars. Bounds only limits size; adding its IME bottom here would lift twice.
-    int bottom=sheet?dp(c,8):0;Window window=getWindow();window.setGravity(sheet?Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL:Gravity.CENTER);
-    if(lastWidth!=panelWidth||lastHeight!=panelHeight||lastBottom!=bottom){lastWidth=panelWidth;lastHeight=panelHeight;lastBottom=bottom;WindowManager.LayoutParams p=window.getAttributes();p.width=panelWidth;p.height=panelHeight;p.y=sheet?bottom:0;window.setAttributes(p);}
+    int gap=launcherConfirmation?launcherStyle.confirmationBottomMargin():sheet?dp(c,8):0;Window window=getWindow();
+    boolean overlayConfirmation=launcherConfirmation&&window.getAttributes().type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
+    int left=overlayConfirmation?available.left+(width-panelWidth)/2:0;
+    int offset=overlayConfirmation?available.bottom-gap-panelHeight:bottom?gap:0;
+    window.setGravity(overlayConfirmation?Gravity.TOP|Gravity.LEFT:bottom?Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL:Gravity.CENTER);
+    if(lastWidth!=panelWidth||lastHeight!=panelHeight||lastBottom!=offset||lastLeft!=left){lastWidth=panelWidth;lastHeight=panelHeight;lastBottom=offset;lastLeft=left;WindowManager.LayoutParams p=window.getAttributes();p.width=panelWidth;p.height=panelHeight;p.x=left;p.y=offset;window.setAttributes(p);}
    }finally{measuring=false;}
   }
   private void styleChildren(View view){if(view instanceof EditText)styleInput((EditText)view);else if(view instanceof CompoundButton)return;else if(view instanceof ListView){ListView list=(ListView)view;styleList(list);if(list.getAdapter() instanceof BaseAdapter)((BaseAdapter)list.getAdapter()).notifyDataSetChanged();return;}else if(view instanceof TextView){TextView text=(TextView)view;TextStyle style=contentStyles.get(text);if(style==null){style=new TextStyle(text);contentStyles.put(text,style);}style.apply(text);}if(view instanceof ViewGroup)for(int i=0;i<((ViewGroup)view).getChildCount();i++)styleChildren(((ViewGroup)view).getChildAt(i));}
@@ -248,18 +330,35 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   }
 
   @Override protected void onStart(){
-   super.onStart();Context c=getContext();Window window=getWindow();window.setWindowAnimations(0);window.setDimAmount(glass?.12f:.24f);
+   super.onStart();Context c=getContext();Window window=getWindow();window.setWindowAnimations(0);window.setDimAmount(launcherConfirmation?.2f:glass?.12f:.24f);
    if(window.getAttributes().type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
        &&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)==0){
     if((window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0&&!containsTextEditor(root))window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
     PanelOutsideTouch.makeModal(window);
    }else if(allowCancel&&outsideDismiss&&(window.getAttributes().flags&WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)!=0)window.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
-   if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
+   if(insetSheet){
+    window.setDecorFitsSystemWindows(false);
+    window.setStatusBarColor(Color.TRANSPARENT);window.setNavigationBarColor(Color.TRANSPARENT);
+    window.setNavigationBarContrastEnforced(false);window.setStatusBarContrastEnforced(false);
+    WindowManager.LayoutParams params=window.getAttributes();params.gravity=Gravity.TOP|Gravity.LEFT;
+    params.setFitInsetsTypes(0);params.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;window.setAttributes(params);
+   }
+   if(launcherConfirmation){
+    window.setBackgroundDrawableResource(android.R.color.transparent);
+    launcherStyle.confirmationOutline(root);
+    window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+    WindowManager.LayoutParams params=window.getAttributes();
+    if(params.type==WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY){
+     params.setFitInsetsTypes(0);params.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+    }
+    window.setAttributes(params);
+   }
+   else if(surface==null)surface=new SettingsSurface(root,sheet?SettingsSurface.Kind.SHEET:SettingsSurface.Kind.DIALOG,sheet?28:22,window);
    window.getDecorView().setClipToOutline(true);layoutWindow();refreshColors();observeOwner();
    if(animationTool!=null&&(animationTool.selection(dev.edgeflow.AppPrefs.get(c),true)!=ToolAnimation.Style.DEFAULT
        ||animationTool.selection(dev.edgeflow.AppPrefs.get(c),false)!=ToolAnimation.Style.DEFAULT)){
-    surface.setRevealAlpha(1);motion=ColorMotion.forTool(window,animationTool,animationAnchor);motion.enter();
-   }else if(sheet){poseSheet(0,Math.max(root.getHeight(),lastHeight));root.post(entrance);}
+    if(surface!=null)surface.setRevealAlpha(1);motion=ColorMotion.forTool(window,animationTool,animationAnchor);motion.enter();
+   }else if(bottom){poseSheet(0,sheetDistance());root.post(entrance);}
    else if(glass){motion=new ColorMotion(window);motion.enter();}
    else{poseCenter(0,ColorMotion.CENTER_START_SCALE);animatePanel(true,null);}
   }
@@ -270,9 +369,10 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   };owner.getApplication().registerActivityLifecycleCallbacks(lifecycle);}
   private boolean ownerAvailable(){Activity a=activity(getContext());return !paused&&(a==null||!a.isFinishing()&&!a.isDestroyed());}
   private boolean animations(){return android.animation.ValueAnimator.areAnimatorsEnabled()&&ColorOsTheme.animationScale(getContext())!=0;}
+  private int sheetDistance(){return insetSheet?Math.max(root.getHeight(),sheetHost.getHeight()-root.getTop()):Math.max(root.getHeight(),lastHeight);}
   private void poseSheet(float value,int distance){
-   reveal=value;getWindow().getDecorView().setTranslationY((1-value)*distance);
-   surface.setRevealAlpha(value<=0?0:1);
+   reveal=value;(insetSheet?root:getWindow().getDecorView()).setTranslationY((1-value)*distance);
+   if(surface!=null)surface.setRevealAlpha(value<=0?0:1);
   }
   private void poseCenter(float value,float scale){
    // Keep the material root opaque. Only the content and the compositor region fade.
@@ -283,12 +383,12 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   private void animatePanel(boolean enter,Runnable done){
    if(animator!=null){animator.removeAllUpdateListeners();animator.removeAllListeners();animator.cancel();animator=null;}
    float start=reveal,end=enter?1:0,startScale=root.getScaleX(),endScale=enter?1:startScale;
-   int distance=Math.max(root.getHeight(),lastHeight);
-   if(!animations()){if(sheet)poseSheet(end,distance);else poseCenter(end,endScale);if(done!=null)done.run();return;}
-   animator=android.animation.ValueAnimator.ofFloat(0,1);animator.setDuration(sheet?ColorMotion.SHEET_MS:enter?ColorMotion.CENTER_IN_MS:ColorMotion.CENTER_OUT_MS);
+   int distance=sheetDistance();
+   if(!animations()){if(bottom)poseSheet(end,distance);else poseCenter(end,endScale);if(done!=null)done.run();return;}
+   animator=android.animation.ValueAnimator.ofFloat(0,1);animator.setDuration(bottom?ColorMotion.SHEET_MS:enter?ColorMotion.CENTER_IN_MS:ColorMotion.CENTER_OUT_MS);
    animator.setInterpolator(enter?ColorMotion.ENTER:ColorMotion.EXIT);
    animator.addUpdateListener(animation->{float t=(float)animation.getAnimatedValue(),value=start+(end-start)*t;
-    if(sheet)poseSheet(value,distance);else poseCenter(value,startScale+(endScale-startScale)*t);
+    if(bottom)poseSheet(value,distance);else poseCenter(value,startScale+(endScale-startScale)*t);
    });
    if(done!=null)animator.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator animation){done.run();}});animator.start();
   }
@@ -298,6 +398,17 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(handle!=null)handle.setBackground(PanelStyle.shape(c,ColorOsTheme.tertiary(c),2));if(close!=null){close.setColorFilter(ColorOsTheme.text(c));close.setBackground(touchBackground(c,ColorOsTheme.fill(c),24));}if(rule!=null)rule.setBackgroundColor(ColorOsTheme.dark(c)?0x18ffffff:0x10000000);
    if(customTitle!=null)styleChildren(customTitle);if(content!=null)styleChildren(content);if(list!=null){styleList(list);if(list.getAdapter() instanceof BaseAdapter)((BaseAdapter)list.getAdapter()).notifyDataSetChanged();}
    for(Integer which:buttons.keySet()){Button button=buttons.get(which);button.setTextColor(buttonColors(destructive.contains(which)?ColorOsTheme.error(c):which==BUTTON_NEGATIVE?ColorOsTheme.secondary(c):ColorOsTheme.accent(c)));button.setTypeface(ColorOsTheme.typeface(c,500));button.setBackground(touchBackground(c,sheet?ColorOsTheme.fill(c):Color.TRANSPARENT,24));}
+   if(launcherConfirmation){
+    root.setBackground(launcherStyle.confirmationBackground());
+    if(heading!=null)launcherStyle.textAppearance(heading,"COUIDialogTextAppearance.Title",18);
+    if(description!=null)launcherStyle.textAppearance(description,"COUIAlertDialogMessageStyle",13);
+    for(Integer which:buttons.keySet()){
+     Button button=buttons.get(which);launcherStyle.textAppearance(button,"couiTextAppearanceButtonL",16);
+     boolean positive=which==BUTTON_POSITIVE&&!settingsConfirmation;
+     button.setTextColor(buttonColors(positive?Color.WHITE:launcherStyle.color("coui_btn_secondary_text_color",ColorOsTheme.text(c))));
+     button.setBackground(touchBackground(c,positive?ColorOsTheme.accent(c):ColorOsTheme.fill(c),24));
+    }
+   }
   }
   @Override public Button getButton(int which){return buttons.get(which);}
   @Override public ListView getListView(){return list;}
@@ -314,9 +425,11 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(closing||finished)return;
    if(root==null||!isShowing()||!root.isAttachedToWindow()||!ownerAvailable()){finishDismiss();return;}
    closing=true;root.cancelPendingInputEvents();root.removeCallbacks(entrance);NativeMaterial.cancelEntrance(getWindow().getDecorView());
+   if(sheet)hideKeyboard();
    if(motion!=null)motion.exit(()->finishDismiss(true));else animatePanel(false,()->finishDismiss(true));
   }
   private void finishDismiss(){deliveryCancelled=true;pendingAction=null;finishDismiss(false);}
+  private void hideKeyboard(){if(insetsMotion!=null)insetsMotion.cancel();if(getWindow().getInsetsController()!=null)getWindow().getInsetsController().hide(android.view.WindowInsets.Type.ime());}
   private void finishDismiss(boolean dispatch){
    if(finished){if(!dispatch){deliveryCancelled=true;releaseOwner();}return;}
    finished=true;closing=true;Runnable after=dispatch?pendingAction:null;pendingAction=null;deliveryPending=after!=null;
@@ -325,6 +438,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
    if(after!=null)main.post(()->{try{if(!deliveryCancelled&&ownerAvailable())after.run();}finally{deliveryPending=false;releaseOwner();}});else releaseOwner();
   }
   private void stopMotion(){
+   if(insetsMotion!=null)insetsMotion.cancel();
    if(root!=null){root.removeCallbacks(geometry);root.removeCallbacks(entrance);root.animate().withEndAction(null).cancel();}
    if(finished&&root!=null&&root.getViewTreeObserver().isAlive())root.getViewTreeObserver().removeOnGlobalLayoutListener(contentLayout);
    if(animator!=null){animator.removeAllListeners();animator.removeAllUpdateListeners();animator.cancel();animator=null;}if(motion!=null){motion.cancel();motion=null;}

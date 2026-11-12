@@ -21,7 +21,7 @@ def run():
     before = {name: d.preferences(name) for name in stores}
     d.main_home()
     d.click_item('面板与工具', True)
-    tools = ('快速工具', '插件', '快速启动', '任务切换器', '虚拟触控板', '虚拟导航键', '键盘快捷方式')
+    tools = ('快速工具', '小组件面板', '快速启动', '任务切换器', '虚拟触控板', '虚拟导航键', '键盘快捷方式')
     for title in tools:
         d.click_item(title, True)
         d.wait_node(title)
@@ -30,14 +30,14 @@ def run():
 
     handle = next(h for h in ('right', 'left') if before['edgeflow'].get(h + '_enabled', True))
     d.open_action_chooser(handle)
-    set_query('搜索操作', '插件')
+    set_query('搜索操作', '小组件面板')
     gear = d.wait_node('设置插件')
     d.tap(gear)
     d.wait_node('循环翻页')
     back()
     assert d.wait_node('设置插件').get('node-hash') == gear.get('node-hash')
     search = d.wait_node('搜索操作')
-    assert search.get('text') == '插件', 'Returning from the gear lost the filter'
+    assert search.get('text') == '小组件面板', 'Returning from the gear lost the filter'
     back()
     d.wait_node('短距离滑动')
     d.range_settings(handle)

@@ -1,0 +1,10 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <FrameLayout android:layout_width="340dp" android:layout_height="170dp" android:layout_gravity="center" android:background="#485465">
+        <TextView android:id="@+id/top_left" android:layout_width="48dp" android:layout_height="40dp" android:layout_gravity="top|left" android:text="左上" android:gravity="center" android:background="#ff0000" android:textColor="#ffffff"/>
+        <TextView android:id="@+id/top_right" android:layout_width="48dp" android:layout_height="40dp" android:layout_gravity="top|right" android:text="右上" android:gravity="center" android:background="#00aa00" android:textColor="#ffffff"/>
+        <TextView android:id="@+id/bottom_left" android:layout_width="48dp" android:layout_height="40dp" android:layout_gravity="bottom|left" android:text="左下" android:gravity="center" android:background="#0000ff" android:textColor="#ffffff"/>
+        <TextView android:id="@+id/bottom_right" android:layout_width="48dp" android:layout_height="40dp" android:layout_gravity="bottom|right" android:text="右下" android:gravity="center" android:background="#aa00aa" android:textColor="#ffffff"/>
+        <TextView android:id="@+id/content" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:textColor="#ffffff" android:textSize="18sp"/>
+    </FrameLayout>
+</FrameLayout>

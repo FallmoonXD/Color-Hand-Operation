@@ -25,7 +25,7 @@ public final class DialogFlowCheck {
   boolean sheet=true,glass,closing,finished,paused,deliveryPending,deliveryCancelled;Runnable pendingAction,animationDone;Callbacks lifecycle;Motion motion;ListView list;Object observer;
   ColorDialog(Context c){super(c);observeOwner();}
   static Activity activity(Context c){return c instanceof Activity?(Activity)c:null;}
-  void animatePanel(boolean enter,Runnable done){animationDone=done;}void stopMotion(){}boolean animations(){return true;}
+  void animatePanel(boolean enter,Runnable done){animationDone=done;}void stopMotion(){}boolean animations(){return true;}void hideKeyboard(){}
   /* PRODUCTION */
  }
  static ColorDialog dialog(){return new ColorDialog(new Activity());}

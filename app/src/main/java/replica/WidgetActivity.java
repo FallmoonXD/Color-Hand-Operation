@@ -7,6 +7,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.UserHandle;
+import android.os.Process;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -25,17 +27,36 @@ public final class WidgetActivity extends Activity {
     private float[] anchor;
     private int pending = -1, targetPage;
     private ComponentName provider;
+    private UserHandle profile;
     private boolean existing, fromOverlay, returnToOverlay, closing;
 
-    static Intent setupIntent(Context context, ComponentName provider, int id, boolean bound, boolean existing, int page, float[] anchor) {
+    static Intent setupIntent(Context context, ComponentName provider, UserHandle profile, int id, boolean bound, boolean existing, int page, float[] anchor) {
         return new Intent(context, WidgetActivity.class).setAction(SETUP).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra("provider", provider.flattenToString()).putExtra("id", id).putExtra("bound", bound)
+                .putExtra("provider", provider.flattenToString()).putExtra("profile",profile).putExtra("id", id).putExtra("bound", bound)
                 .putExtra("existing", existing).putExtra("page", page).putExtra(NativeState.GESTURE_EXTRA, anchor);
     }
 
     static boolean setupInProgress() {
         WidgetActivity owner = current.get();
         return owner != null && !owner.isFinishing() && (owner.pending >= 0 || owner.fromOverlay);
+    }
+
+    static boolean resumeSetup() {
+        if (!setupInProgress()) return false;
+        WidgetActivity owner = current.get();
+        if (owner == null) return false;
+        try {
+            for (android.app.ActivityManager.AppTask task : owner.getSystemService(android.app.ActivityManager.class).getAppTasks()) {
+                if (task.getTaskInfo().taskId == owner.getTaskId()) {
+                    task.moveToFront();
+                    return true;
+                }
+            }
+        } catch (RuntimeException failure) {
+            android.util.Log.w("WidgetActivity", "Cannot resume provider configuration", failure);
+        }
+        Toast.makeText(owner, "请完成或取消正在进行的小组件设置", Toast.LENGTH_SHORT).show();
+        return true;
     }
 
     public static void dismissAll() {
@@ -58,6 +79,7 @@ public final class WidgetActivity extends Activity {
             existing = state.getBoolean("existing");
             targetPage = state.getInt("page");
             provider = component(state.getString("provider"));
+            profile = state.getParcelable("profile",UserHandle.class);
         }
         if (fromOverlay) {
             setContentView(new View(this));
@@ -75,17 +97,18 @@ public final class WidgetActivity extends Activity {
 
     private static ComponentName component(String raw) { return raw == null ? null : ComponentName.unflattenFromString(raw); }
     private void startIntent(Intent intent) {
-        startSetup(component(intent.getStringExtra("provider")), intent.getIntExtra("id", -1),
+        startSetup(component(intent.getStringExtra("provider")), intent.getParcelableExtra("profile",UserHandle.class), intent.getIntExtra("id", -1),
                 intent.getBooleanExtra("bound", false), intent.getBooleanExtra("existing", false), intent.getIntExtra("page", 0));
     }
 
-    private void startSetup(ComponentName name, int id, boolean bound, boolean configureExisting, int page) {
-        pending = id; provider = name; existing = configureExisting; targetPage = page;
+    private void startSetup(ComponentName name, UserHandle user, int id, boolean bound, boolean configureExisting, int page) {
+        pending = id; provider = name; profile = user==null?Process.myUserHandle():user; existing = configureExisting; targetPage = page;
         if (name == null || id < 0) { endSetup(false); return; }
         try {
             if (bound) configure();
             else startActivityForResult(new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
-                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, name), BIND);
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, name)
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER_PROFILE,profile), BIND);
         } catch (RuntimeException failure) {
             Toast.makeText(this, "无法绑定此插件", Toast.LENGTH_SHORT).show();
             endSetup(false);
@@ -94,7 +117,7 @@ public final class WidgetActivity extends Activity {
 
     private void configure() {
         AppWidgetProviderInfo info = AppWidgetManager.getInstance(this).getAppWidgetInfo(pending);
-        if (info == null || !info.provider.equals(provider)) { endSetup(false); return; }
+        if (info == null || !info.provider.equals(provider) || profile!=null&&!profile.equals(info.getProfile())) { endSetup(false); return; }
         if (info.configure == null || (!existing && (info.widgetFeatures & AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL)!=0)) {
             endSetup(true); return;
         }
@@ -157,6 +180,7 @@ public final class WidgetActivity extends Activity {
         out.putFloatArray(NativeState.GESTURE_EXTRA, anchor); out.putInt("pending", pending);
         out.putBoolean("existing", existing); out.putInt("page", targetPage);
         if (provider != null) out.putString("provider", provider.flattenToString());
+        out.putParcelable("profile",profile);
     }
     @Override protected void onStart() { super.onStart(); if (!fromOverlay) panel.start(); }
     @Override protected void onPause() { panel.dismissEditors(); super.onPause(); }

@@ -104,6 +104,11 @@ public final class ConfigArchiveHarness {
   factorySettings();
   toolAnimations();
   releaseUpdateChecks();
+  widgetGridArchives();
+  Memory profileArchive=seeded("profile-export");provider.profile=new android.os.UserHandle(10);
+  check(ConfigArchive.export(profileArchive).getJSONObject("widgets").getJSONArray("items").getJSONObject(0).getBoolean("requiresProfileSelection"),"work profile widget export requires explicit destination profile selection");
+  provider.profile=new android.os.UserHandle(0);
+  check(!ConfigArchive.export(profileArchive).getJSONObject("widgets").getJSONArray("items").getJSONObject(0).has("requiresProfileSelection"),"personal profile widget export preserves legacy migration contract");
   Memory v1=seeded("v1");Map<String,?> launcherBefore=v1.prefs("edgeflow_launcher").getAll(),shortcutsBefore=v1.prefs("edgeflow_shortcuts").getAll();ConfigArchive.restore(v1,archive(1));check(!AppPrefs.get(v1).getBoolean("enabled",true)&&AppPrefs.get(v1).getFloat("trigger_dp",0)==45.5f,"v1 imports typed preferences");check(launcherBefore.equals(v1.prefs("edgeflow_launcher").getAll())&&shortcutsBefore.equals(v1.prefs("edgeflow_shortcuts").getAll()),"v1 preserves newer panel settings");check(new File(v1.files,"tools-layout-v1.json").isFile()&&replica.ToolsConfig.load(v1).size()==2,"tools use actual tools-layout-v1.json path");
   Memory v2=seeded("v2");Map<String,?> widgetsBefore=v2.prefs("replica_widgets").getAll();ConfigArchive.restore(v2,archive(2));JSONObject exported=ConfigArchive.export(v2);check(v2.prefs("edgeflow_launcher").getInt("columns",0)==5&&v2.prefs("edgeflow_launcher").getInt("recent_limit",0)==20,"v2 restores launcher and task switcher settings");check(v2.prefs("edgeflow_shortcuts").contains("app:com.example")&&!v2.prefs("edgeflow_shortcuts").contains("app:com.old"),"v2 replaces shortcuts namespace");JSONObject widget=exported.getJSONObject("widgets").getJSONArray("items").getJSONObject(0);check(widget.getString("component").equals("com.example.widget/com.example.widget.Provider")&&widget.getInt("sourceId")==93&&!widget.has("id"),"widget export maps provider and excludes live ID field");check(exported.getJSONObject("widgets").getInt("height")==400&&exported.getJSONObject("widgets").getInt("pages")==2,"widget export reads replica_widgets/layout_v3 and height_v4");
   Memory target=seeded("target");target.prefs("edgeflow").edit().putFloat("left_handle_start_fraction",.8f).putFloat("left_handle_end_fraction",.9f).apply();ConfigArchive.restore(target,new JSONObject(exported.toString()));check(!target.prefs("edgeflow").contains("left_handle_start_fraction"),"v2 clears target-only gesture overrides");check(state(v2).equals(state(target)),"v2 serialize-import-export roundtrip");check(widgetsBefore.equals(target.prefs("replica_widgets").getAll()),"portable import never changes installed widget IDs");
@@ -282,8 +287,34 @@ public final class ConfigArchiveHarness {
   for(Object value:new Object[]{0,4,1.5,"2"}){JSONObject bad=ConfigArchive.export(c);bad.getJSONObject("preferences").put("handle_pair_count",value);rejectUnchanged(target,bad,"reject invalid handle pair count "+value);}
   JSONObject bad=ConfigArchive.export(c);bad.getJSONObject("preferences").put("extra2_right_long_enabled","false");rejectUnchanged(target,bad,"reject non-boolean long-slide switch");
  }
+ static void widgetGridArchives()throws Exception{
+  AppWidgetProviderInfo available=AppWidgetManager.INSTANCE.providers.get(93);
+  AppWidgetManager.INSTANCE.installed.add(available);
+  Memory source=seeded("widget-grid-export");
+  source.prefs("replica_widgets").edit().putInt("columns",6).putInt("rows",5).apply();
+  JSONObject widgets=ConfigArchive.export(source).getJSONObject("widgets");
+  check(widgets.getInt("version")==2&&widgets.getInt("columns")==6&&widgets.getInt("rows")==5,"widget archive carries custom grid");
+  JSONObject custom=migrationInput().put("version",2).put("columns",6).put("rows",5);
+  custom.getJSONArray("items").getJSONObject(0).put("x",5).put("y",4).put("w",1).put("h",1);
+  Memory target=new Memory("widget-grid-import");
+  JSONObject result=replica.WidgetMigration.migrate(target,custom);
+  check(result.getInt("importedCount")==1&&target.prefs("replica_widgets").getInt("columns",0)==6&&target.prefs("replica_widgets").getInt("rows",0)==5,"custom grid migration accepts last cell");
+  Memory legacy=new Memory("widget-grid-legacy");
+  legacy.prefs("replica_widgets").edit().putInt("columns",6).putInt("rows",6).apply();
+  replica.WidgetMigration.migrate(legacy,migrationInput());
+  check(replica.WidgetLayout.columns(legacy.prefs("replica_widgets"))==4&&replica.WidgetLayout.rows(legacy.prefs("replica_widgets"))==4,"legacy widget migration restores four by four");
+  for(double bad:new double[]{1,7,4.5}){
+   Memory invalid=new Memory("widget-grid-invalid-"+bad);int count=AppWidgetHost.live.size();
+   result=replica.WidgetMigration.migrate(invalid,new JSONObject(custom.toString()).put("columns",bad));
+   check(result.getString("status").equals("invalid_layout")&&AppWidgetHost.live.size()==count&&invalid.prefs("replica_widgets").getAll().isEmpty(),"invalid grid rejected before allocation "+bad);
+  }
+  AppWidgetManager.INSTANCE.installed.remove(available);
+ }
  static JSONObject migrationInput(){return new JSONObject().put("version",1).put("pages",1).put("page",0).put("height",330).put("loop",true).put("items",new JSONArray().put(new JSONObject().put("component","com.example.widget/com.example.widget.Provider").put("sourceId",93).put("page",0).put("x",0).put("y",0).put("w",4).put("h",2)));}
  static void migrationTests(AppWidgetProviderInfo provider)throws Exception{
+  Memory crossProfile=new Memory("migration-profile");JSONObject crossInput=migrationInput();crossInput.getJSONArray("items").getJSONObject(0).put("requiresProfileSelection",true);
+  int allocatedBefore=AppWidgetHost.allocations;JSONObject crossResult=replica.WidgetMigration.migrate(crossProfile,crossInput);
+  check(crossResult.getJSONArray("imported").length()==0&&crossResult.getJSONArray("failed").getJSONObject(0).getString("reason").equals("profile_selection_required")&&AppWidgetHost.allocations==allocatedBefore,"cross-profile migration never binds the same package in the personal profile");
   AppWidgetManager.INSTANCE.installed.add(provider);provider.configure=new ComponentName("com.example.widget","com.example.widget.Configure");
   Memory m=new Memory("migration");JSONObject input=migrationInput();JSONObject report=replica.WidgetMigration.migrate(m,input);int id=report.getJSONArray("imported").getJSONObject(0).getInt("appWidgetId");check(report.getString("status").equals("imported")&&id!=93&&AppWidgetHost.live.contains(id),"widget migration allocates new host ID");check(report.getInt("configurationCount")==1&&report.getJSONArray("needsConfiguration").length()==1,"widget migration reports required provider configuration");int allocations=AppWidgetHost.allocations;JSONObject repeated=replica.WidgetMigration.migrate(m,input);check(repeated.getBoolean("repeatedRequest")&&AppWidgetHost.allocations==allocations,"identical widget migration is idempotent");
   JSONObject different=migrationInput().put("height",400);String saved=m.prefs("replica_widgets").getString("layout_v3",null);report=replica.WidgetMigration.migrate(m,different);check(report.getString("status").equals("destination_not_empty")&&saved.equals(m.prefs("replica_widgets").getString("layout_v3",null)),"widget migration refuses nonempty destination");

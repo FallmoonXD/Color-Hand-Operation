@@ -180,7 +180,7 @@ public final class QuickLauncherOverlay {
   menu(source,label(key),choices.toArray(new String[0]),choices.size()-1,n->{int at=target.indexOf(key);if(at<0)return;
    if(n==4){if(key.startsWith("folder:"))nameFolder(key.substring(7));else moveToFolder(key,target);return;}
    if(n==5&&inFolder){target.remove(key);if(!layout.items.contains(key))layout.items.add(key);changed();return;}
-   if(n>=5&&key.startsWith("folder:")){String id=key.substring(7);showDialog(builder("删除文件夹？").setMessage("文件夹内的快捷入口也将移除，应用不会被卸载。").setPositiveDestructive("删除",(d,which)->{if(closed)return;layout.items.remove(key);layout.folders.remove(id);changed();}).setNegativeButton("取消",null).create());return;}
+   if(n>=5&&key.startsWith("folder:")){String id=key.substring(7);showDialog(builder("删除文件夹？").setLauncherConfirmation().setMessage("文件夹内的快捷入口也将移除，应用不会被卸载。").setPositiveButton("删除",(d,which)->{if(closed)return;layout.items.remove(key);layout.folders.remove(id);changed();}).setNegativeButton("取消",null).create());return;}
    target.remove(at);if(n==0)target.add(Math.max(0,at-1),key);if(n==1)target.add(Math.min(target.size(),at+1),key);if(n==2)target.add(0,key);if(n==3)target.add(key);changed();
   });
  }

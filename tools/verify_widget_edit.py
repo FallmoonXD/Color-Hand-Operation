@@ -2,10 +2,12 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
 import time
+import uuid
 import zipfile
 from io import BytesIO
 
@@ -51,7 +53,7 @@ def action_card(name):
     pad=round((last[3]-last[1])/5)
     return rows,(first[0],first[1]-pad,last[2],last[3]+pad)
 def open_panel():
-    d.panel_settings('插件');d.click_item('打开插件面板',True);d.wait_widget_panel()
+    d.panel_settings('小组件面板');d.click_item('打开小组件面板',True);d.wait_widget_panel()
 def page_menu():
     d.open_widget_page_menu();rows,_=action_card('添加插件')
     assert [n.get('content-desc') for n in rows]==['添加插件','添加页面','移除当前页面']
@@ -68,10 +70,47 @@ def go(index):
     raise AssertionError('Could not reach temporary page')
 def confirm_remove_page():
     page_menu();d.click_item('移除当前页面',True);d.wait_node('移除当前页面？');d.click('移除');time.sleep(.5)
+
+def widget_confirmation(wid):
+    before=state()
+    def open_confirmation():
+        x,y=pause_on(wid);event('UP',x,y);d.click_item('移除插件',True)
+        d.wait_node('要移除此插件吗？');d.wait_node('移除插件不会删除应用内数据')
+    for cancel in ('button','back','outside'):
+        open_confirmation()
+        tree=d.ui();confirm=d.node('移除');window=confirm.get('window-id')
+        assert not any(n.get('window-id')==window and n.get('content-desc','').startswith('关闭') for n in tree.iter('node'))
+        navigation=[d.bounds(n)[1] for n in tree.iter('node') if n.get('package')=='com.android.systemui' and n.get('content-desc') in ('返回','主屏幕','最近任务') and d.visible(n)]
+        if navigation:assert d.bounds(confirm)[3]<=min(navigation),'Confirmation overlaps navigation buttons'
+        if cancel=='button':
+            button=next(node for node in tree.iter('node') if node.get('window-id')==window and node.get('text')=='取消')
+            (OUT/'widget-confirmation.png').write_bytes(subprocess.check_output(d.A+['exec-out','screencap','-p']))
+            remote='/data/local/tmp/cho-confirmation-'+uuid.uuid4().hex+'.mp4'
+            video=OUT/'confirmation-exit.mp4'
+            width,height=d.current_display_size()
+            recorder=subprocess.Popen(d.A+['shell','screenrecord','--size',f'632x{round(height*632/width/2)*2}','--time-limit','3',remote],stdout=subprocess.DEVNULL)
+            try:
+                time.sleep(.5);d.tap(button);assert recorder.wait(timeout=7)==0
+                subprocess.run(d.A+['pull',remote,str(video)],check=True,capture_output=True)
+                from verify_panel_exit import measure
+                report=measure(video);assert report['intermediate_frames']>=3,report
+                print('PASS confirmation exit',report['intermediate_frames'],'intermediate frames',flush=True)
+            finally:
+                if recorder.poll() is None:recorder.terminate();recorder.wait()
+                d.sh('rm','-f',remote)
+        elif cancel=='back':back()
+        else:d.sh('input','tap',str(d.current_display_size()[0]//2),str(d.bounds(d.node('要移除此插件吗？'))[1]-150));time.sleep(.5)
+        assert state()==before,'Cancel changed widget layout: '+cancel
+    open_confirmation();d.click('移除');time.sleep(.5)
+    assert not any(item['id']==wid for item in data())
+    bindings=d.sh('dumpsys','appwidget').split('Widgets:')[1].split('Hosts:')[0]
+    assert not re.search(r'\bid='+str(wid)+r'\b',bindings),'Removed widget binding retained'
+    assert all(item in data() for item in json.loads(before['layout_v3']) if item['id']!=wid)
+    print('PASS launcher confirmation cancel, Back, outside touch and selected binding removal',flush=True)
 def add_widget(label='CHO 验证插件'):
     before={o['id'] for o in data()}
     page_menu();d.click_item('添加插件',True)
-    d.click('搜索应用或插件');d.sh('input','text','CHO')
+    d.set_text('搜索应用或插件','CHO')
     d.click_item(label+'，CHO 验证插件',True)
     deadline=time.monotonic()+10
     while time.monotonic()<deadline:
@@ -92,9 +131,76 @@ def await_page(index,count):
     return d.wait_node(f'第 {index+1} 页，共 {count} 页')
 def pause_on(wid):
     x,y=center(plugin(wid));event('DOWN',x,y);time.sleep(.7);return x,y
+
+def canceled_drag_outline(wid):
+    time.sleep(.4)
+    left,top,right,bottom=d.bounds(plugin(wid))
+    edge=(left+(right-left)//3,top+2,right-(right-left)//3,top+40)
+    before=Image.open(BytesIO(subprocess.check_output(d.A+['exec-out','screencap','-p']))).convert('RGB').crop(edge)
+    x,y=pause_on(wid);event('MOVE',x+45,y);time.sleep(.2);event('CANCEL',x+45,y);time.sleep(.6)
+    after=Image.open(BytesIO(subprocess.check_output(d.A+['exec-out','screencap','-p']))).convert('RGB').crop(edge)
+    assert max(abs(a-b) for a,b in zip(before.tobytes(),after.tobytes()))<=3,'Detached selection outline remained after drag'
+    print('PASS canceled drag clears the detached selection outline',flush=True)
+
+def menu_exit(wid):
+    from verify_panel_exit import measure
+    remote='/data/local/tmp/cho-menu-'+uuid.uuid4().hex+'.mp4'
+    video=OUT/'menu-touch-exit.mp4'
+    recorder=subprocess.Popen(d.A+['shell','screenrecord','--size','632x1390','--time-limit','3',remote],stdout=subprocess.DEVNULL)
+    try:
+        time.sleep(.5);d.tap(plugin(wid))
+        assert recorder.wait(timeout=7)==0
+        subprocess.run(d.A+['pull',remote,str(video)],check=True,capture_output=True)
+        report=measure(video)
+        assert report['intermediate_frames']>=3,report
+        print('PASS menu touch dismissal',report['visible_ms'],'ms',report['intermediate_frames'],'intermediate frames',flush=True)
+    finally:
+        if recorder.poll() is None:recorder.terminate()
+        d.sh('rm','-f',remote)
+    x,y=pause_on(wid);event('UP',x,y);action_card('设置')
+def record_motion(name,action,crop,horizontal):
+    remote='/data/local/tmp/cho-widget-motion-'+uuid.uuid4().hex+'.mp4'
+    video=OUT/(name+'.mp4')
+    recorder=subprocess.Popen(d.A+['shell','screenrecord','--size','632x1390','--time-limit','4',remote],stdout=subprocess.DEVNULL)
+    try:
+        time.sleep(.6);action()
+        assert recorder.wait(timeout=7)==0
+        subprocess.run(d.A+['pull',remote,str(video)],check=True,capture_output=True)
+    finally:
+        if recorder.poll() is None:recorder.terminate()
+        d.sh('rm','-f',remote)
+    width,height,x,y=crop
+    raw=subprocess.check_output(['ffmpeg','-v','fatal','-i',str(video),'-vf',f'format=rgb24,crop={width}:{height}:{x}:{y}',
+                                 '-pix_fmt','rgb24','-fps_mode','passthrough','-f','rawvideo','-'])
+    length=width*height
+    positions=[]
+    for offset in range(0,len(raw),length*3):
+        pixels=raw[offset:offset+length*3]
+        blue=[i for i,(r,g,b) in enumerate(zip(pixels[::3],pixels[1::3],pixels[2::3]))
+              if abs(r-72)<12 and abs(g-84)<12 and abs(b-101)<12]
+        assert blue,'Provider pixels missing from motion recording'
+        positions.append(max(blue)-min(blue)+1 if horizontal else max(blue))
+    return positions
+
+def press_motion(wid):
+    l,t,r,b=d.bounds(plugin(wid));x,y=(l+r)//2,(t+b)//2
+    def action():
+        event('DOWN',x,y);time.sleep(.85);event('UP',x,y)
+    values=record_motion('widget-press',action,(round((r-l)/2),1,round(l/2),round((t+.22*(b-t))/2)),True)
+    assert len(set(values))>=4 and .92<=min(values)/values[0]<=.97 and abs(values[-1]-values[0])<=2,values
+    print('PASS press shrinks then restores',len(set(values)),'widths; minimum ratio',round(min(values)/values[0],3),flush=True)
+    back()
+
+def check_hidden_picker():
+    page_menu();d.click_item('添加插件',True)
+    d.set_text('搜索应用或插件','CHO 隐藏插件');d.wait_node('没有找到匹配的插件')
+    assert not any(n.get('content-desc')=='CHO 隐藏插件，CHO 验证插件' for n in d.ui().iter('node'))
+    d.click('取消')
+    print('PASS provider hide_from_picker flag respected',flush=True)
+
 def exercise(before):
     n=before['pages'];original_page=before['page']
-    open_panel();add_page()
+    open_panel();add_page();check_hidden_picker()
     dots=d.wait_widget_panel();cl,ct,cr,cb=d.bounds(d.wait_node('插件页面'))
     cw=(cr-cl)/4;ch=(cb-ct)/4;dl,dt,dr,db=d.bounds(dots)
     assert dots.get('clickable')!='true'
@@ -110,6 +216,8 @@ def exercise(before):
         back()
     first=add_widget();second=add_widget()
     assert geometry(first)['x']==0 and geometry(second)['x']==2
+    canceled_drag_outline(first)
+    press_motion(first)
     d.tap(d.wait_node('验证插件 · 0'));d.wait_node('验证插件 · 1')
     # Hold without lifting: both frame and the provider-specific menu must already be visible.
     ax,ay=pause_on(first)
@@ -127,7 +235,11 @@ def exercise(before):
     # After releasing the original press, grab the trailing lower arc with the popup still present.
     x,y=pause_on(first);event('UP',x,y);action_card('移除插件')
     l,t,r,b=d.bounds(plugin(first));gx,gy=r-20,b-20
-    event('DOWN',gx,gy);event('MOVE',gx,gy+ch);time.sleep(.15);event('UP',gx,gy+ch);time.sleep(.35)
+    def resize():
+        event('DOWN',gx,gy);event('MOVE',gx,gy+ch);time.sleep(.15);event('UP',gx,gy+ch)
+    values=record_motion('widget-resize',resize,(1,round((cb-t)/2),round((l+.18*(r-l))/2),round(t/2)),False)
+    assert len(set(values))>=6 and values[-1]>values[0]+40,values
+    print('PASS resize has',len(set(values)),'intermediate heights',flush=True)
     assert geometry(first)['h']==2,'Corner resize required a second menu selection'
     old=geometry(first).copy();l,t,r,b=d.bounds(plugin(first));gx,gy=r-20,b-20
     event('DOWN',gx,gy);event('MOVE',gx-cw,gy-ch);event('CANCEL',gx-cw,gy-ch);time.sleep(.25)
@@ -160,9 +272,21 @@ def exercise(before):
     snapshot=state();x,y=pause_on(first);event('MOVE',x+45,y);event('MOVE',cr-10,y)
     await_page(n+2,n+3);event('CANCEL',cr-10,y);time.sleep(.9);assert state()==snapshot
     configurable=add_widget('CHO 可设置插件')
+    time.sleep(.4)
+    left,top,right,bottom=d.bounds(plugin(configurable))
+    # Sample the straight top edge, away from the provider's centered label and the menu.
+    edge=(left+(right-left)//3,top+2,right-(right-left)//3,top+40)
+    before_selection=Image.open(BytesIO(subprocess.check_output(d.A+['exec-out','screencap','-p']))).convert('RGB').crop(edge)
     x,y=pause_on(configurable);event('UP',x,y);rows,bounds=action_card('设置')
     assert [r.get('content-desc') for r in rows]==['设置','编辑插件','移除插件']
     assert corner_pixels(d.bounds(plugin(configurable)))<100,'Fixed widget received a resize handle'
+    after_selection=Image.open(BytesIO(subprocess.check_output(d.A+['exec-out','screencap','-p']))).convert('RGB').crop(edge)
+    shade=0 if d.sh('settings','get','secure','launcher_wallpaper_bright').strip()=='true' else 255
+    for a,b in zip(before_selection.tobytes(),after_selection.tobytes()):
+        blended=(a*215+shade*40)/255
+        assert min(a,blended)-3<=b<=max(a,blended)+3,'Fixed widget received more than the launcher backdrop'
+    print('PASS fixed widget has no resize handle or selection outline',flush=True)
+    menu_exit(configurable)
     shot('provider-menu',bounds);d.click_item('设置',True);d.click('关闭提供方设置');time.sleep(.5)
     if d.widget_indicator() is None:open_panel()
     x,y=pause_on(configurable);event('UP',x,y);d.click_item('编辑插件',True);d.click('完成配置 '+str(configurable))
@@ -174,7 +298,7 @@ def exercise(before):
         assert geometry(first)['page']==target and state()['pages']==count,(target,geometry(first))
     go(n+2);confirm_remove_page()
     print('PASS extending the workspace by dropping, dragging back and removing the empty page',flush=True)
-    go(n);confirm_remove_page()
+    go(n);widget_confirmation(second);confirm_remove_page()
     assert state()['pages']==n+1 and geometry(first)['page']==n and geometry(configurable)['page']==n
     confirm_remove_page();go(original_page);assert state()==before
     print('PASS page removal/renumbering and original layout restored',flush=True)

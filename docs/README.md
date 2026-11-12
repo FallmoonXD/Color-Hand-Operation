@@ -15,7 +15,7 @@
 | 主题与控件 | `ColorOsTheme`、`ColorSwitch`、`ColorSlider` | [主题](coloros-theme-audit.md)、[控件](coloros-controls.md) |
 | 弹窗与菜单 | `ColorPopupMenu`、`ColorActionSheet`、`ColorDialogBuilder` | [弹出菜单](settings-popup.md)、[动作选择](settings-action-sheet.md)、[表单](dialogs-unification.md) |
 | 浮层材质 | `NativeBlur`、`NativeMaterial`、`PanelStyle` | [材质开关与生命周期](material-policy.md)、[原生 UI 调查](coloros17-native-ui-research.md) |
-| 配置和小组件 | `AppPrefs`、`ConfigArchive`、`WidgetMigration` | [配置测试](config-validation.md) |
+| 配置和小组件 | `AppPrefs`、`ConfigArchive`、`WidgetMigration` | [配置测试](config-validation.md)、[接入范围](widget-provider-compatibility.md)、[桌面卡片差异](widget-card-data-audit.md) |
 | 图标 | `design/`、`tools/build_brand_icon.py` | [当前彩色图标](user-layered-icon-validation.md)、[素材来源](../THIRD_PARTY_NOTICES.md) |
 
 包名和配置仍使用 `dev.edgeflow` / `edgeflow`。`replica/` 是本项目的 UI 模块名，构建时不需要原始参考 APK。

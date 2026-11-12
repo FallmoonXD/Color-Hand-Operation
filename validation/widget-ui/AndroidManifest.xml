@@ -10,6 +10,26 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/configurable"/>
             <meta-data android:name="oplus.appwidget.shortcuts" android:resource="@xml/shortcuts"/>
         </receiver>
+        <receiver android:name=".Provider$Hidden" android:label="CHO 隐藏插件" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/hidden"/>
+        </receiver>
+        <receiver android:name=".Provider$Required" android:label="CHO 必须配置插件" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/required"/>
+        </receiver>
         <activity android:name=".Provider$Settings" android:exported="true"/>
+        <receiver android:name=".Provider$Fixed" android:label="CHO 固定尺寸插件" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/fixed"/>
+        </receiver>
+        <receiver android:name=".Provider$Rotating" android:label="CHO 轮播插件" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/rotating"/>
+        </receiver>
+        <receiver android:name=".Provider$Broken" android:label="CHO 错误插件" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget"/>
+        </receiver>
     </application>
 </manifest>

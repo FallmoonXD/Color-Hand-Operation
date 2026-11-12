@@ -6,8 +6,8 @@ android {
   applicationId = "dev.edgeflow"
   minSdk = 33
   targetSdk = 35
-  versionCode = 27
-  versionName = "0.4.0"
+  versionCode = 28
+  versionName = "0.4.1"
  }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
  buildTypes {

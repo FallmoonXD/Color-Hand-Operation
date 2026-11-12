@@ -25,11 +25,17 @@ public final class WidgetMigration {
         JSONObject report = new JSONObject();
         JSONArray imported = new JSONArray(), failed = new JSONArray(), needsSetup = new JSONArray();
         report.put("imported", imported).put("failed", failed).put("needsConfiguration", needsSetup);
-        if (input.optInt("version") != 1) return report.put("status", "unsupported_version");
+        int version = input.optInt("version");
+        if (version != 1 && version != 2) return report.put("status", "unsupported_version");
+        int columns = version == 1 ? 4 : input.optInt("columns", -1);
+        int rows = version == 1 ? 4 : input.optInt("rows", -1);
+        if (!WidgetGrid.dimensions(columns, rows)
+                || version == 2 && (input.optDouble("columns") != columns || input.optDouble("rows") != rows))
+            return report.put("status", "invalid_layout");
         JSONArray source = input.optJSONArray("items");
         if (source == null) return report.put("status", "missing_items");
         int pages = input.optInt("pages", 1), page = input.optInt("page", 0), height = input.optInt("height", 330);
-        if (pages < 1 || pages > 100 || page < 0 || page >= pages || height < 100 || height > 2000 || source.length() > 1600)
+        if (pages < 1 || pages > (version == 1 ? 100 : 1600) || page < 0 || page >= pages || height < 100 || height > 2000 || source.length() > 1600)
             return report.put("status", "invalid_layout");
         SharedPreferences prefs = context.getSharedPreferences("replica_widgets", Context.MODE_PRIVATE);
         java.util.Map<String, ?> previousPreferences = new HashMap<>(prefs.getAll());
@@ -57,6 +63,7 @@ public final class WidgetMigration {
                 JSONObject outcome = new JSONObject().put("index", i);
                 try {
                     if (old == null) throw new IllegalArgumentException("invalid_entry");
+                    if (old.optBoolean("requiresProfileSelection", false)) throw new IllegalArgumentException("profile_selection_required");
                     outcome.put("sourceId", old.optInt("sourceId", -1));
                     String component = old.optString("component", "");
                     outcome.put("component", component);
@@ -65,7 +72,7 @@ public final class WidgetMigration {
                     if (info == null) throw new IllegalArgumentException("provider_unavailable");
                     int p = old.getInt("page"), x = old.getInt("x"), y = old.getInt("y");
                     int w = old.getInt("w"), h = old.getInt("h");
-                    if (p < 0 || p >= pages || x < 0 || y < 0 || w < 1 || h < 1 || w > 4 || h > 4 || x > 4-w || y > 4-h)
+                    if (p < 0 || p >= pages || !WidgetGrid.valid(new WidgetGrid.Cell(x,y,w,h),columns,rows))
                         throw new IllegalArgumentException("invalid_bounds");
                     for (int n = 0; n < layout.length(); n++) {
                         JSONObject other = layout.getJSONObject(n);
@@ -96,9 +103,12 @@ public final class WidgetMigration {
                     .put("configurationCount", needsSetup.length());
             if (source.length() > 0 && imported.length() == 0) return report.put("status", "nothing_imported");
             report.put("status", failed.length() == 0 ? "imported" : "partial");
-            persisted = prefs.edit().putString("layout_v3", layout.toString()).putInt("pages", pages).putInt("page", page)
+            SharedPreferences.Editor editor = prefs.edit().putString("layout_v3", layout.toString()).putInt("pages", pages).putInt("page", page)
                     .putInt("height_v4", height).putBoolean("loop", input.optBoolean("loop", false))
-                    .putString("migration_source", fingerprint).putString("migration_report", report.toString()).commit();
+                    .putString("migration_source", fingerprint).putString("migration_report", report.toString());
+            if (columns == 4) editor.remove("columns"); else editor.putInt("columns", columns);
+            if (rows == 4) editor.remove("rows"); else editor.putInt("rows", rows);
+            persisted = editor.commit();
             if (!persisted) {
                 // commit() updates memory before disk I/O; restore every changed value as well.
                 boolean restored = restore(prefs, previousPreferences);
@@ -114,7 +124,7 @@ public final class WidgetMigration {
         }
     }
 
-    private static boolean restore(SharedPreferences prefs, java.util.Map<String, ?> values) {
+    static boolean restore(SharedPreferences prefs, java.util.Map<String, ?> values) {
         SharedPreferences.Editor editor = prefs.edit().clear();
         for (java.util.Map.Entry<String, ?> entry : values.entrySet()) {
             String key = entry.getKey(); Object value = entry.getValue();
