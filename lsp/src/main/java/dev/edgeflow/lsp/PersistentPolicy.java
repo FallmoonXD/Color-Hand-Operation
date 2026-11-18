@@ -6,6 +6,9 @@ final class PersistentPolicy {
     static boolean shouldRefresh(boolean checked,boolean refreshing,boolean faulted,boolean awake,boolean unlocked,boolean owner){
         return !checked&&!refreshing&&!faulted&&awake&&unlocked&&owner;
     }
+    static boolean needsSourceSnapshot(boolean enabling,boolean integrated,String installedApk,String cachedApk){
+        return enabling||integrated&&!installedApk.equals(cachedApk);
+    }
     static boolean revokesSource(String action,boolean replacing){
         return "android.intent.action.PACKAGE_DATA_CLEARED".equals(action)
             ||("android.intent.action.PACKAGE_REMOVED".equals(action)&&!replacing);

@@ -10,6 +10,11 @@ public final class PersistentCheck {
         void expect(PersistentPolicy.State expected,String why){ok(state()==expected,why+": "+state());}
     }
     public static void main(String[] args)throws Exception{
+        ok(PersistentPolicy.needsSourceSnapshot(false,true,"new.apk",null),"pre-marker integrated cache must reload from the app");
+        ok(PersistentPolicy.needsSourceSnapshot(false,true,"new.apk","old.apk"),"replacement requires the installed app snapshot");
+        ok(!PersistentPolicy.needsSourceSnapshot(false,true,"new.apk","new.apk"),"same installation keeps its synchronized snapshot");
+        ok(!PersistentPolicy.needsSourceSnapshot(false,false,"pilot.apk",null),"independent pilot keeps its authenticated cache");
+        ok(PersistentPolicy.needsSourceSnapshot(true,true,"new.apk","new.apk"),"explicit enable always samples live preferences");
         var updates=new ControllerUpdates();updates.offer("off");var inFlight=updates.take();
         ok(inFlight.profile().equals("off")&&!updates.pending(),"source snapshot is retained by its in-flight request");
         updates.offer("on");updates.failed(inFlight);ok(updates.take().profile().equals("on"),"newer source setting wins after a failed request");

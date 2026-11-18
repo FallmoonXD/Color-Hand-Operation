@@ -76,11 +76,14 @@ public final class PersistentBridge extends ContentProvider {
                 try{
                     identity=sourceIdentity(c);
                     if(method.equals("refresh")&&!identity.equals(local.getString("source",identity)))throw new IllegalStateException("CHO installation changed");
-                    if(method.equals("enable")){
+                    // A retained request may predate an intervening accessibility-only build.
+                    // That build can change the actual gesture preferences without publishing snapshots.
+                    String installedApk=c.getApplicationInfo().sourceDir;
+                    if(PersistentPolicy.needsSourceSnapshot(method.equals("enable"),BackendIdentity.integrated(),installedApk,local.getString("source_apk",null))){
                         Bundle snapshot=c.getContentResolver().call(Uri.parse("content://dev.edgeflow.gesture_config"),"snapshot",null,null);
                         if(snapshot==null)throw new IllegalStateException("CHO snapshot unavailable");
                         profile=snapshot.getString("profile");GestureProfile.parse(profile);
-                        if(!local.edit().putString("source",identity).putString("profile",profile).commit())throw new IllegalStateException("Source configuration not saved");
+                        if(!local.edit().putString("source",identity).putString("profile",profile).putString("source_apk",installedApk).commit())throw new IllegalStateException("Source configuration not saved");
                     }else{profile=local.getString("profile",null);GestureProfile.parse(profile);}
                 }catch(Exception unavailable){
                     sourceError=unavailable.toString();android.util.Log.w("CHOLspBridge","Source configuration unavailable",unavailable);
