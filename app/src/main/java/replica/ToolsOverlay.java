@@ -13,6 +13,7 @@ public final class ToolsOverlay {
  public static void show(Context c){show(c,NativeState.gesture(c));}
  /** Service teardown removes its windows immediately, including an active exit animation. */
  public static void dismissAll(){if(current!=null)current.remove();}
+ public static boolean isShowing(){return current!=null&&!current.removed&&current.dialog!=null&&current.dialog.isShowing();}
  public static void show(Context c,float[] anchor){if(current!=null){android.util.Log.i("ReplicaTools","show ignored closing="+current.closing+" removed="+current.removed);return;}ToolsOverlay next=new ToolsOverlay(c,null,anchor.clone());if(!next.removed)current=next;}
  private ToolsOverlay(Context c){this(c,null,null);}
  private ToolsOverlay(Context c,android.graphics.Bitmap retained,float[] anchor){context=c;

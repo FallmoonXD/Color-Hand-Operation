@@ -1,6 +1,6 @@
 package dev.edgeflow;
 
-import android.accessibilityservice.AccessibilityService;
+
 import android.app.AlertDialog;import android.app.Dialog;
 import android.content.*;import android.content.pm.ResolveInfo;
 import android.graphics.Color;import android.graphics.drawable.Drawable;
@@ -11,19 +11,19 @@ import org.json.*;import java.util.*;import java.io.*;import java.util.concurren
 /** Independent paged launcher: apps, actions, folders and real recent tasks. */
 public final class QuickLauncherOverlay {
  private static QuickLauncherOverlay current;private static final ExecutorService WORK=Executors.newSingleThreadExecutor();private static final Handler MAIN=new Handler(Looper.getMainLooper());
- private final AccessibilityService service;private final Context context;private final SharedPreferences prefs;private final LauncherLayout layout;
+ private final Context service;private final Context context;private final SharedPreferences prefs;private final LauncherLayout layout;
  private final Dialog dialog;private final LinearLayout root;private final float[] anchor;
  private final ArrayList<View> hitViews=new ArrayList<>();private final ArrayList<String> hitKeys=new ArrayList<>(),recent=new ArrayList<>();private final ArrayList<AlertDialog> children=new ArrayList<>();private replica.ColorMotion motion;
  private ShortcutPicker.Session shortcutPicker;private replica.ColorPopupMenu popup;private int pickerGeneration;private long childDismissedAt;
  private final String directFolder;private int page,folderParentPage,columns,hovered=-1;private String folderId=null,recentError=null;private boolean editing,hoverMoved,recentLoading;private volatile boolean closed;private RecentTaskList.Request recentRequest;private boolean recentLoaded;
- private QuickLauncherOverlay(AccessibilityService s,float[] a,LauncherLayout layout,String folder){service=s;anchor=a.clone();prefs=s.getSharedPreferences("edgeflow_launcher",Context.MODE_PRIVATE);columns=Math.max(2,Math.min(5,prefs.getInt("columns",4)));this.layout=layout;directFolder=folder;page=prefs.getInt("page",0);
+ private QuickLauncherOverlay(Context s,float[] a,LauncherLayout layout,String folder){service=s;anchor=a.clone();prefs=s.getSharedPreferences("edgeflow_launcher",Context.MODE_PRIVATE);columns=Math.max(2,Math.min(5,prefs.getInt("columns",4)));this.layout=layout;directFolder=folder;page=prefs.getInt("page",0);
   if(folder!=null){folderParentPage=page;folderId=folder;page=0;}
   int theme=s.getResources().getIdentifier(replica.PanelStyle.dark(s)?"ReplicaGlassDark":"ReplicaGlass","style",s.getPackageName());context=new ContextThemeWrapper(s,theme);
   dialog=new replica.PanelOverlayDialog(context,this::closeFromOutside,this::closeFromOutside);
   root=new LinearLayout(context){float sx,sy;boolean swiping;final ParentTouchGate parentTouch=new ParentTouchGate();public boolean dispatchTouchEvent(MotionEvent e){return parentTouch.consume(e.getActionMasked(),e.getDownTime(),childDismissedAt,hasChildUi())||super.dispatchTouchEvent(e);}public boolean onInterceptTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){sx=e.getX();sy=e.getY();swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_MOVE&&Math.abs(e.getX()-sx)>dp(35)&&Math.abs(e.getX()-sx)>Math.abs(e.getY()-sy)*1.5f){swiping=true;return true;}return false;}public boolean onTouchEvent(MotionEvent e){if(swiping){if(e.getActionMasked()==MotionEvent.ACTION_UP){turn(e.getX()<sx?1:-1);swiping=false;}if(e.getActionMasked()==MotionEvent.ACTION_CANCEL)swiping=false;return true;}return super.onTouchEvent(e);}};root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(12),dp(8),dp(12),dp(10));dialog.setContentView(root);dialog.setOnDismissListener(d->cleanup());Window w=dialog.getWindow();w.setTitle(context.getString(dev.edgeflow.R.string.app_name)+" 快速启动");replica.PanelStyle.window(context,w,24);render();dialog.show();position();motion=replica.ColorMotion.forTool(w,replica.ToolAnimation.LAUNCHER,anchor);motion.enter();if(isRecent())loadRecent(false);
  }
- public static void show(AccessibilityService s,float[] anchor){showFolder(s,anchor,null);}
- static void showFolder(AccessibilityService s,float[] anchor,String folder){
+ public static void show(Context s,float[] anchor){showFolder(s,anchor,null);}
+ static void showFolder(Context s,float[] anchor,String folder){
   dismissAll();TaskSwitcherOverlay.dismissAll();
   try{
    LauncherLayout layout=LauncherLayout.load(s.getSharedPreferences("edgeflow_launcher",0));
@@ -31,7 +31,7 @@ public final class QuickLauncherOverlay {
    current=new QuickLauncherOverlay(s,anchor,layout,folder);
   }catch(RuntimeException failure){android.util.Log.w("EdgeLauncher","Cannot show launcher",failure);Toast.makeText(s,"快速启动暂不可用",Toast.LENGTH_SHORT).show();}
  }
- public static void openEditor(AccessibilityService service,float[] anchor){
+ public static void openEditor(Context service,float[] anchor){
   ActionExecutor.execute(service,"quick_launcher",anchor);
   QuickLauncherOverlay panel=current;
   if(panel!=null&&panel.service==service){
@@ -40,6 +40,7 @@ public final class QuickLauncherOverlay {
   }
  }
  public static void dismissAll(){if(current!=null)current.remove();}
+ public static boolean isShowing(){return current!=null&&!current.closed&&current.dialog.isShowing();}
  private int dp(float n){return replica.PanelStyle.dp(context,n);}private int capacity(){return columns*3;}private boolean hasRecent(){return folderId==null&&layout.recent;}private boolean isRecent(){return hasRecent()&&page==0;}
  private ArrayList<String> items(){return folderId==null?layout.items:layout.folders.get(folderId).items;}
  private int pages(){return Math.max(1,(items().size()+capacity()-1)/capacity())+(hasRecent()?1:0);}
@@ -150,10 +151,23 @@ public final class QuickLauncherOverlay {
   LinearLayout labels=new LinearLayout(context);labels.setOrientation(LinearLayout.VERTICAL);labels.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);TextView name=listText(title,16,500,false);name.setMaxLines(2);name.setEllipsize(android.text.TextUtils.TruncateAt.END);labels.addView(name);
   if(summary!=null){TextView detail=listText(summary,13,400,true);detail.setPadding(0,dp(3),0,0);labels.addView(detail);}row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));row.setContentDescription(title+(summary==null?"":"，"+summary));list.addView(row,new LinearLayout.LayoutParams(-1,-2));return row;
  }
- private void choiceRow(LinearLayout list,String title,Drawable icon,boolean tint,boolean[] selected,int index){
+ private Runnable choiceRow(LinearLayout list,String title,Drawable icon,boolean tint,boolean[] selected,int index,java.util.function.BooleanSupplier canAdd){
   LinearLayout row=listRow(list,title,null,icon,tint);replica.ColorCheckBox check=new replica.ColorCheckBox(context);check.setChecked(selected[index]);check.setClickable(false);check.setFocusable(false);check.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(check,new LinearLayout.LayoutParams(dp(40),dp(48)));
   row.setAccessibilityDelegate(new View.AccessibilityDelegate(){public void onInitializeAccessibilityNodeInfo(View view,android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(view,info);info.setClassName(CheckBox.class.getName());info.setCheckable(true);info.setChecked(check.isChecked());}});
-  row.setOnClickListener(v->{selected[index]=!selected[index];check.setChecked(selected[index]);});
+  TextView hint=canAdd==null?null:listText("暂未支持",13,400,true);
+  if(hint!=null)row.addView(hint,row.getChildCount()-1);
+  Runnable refresh=()->{
+   boolean available=canAdd==null||canAdd.getAsBoolean();
+   boolean enabled=available||selected[index];
+   check.setChecked(selected[index]);row.setEnabled(enabled);row.setAlpha(enabled?1f:.45f);
+   if(hint!=null)hint.setVisibility(available?View.GONE:View.VISIBLE);
+   row.setContentDescription(available?title:title+"，暂未支持");
+  };
+  row.setOnClickListener(v->{
+   if(selected[index]||canAdd==null||canAdd.getAsBoolean())selected[index]=!selected[index];
+   refresh.run();
+  });
+  refresh.run();return refresh;
  }
  /** Apply only choices exposed by this picker; legacy or unavailable entries are preserved. */
  static void applyChoices(ArrayList<String> target,List<String> keys,boolean[] selected){for(int i=0;i<keys.size();i++){String key=keys.get(i);if(selected[i]){if(!target.contains(key))target.add(key);}else target.remove(key);}}
@@ -208,7 +222,7 @@ public final class QuickLauncherOverlay {
    java.text.Collator order=java.text.Collator.getInstance();apps.sort((a,b)->{int value=order.compare(a.label,b.label);return value==0?a.key.compareTo(b.key):value;});
   }catch(RuntimeException unavailable){error="无法读取应用，请关闭后重试";}final String failure=error;
    MAIN.post(()->{if(closed||token!=pickerGeneration||!children.contains(picker)||!picker.isShowing()){recyclePickerIcons(apps);return;}list.removeAllViews();if(failure!=null||apps.isEmpty()){recyclePickerIcons(apps);loading.setText(failure==null?"没有可用的应用":failure);list.addView(loading);return;}
-    displayed.addAll(apps);ArrayList<String> keys=new ArrayList<>();boolean[] selected=new boolean[apps.size()];for(int i=0;i<apps.size();i++){AppChoice app=apps.get(i);keys.add(app.key);selected[i]=target.contains(app.key);choiceRow(list,app.label,app.icon,false,selected,i);}
+    displayed.addAll(apps);ArrayList<String> keys=new ArrayList<>();boolean[] selected=new boolean[apps.size()];for(int i=0;i<apps.size();i++){AppChoice app=apps.get(i);keys.add(app.key);selected[i]=target.contains(app.key);choiceRow(list,app.label,app.icon,false,selected,i,null);}
     choices.filter();Button save=picker.getButton(AlertDialog.BUTTON_POSITIVE);save.setEnabled(true);save.setOnClickListener(v->replica.ColorDialogBuilder.dismissThen(picker,()->{if(closed)return;applyChoices(target,keys,selected);changed();}));
    });
   });
@@ -217,7 +231,19 @@ public final class QuickLauncherOverlay {
  private void chooseActions(){
   ArrayList<String> keys=new ArrayList<>();for(String id:ActionCatalog.orderedIds())if(!id.equals("none")&&!id.equals("quick_launcher"))keys.add("action:"+id);
   final ArrayList<String> target=items();boolean[] selected=new boolean[keys.size()];for(int i=0;i<keys.size();i++)selected[i]=target.contains(keys.get(i));LinearLayout list=listBox();
-  for(ActionCatalog.Group group:ActionCatalog.groups()){ArrayList<String> visible=new ArrayList<>();for(String id:group.ids)if(keys.contains("action:"+id))visible.add(id);if(visible.isEmpty())continue;if(!group.title.isEmpty())section(list,group.title);for(String id:visible){int index=keys.indexOf("action:"+id);choiceRow(list,ActionExecutor.title(id),icon("action:"+id),true,selected,index);}}
+  BackendActions.Capabilities[] available={BackendActions.Capabilities.NONE};
+  ArrayList<Runnable> probedRows=new ArrayList<>();
+  for(ActionCatalog.Group group:ActionCatalog.groups()){ArrayList<String> visible=new ArrayList<>();for(String id:group.ids)if(keys.contains("action:"+id))visible.add(id);if(visible.isEmpty())continue;if(!group.title.isEmpty())section(list,group.title);for(String id:visible){
+    int index=keys.indexOf("action:"+id);
+    boolean knownAvailable=BackendActions.Capabilities.NONE.supported(id);
+    Runnable refresh=choiceRow(list,ActionExecutor.title(id),icon("action:"+id),true,selected,index,
+      knownAvailable?null:()->available[0].supported(id));
+    if(BackendActions.requiresProbe(id))probedRows.add(refresh);
+   }}
+  RuntimeBackend.query(service,state->{
+   if(closed)return;
+   available[0]=state.actions();for(Runnable refresh:probedRows)refresh.run();
+  });
   Choices choices=new Choices(list,"搜索系统动作");choices.filter();showDialog(builder("选择系统动作").setView(choices).setPositiveButton("保存",(d,n)->{if(closed)return;applyChoices(target,keys,selected);changed();}).setNegativeButton("取消",null).create(),true);
  }
  private void activate(String key){if(closed||hasChildUi())return;if(key.startsWith("folder:")){folderParentPage=page;folderId=key.substring(7);page=0;hoverMoved=false;render();position();return;}dismiss();if(key.startsWith("recent:")){int at=key.indexOf(':',7);int task=Integer.parseInt(key.substring(7,at));ActionExecutor.root(service,command("launch "+task),"切换任务");}else if(key.startsWith("action:"))ActionExecutor.execute(service,key.substring(7),anchor);else ActionExecutor.execute(service,key,anchor);}

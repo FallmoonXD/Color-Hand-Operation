@@ -1,0 +1,14 @@
+beforeProject { p ->
+ if(p.path == ':app'){
+  p.layout.buildDirectory.set(p.rootProject.file('.checks/host-return-validation/build'))
+  p.plugins.withId('com.android.application'){
+   p.androidComponents.finalizeDsl { dsl ->
+    dsl.defaultConfig.applicationId='dev.edgeflow.hostreturncheck'
+    def main=dsl.sourceSets.main
+    main.manifest.srcFile(p.rootProject.file('validation/host-return/AndroidManifest.xml'))
+    main.java.setSrcDirs([p.file(p.providers.gradleProperty('choValidationSources').get()),p.rootProject.file('lsp/src/main/java')])
+    dsl.packaging.resources.excludes.add('META-INF/xposed/**')
+   }
+  }
+ }
+}

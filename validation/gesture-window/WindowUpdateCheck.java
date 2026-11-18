@@ -1,6 +1,7 @@
 package dev.edgeflow;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 public final class WindowUpdateCheck {
     static int checks;
     static void check(boolean value,String label){checks++;if(!value)throw new AssertionError(label);}
@@ -57,6 +58,7 @@ class NavigationOverlay {static void displayChanged(GestureHandleConfig.Area are
 class TouchpadOverlay {static void displayChanged(GestureHandleConfig.Area area,int dpi){}}
 class MagnificationOverlay {static void displayChanged(GestureHandleConfig.Area area){}}
 class SharedPreferences extends HashMap<String,Object> {
+    Map<String,?> getAll(){return new HashMap<String,Object>(this);}
     boolean getBoolean(String key,boolean fallback){Object value=get(key);return value==null?fallback:(Boolean)value;}
     float getFloat(String key,float fallback){Object value=get(key);return value==null?fallback:(Float)value;}
     int getInt(String key,int fallback){Object value=get(key);return value==null?fallback:(Integer)value;}

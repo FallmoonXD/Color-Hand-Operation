@@ -18,12 +18,16 @@ final class NativeBlur {
     private static IBinder.DeathRecipient death;
     private static long retryAt;
     private static long prepareUntil;
+    private static volatile boolean warm;
     static final java.util.concurrent.atomic.AtomicInteger frames=new java.util.concurrent.atomic.AtomicInteger();
     static volatile int active;
     static volatile boolean online;
     static int starts, stops;
 
     static void prepare(Context c){context=c.getApplicationContext();prepareUntil=SystemClock.uptimeMillis()+1000;ensure();}
+    static void keepWarm(Context c,boolean value){context=c.getApplicationContext();warm=value;if(value)ensure();else prepareUntil=0;}
+
+    static void rootAuthorized(){policy.rootAuthorized();}
 
     static void add(NativeMaterial material, Context c) {
         context=c.getApplicationContext(); clients.add(material);active=clients.size();
@@ -32,19 +36,20 @@ final class NativeBlur {
     static void remove(NativeMaterial material) { clients.remove(material);active=clients.size(); }
     static boolean unavailable(){return !policy.available();}
     private static void fallback(String reason){
-        policy.failed(true);android.util.Log.w("ReplicaBlurBridge","Using material fallback: "+reason);
+        android.util.Log.w("ReplicaBlurBridge","Using material fallback: "+reason);
         for(NativeMaterial material:new ArrayList<>(clients))material.nativeUnavailable();
     }
     static void ensure() {
-        if(!policy.available()||service!=null||launching||context==null||(clients.isEmpty()&&SystemClock.uptimeMillis()>=prepareUntil)||SystemClock.uptimeMillis()<retryAt)return;
+        if(!policy.available()||service!=null||launching||context==null||(!warm&&clients.isEmpty()&&SystemClock.uptimeMillis()>=prepareUntil)||SystemClock.uptimeMillis()<retryAt)return;
         if(!capabilityChecked){
             capabilityChecked=true;
             try{
                 android.content.Intent intent=new android.content.Intent("com.oplus.BlurService").setPackage("com.oplus.blur");
-                if(context.getPackageManager().resolveService(intent,0)==null){fallback("ColorOS blur service is not installed/enabled");return;}
-            }catch(RuntimeException e){fallback("Blur service discovery failed");return;}
+                if(context.getPackageManager().resolveService(intent,0)==null){policy.unsupported();fallback("ColorOS blur service is not installed/enabled");return;}
+            }catch(RuntimeException e){policy.unsupported();fallback("Blur service discovery failed");return;}
         }
         launching=true;
+        final int attemptAuthorization=policy.authorization();
         final String apk=context.getApplicationInfo().sourceDir;
         // Android UID = userId * PER_USER_RANGE + appId (same mapping as ShortcutPicker).
         final int user=android.os.Process.myUid()/100000;
@@ -82,9 +87,13 @@ final class NativeBlur {
             main.post(()->{
                 cleanupBinding();launching=false;connected(null);
                 boolean cleanIdle=exitCode==0&&ready.get()&&idle.get();
-                if(!cleanIdle&&!policy.failed(!ready.get())){fallback("Native service unavailable; restart the app to retry");return;}
-                retryAt=cleanIdle?0:SystemClock.uptimeMillis()+2000;
-                if(!clients.isEmpty())main.postDelayed(NativeBlur::ensure,cleanIdle?0:2100);
+                if(!cleanIdle){
+                    boolean retry=ready.get()?policy.serviceLost():policy.startupFailed(attemptAuthorization);
+                    if(!retry){fallback(ready.get()?"Native service stopped":"Native helper failed to start");return;}
+                }
+                boolean delay=!cleanIdle&&ready.get();
+                retryAt=delay?SystemClock.uptimeMillis()+2000:0;
+                main.postDelayed(NativeBlur::ensure,delay?2100:0);
             });
         },"material-service-owner").start();
     }
@@ -114,5 +123,5 @@ final class NativeBlur {
             for(NativeMaterial m:new ArrayList<>(clients))m.connect(next);
         }catch(Exception e){connected(null);}
     }
-    static Bundle stats(){Bundle b=new Bundle();b.putInt("active",active);b.putInt("frames",frames.get());b.putBoolean("connected",online);b.putInt("starts",starts);b.putInt("stops",stops);return b;}
+    static Bundle stats(){Bundle b=new Bundle();b.putInt("active",active);b.putBoolean("warm",warm);b.putInt("frames",frames.get());b.putBoolean("connected",online);b.putInt("starts",starts);b.putInt("stops",stops);return b;}
 }

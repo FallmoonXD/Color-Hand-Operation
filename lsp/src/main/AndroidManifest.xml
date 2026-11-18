@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="dev.edgeflow.lsp.pilot.CONTROL" android:protectionLevel="signature" />
+    <uses-permission android:name="dev.edgeflow.lsp.pilot.CONTROL" />
+    <uses-permission android:name="dev.edgeflow.permission.READ_GESTURES" />
+    <queries><provider android:authorities="dev.edgeflow.gesture_config" /><package android:name="com.android.systemui" /></queries>
+    <application android:name=".PilotApplication" android:label="@string/pilot_title" android:icon="@android:drawable/ic_menu_manage" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false" android:supportsRtl="true">
+        <provider android:name=".PersistentBridge" android:authorities="dev.edgeflow.lsp.pilot.persistent" android:exported="true" android:directBootAware="true" />
+        <service android:name=".ControllerService" android:exported="true" android:directBootAware="true" android:permission="android.permission.STATUS_BAR_SERVICE" />
+    </application>
+</manifest>

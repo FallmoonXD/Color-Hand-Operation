@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<queries><package android:name="dev.edgeflow.widgettest"/><package android:name="com.oplus.blur"/><package android:name="com.android.launcher"/></queries>
+<application android:theme="@style/AppTheme" android:label="CHO host validation" android:allowBackup="false">
+<activity android:name="replica.HostReturnCheck" android:exported="true" android:launchMode="singleTop"/>
+<activity android:name="replica.WidgetActivity" android:exported="false" android:taskAffinity="" android:launchMode="singleTop" android:configChanges="keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize" android:theme="@style/ReplicaGlass"/>
+</application></manifest>

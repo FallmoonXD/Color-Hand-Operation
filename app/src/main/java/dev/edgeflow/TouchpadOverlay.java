@@ -3,6 +3,7 @@ package dev.edgeflow;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.app.Dialog;
+import android.content.Context;
 import android.graphics.*;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,7 +17,7 @@ import replica.PanelStyle;
 /** Relative pointer control; accessibility gestures are injected only after pad UP. */
 public final class TouchpadOverlay {
  private static TouchpadOverlay current;
- private final AccessibilityService service;
+ private final Context service;
  private final WindowManager wm;
  private final Handler main=new Handler(Looper.getMainLooper());
  private final Point screen;
@@ -32,7 +33,8 @@ public final class TouchpadOverlay {
  private final Runnable restoreInput=()->restorePanelInput();
  private void restorePanelInput(){if(removed)return;injecting=false;if(closing)return;Window w=dialog.getWindow();WindowManager.LayoutParams p=w.getAttributes();p.flags&=~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;w.setAttributes(p);}
 
- public static void show(AccessibilityService c,float[] anchor){dismissAll();TouchpadOverlay next=new TouchpadOverlay(c,anchor);if(!next.removed)current=next;}
+ public static void show(Context c,float[] anchor){dismissAll();TouchpadOverlay next=new TouchpadOverlay(c,anchor);if(!next.removed)current=next;}
+ public static boolean isShowing(){return current!=null&&!current.removed&&current.dialog.isShowing();}
  public static void dismissAll(){if(current!=null)current.remove();}
  static void displayChanged(GestureHandleConfig.Area next,int dpi){
   TouchpadOverlay old=current;
@@ -46,7 +48,7 @@ public final class TouchpadOverlay {
   }
  }
  private int dp(float n){return PanelStyle.dp(service,n);}
- private TouchpadOverlay(AccessibilityService c,float[] anchor){
+ private TouchpadOverlay(Context c,float[] anchor){
   service=c;this.anchor=anchor.clone();density=c.getResources().getDisplayMetrics().densityDpi;
   wm=(WindowManager)c.getSystemService(android.content.Context.WINDOW_SERVICE);screen=PanelGeometry.screen(c);pointerX=screen.x*.5f;pointerY=screen.y*.35f;
   cursor=new Cursor(c);cursorParams=new WindowManager.LayoutParams(dp(30),dp(30),WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE|WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.TRANSLUCENT);cursorParams.gravity=Gravity.TOP|Gravity.LEFT;cursorParams.setTitle(service.getString(dev.edgeflow.R.string.app_name)+" 触控板光标");PanelGeometry.screenCoordinates(cursorParams);
@@ -61,8 +63,9 @@ public final class TouchpadOverlay {
   hint=text("",11);refreshPointerSpeed();root.addView(hint,new LinearLayout.LayoutParams(-1,dp(30)));
   Pad pad=new Pad(c);pad.setContentDescription("触控板：滑动移动光标，轻点点击，双指滑动滚动");pad.setBackground(PanelStyle.mediaSurface(c));root.addView(pad,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout keys=row();root.addView(keys,new LinearLayout.LayoutParams(-1,dp(42)));keys.addView(button("单击",()->click(1,false)),new LinearLayout.LayoutParams(0,-1,1));keys.addView(button("双击",()->click(2,false)),new LinearLayout.LayoutParams(0,-1,1));keys.addView(button("长按",()->click(1,true)),new LinearLayout.LayoutParams(0,-1,1));
-  LinearLayout options=row();root.addView(options,new LinearLayout.LayoutParams(-1,dp(40)));scrollButton=button("滚动：关",()->setScrollMode(!scrollMode));options.addView(scrollButton,new LinearLayout.LayoutParams(0,-1,1));options.addView(button("光标居中",()->{pointerX=screen.x/2f;pointerY=screen.y*.35f;positionCursor();}),new LinearLayout.LayoutParams(0,-1,1));options.addView(button("返回",()->service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)),new LinearLayout.LayoutParams(0,-1,1));
+  LinearLayout options=row();root.addView(options,new LinearLayout.LayoutParams(-1,dp(40)));scrollButton=button("滚动：关",()->setScrollMode(!scrollMode));options.addView(scrollButton,new LinearLayout.LayoutParams(0,-1,1));options.addView(button("光标居中",()->{pointerX=screen.x/2f;pointerY=screen.y*.35f;positionCursor();}),new LinearLayout.LayoutParams(0,-1,1));options.addView(button("返回",()->{ToolActionHost host=ToolActionHost.find(service);if(host!=null)host.globalAction(AccessibilityService.GLOBAL_ACTION_BACK);else if(service instanceof AccessibilityService access)access.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);}),new LinearLayout.LayoutParams(0,-1,1));
   dialog.setContentView(root);dialog.setCanceledOnTouchOutside(false);Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);w.setWindowAnimations(0);
+  replica.OverlayWindowToken.apply(c,w);replica.OverlayWindowToken.apply(c,cursorParams);
   replica.ToolsBackdrop backdrop=PanelStyle.controlsWindow(c,w,24,false);
   backdrop.preserve(close,dp(22),0);backdrop.preserve(pad,dp(22),0);
   for(LinearLayout group:new LinearLayout[]{keys,options}){
@@ -92,21 +95,24 @@ public final class TouchpadOverlay {
   float inset=dp(16);pointerX=Math.max(inset,Math.min(screen.x-inset,pointerX));pointerY=Math.max(dp(8),Math.min(screen.y-dp(8),pointerY));cursorParams.x=Math.round(pointerX)-dp(15);cursorParams.y=Math.round(pointerY)-dp(15);
   if(cursorAdded)try{wm.updateViewLayout(cursor,cursorParams);}catch(Exception ignored){}cursor.invalidate();
  }
- private void click(int count,boolean hold){Path p=new Path();p.moveTo(pointerX,pointerY);inject(p,hold?650:60,count);}
- private void scroll(float amount){if(Math.abs(amount)<dp(8))return;float distance=Math.max(-screen.y*.4f,Math.min(screen.y*.4f,amount*2));float start=Math.max(dp(48),Math.min(screen.y-dp(48),pointerY-distance/2)),end=Math.max(dp(48),Math.min(screen.y-dp(48),start+distance));Path p=new Path();p.moveTo(pointerX,start);p.lineTo(pointerX,end);inject(p,260,1);}
- private void inject(Path path,long duration,int count){
+ private void click(int count,boolean hold){inject(new float[]{pointerX,pointerY,pointerX,pointerY},hold?650:60,count);}
+ private void scroll(float amount){if(Math.abs(amount)<dp(8))return;float distance=Math.max(-screen.y*.4f,Math.min(screen.y*.4f,amount*2));float start=Math.max(dp(48),Math.min(screen.y-dp(48),pointerY-distance/2)),end=Math.max(dp(48),Math.min(screen.y-dp(48),start+distance));inject(new float[]{pointerX,start,pointerX,end},260,1);}
+ private void inject(float[] points,long duration,int count){
   if(removed||closing||injecting)return;injecting=true;Window w=dialog.getWindow();WindowManager.LayoutParams p=w.getAttributes();p.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;w.setAttributes(p);
   // Wait for InputDispatcher to apply the pass-through region before injecting.
   main.postDelayed(()->{if(removed||closing)return;
-   try{GestureDescription.Builder b=new GestureDescription.Builder();for(int i=0;i<count;i++)b.addStroke(new GestureDescription.StrokeDescription(path,i*(duration+65),duration));
-    boolean accepted=service.dispatchGesture(b.build(),new AccessibilityService.GestureResultCallback(){@Override public void onCompleted(GestureDescription g){if(removed)return;main.removeCallbacks(restoreInput);main.postDelayed(restoreInput,32);}@Override public void onCancelled(GestureDescription g){if(removed)return;main.removeCallbacks(restoreInput);main.post(restoreInput);}},main);
+   try{
+    ToolActionHost host=ToolActionHost.find(service);boolean accepted;
+    if(host!=null)accepted=host.touch(points,duration,count,completed->{if(removed)return;main.removeCallbacks(restoreInput);main.postDelayed(restoreInput,completed?32:0);});
+    else{Path path=new Path();path.moveTo(points[0],points[1]);if(points[0]!=points[2]||points[1]!=points[3])path.lineTo(points[2],points[3]);GestureDescription.Builder b=new GestureDescription.Builder();for(int i=0;i<count;i++)b.addStroke(new GestureDescription.StrokeDescription(path,i*(duration+65),duration));
+     accepted=service instanceof AccessibilityService access&&access.dispatchGesture(b.build(),new AccessibilityService.GestureResultCallback(){@Override public void onCompleted(GestureDescription g){if(removed)return;main.removeCallbacks(restoreInput);main.postDelayed(restoreInput,32);}@Override public void onCancelled(GestureDescription g){if(removed)return;main.removeCallbacks(restoreInput);main.post(restoreInput);}},main);}
     if(!accepted)injectionFailed();else main.postDelayed(restoreInput,count*(duration+65)+800);
    }catch(RuntimeException e){android.util.Log.w("EdgeTouchpad","Gesture connection changed during injection",e);injectionFailed();}
   },60);
  }
- private void injectionFailed(){restoreInput.run();if(!removed&&!closing)Toast.makeText(service,"触控注入不可用，请检查无障碍服务",Toast.LENGTH_SHORT).show();}
+ private void injectionFailed(){restoreInput.run();if(!removed&&!closing)Toast.makeText(service,"触控注入不可用，请检查运行状态",Toast.LENGTH_SHORT).show();}
  private void dismiss(){if(removed||closing)return;closing=true;if(motion!=null)motion.exit(this::remove);else remove();}
- private void remove(){if(removed)return;removed=true;main.removeCallbacksAndMessages(null);if(motion!=null)motion.cancel();try{dialog.dismiss();}catch(Exception ignored){}if(cursorAdded){try{wm.removeViewImmediate(cursor);}catch(Exception ignored){}cursorAdded=false;}if(current==this)current=null;}
+ private void remove(){if(removed)return;removed=true;ToolActionHost host=ToolActionHost.find(service);if(host!=null)host.cancelTouch();main.removeCallbacksAndMessages(null);if(motion!=null)motion.cancel();try{dialog.dismiss();}catch(Exception ignored){}if(cursorAdded){try{wm.removeViewImmediate(cursor);}catch(Exception ignored){}cursorAdded=false;}if(current==this)current=null;}
  private final class Pad extends View {
   private float lastX,lastY,downX,downY,scrollAmount;private long downTime;private boolean multi,moved;
   Pad(android.content.Context c){super(c);setClickable(true);}

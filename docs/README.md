@@ -11,7 +11,8 @@
 | 模块 | 入口 | 相关笔记 |
 | --- | --- | --- |
 | 设置与页面导航 | `MainActivity`、`ColorSettingsScaffold` | [页面清单](coloros-menu-audit.md)、[页面连续性](continuous-pages-validation.md) |
-| 手势输入与动作 | `GestureService`、`EdgeHandleView`、`GestureRecognizer`、`ActionExecutor` | [手势测试](gesture-validation.md)、[触控区域](handle-safe-area-validation.md) |
+| 手势输入与动作 | `PersistentRuntime`、`NativeInputSession`、`GestureRecognizer`、`ActionExecutor` | [手势测试](gesture-validation.md)、[触控区域](handle-safe-area-validation.md) |
+| LSP 模块与独立调试原型 | `lsp/` 的 `ModuleEntry`、`NativeInputSession`、`EdgeInputSession` | [原型与验证边界](lsp-input-prototype.md) |
 | 主题与控件 | `ColorOsTheme`、`ColorSwitch`、`ColorSlider` | [主题](coloros-theme-audit.md)、[控件](coloros-controls.md) |
 | 弹窗与菜单 | `ColorPopupMenu`、`ColorActionSheet`、`ColorDialogBuilder` | [弹出菜单](settings-popup.md)、[动作选择](settings-action-sheet.md)、[表单](dialogs-unification.md) |
 | 浮层材质 | `NativeBlur`、`NativeMaterial`、`PanelStyle` | [材质开关与生命周期](material-policy.md)、[原生 UI 调查](coloros17-native-ui-research.md) |
@@ -24,9 +25,11 @@
 
 JDK 21 + 仓库自带 Gradle wrapper；SDK 配置和普通构建命令见[首页](../README.md#自己编译)。
 
-`tools/deploy.py` 用于开发设备：覆盖安装、设置部分调试权限并添加 CHO 无障碍服务，保留其他服务。只有一台已授权设备时自动选择；多台设备时先设置 `EDGEFLOW_SERIAL`。旧视觉测试版迁移需要显式传入 `--migrate-visualtest`。
+`tools/deploy.py` 用于开发设备：覆盖安装调试包并配置相机、蓝牙、小组件绑定等开发权限。模块加载状态在「权限与运行」查看。只有一台已授权设备时自动选择；多台设备时先设置 `EDGEFLOW_SERIAL`。旧视觉测试版迁移需要显式传入 `--migrate-visualtest`。
 
 验证脚本放在 `validation/`，各目录有运行入口。手机 UI 树用独立 probe 读取，避免普通 `uiautomator dump` 干扰正在运行的无障碍服务。涉及实机 UI 时先临时保持亮屏，结束后恢复超时并息屏。
+
+发布打包使用 `tools/package_release.py`。先从预定发布提交构建并验收 release APK，在干净工作树运行脚本。它核对公开证书和 APK 提交号，从即将分发的源码 ZIP 临时重建，再比较 APK 内各文件的内容与压缩方式。源码 ZIP 缺少 Git 元数据，因此提交号从待分发 APK 单独读取。校验通过后，`dist/` 收录实机验收过的原 APK、源码 ZIP 和校验和。可用 `ANDROID_HOME` 或 `ANDROID_SDK_ROOT` 指定 SDK。
 
 ## 测试记录怎么读
 
@@ -39,3 +42,4 @@ JDK 21 + 仓库自带 Gradle wrapper；SDK 配置和普通构建命令见[首页
 - [一加早期实机记录](device-validation.md)：手势、工具、小组件和后台恢复。
 - [0.3.15 测试记录](neutral-glass-release-validation.md)：能力探测和白灰图标阶段。
 - [OHO+ 功能对照](oho-feature-matrix.json)：已实现、未实现和差异项。
+- [OHO++ 实机对照](ohoplus-device-comparison.md)：普通安装的后台退出、输入接管、工具和小组件差异。

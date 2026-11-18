@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.edgeflow.lspfixture" android:versionCode="1" android:versionName="1">
+    <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="35"/>
+    <uses-permission android:name="dev.edgeflow.lsp.pilot.CONTROL"/>
+    <uses-permission android:name="dev.edgeflow.permission.READ_GESTURES"/>
+    <queries><provider android:authorities="dev.edgeflow.gesture_config"/><provider android:authorities="dev.edgeflow.lsp.pilot.persistent"/></queries>
+    <application android:label="CHO LSP input fixture" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name="dev.edgeflow.lspfixture.ProbeActivity" android:exported="true"/>
+        <activity android:name="dev.edgeflow.lspfixture.SecondActivity" android:exported="true"/>
+        <activity android:name="dev.edgeflow.lspfixture.TouchActivity" android:exported="true" android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"/>
+        <receiver android:name="dev.edgeflow.lspfixture.ControlReceiver" android:exported="true" android:permission="android.permission.DUMP"/>
+    </application>
+</manifest>

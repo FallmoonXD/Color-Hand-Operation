@@ -58,9 +58,9 @@ public final class BlurServiceBridge {
             while(thread.isBinderAlive()){
                 if(lost.get())throw new IllegalStateException("Native service disconnected");
                 Bundle stats=(Bundle)call.invoke(provider,identity,authority,"stats",null,null);
-                if(stats.getInt("active")==0){if(idle==0)idle=SystemClock.elapsedRealtime();if(SystemClock.elapsedRealtime()-idle>15000){System.out.println("NATIVE_BLUR_IDLE");break;}}
+                if(stats.getInt("active")==0&&!stats.getBoolean("warm")){if(idle==0)idle=SystemClock.elapsedRealtime();if(SystemClock.elapsedRealtime()-idle>15000){System.out.println("NATIVE_BLUR_IDLE");break;}}
                 else idle=0;
-                Thread.sleep(500);
+                Thread.sleep(stats.getInt("active")==0?2000:500);
             }
         } finally {
             if(connection!=null)try{amc.getMethod("unbindService",conn).invoke(am,connection);}catch(Exception ignored){}

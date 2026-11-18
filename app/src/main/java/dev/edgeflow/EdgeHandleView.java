@@ -102,19 +102,7 @@ public final class EdgeHandleView extends HandleStripView {
         else if(GestureTrial.current()==null)service.dispatchGesture(handleId,direction,longSwipe,anchor,application);
     }
     private void haptic(boolean longer){
-        java.util.Map<String,?> values=service.getSharedPreferences("edgeflow",Context.MODE_PRIVATE).getAll();
-        if(GestureHaptics.legacyMuted(values))return;
-        if(!GestureHaptics.custom(values)){
-            // Delegate both the effect and its strength to ColorOS; a disabled system
-            // haptic must not be replaced with an unconditional Vibrator fallback.
-            performHapticFeedback(HapticFeedbackConstants.GESTURE_END);
-            return;
-        }
-        boolean legacy=GestureHaptics.legacyAmplitude(values);int duration=legacy?(longer?18:8):GestureHaptics.level(values);
-        if(duration==0)return;
-        try{VibratorManager manager=(VibratorManager)service.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);Vibrator vibrator=manager==null?null:manager.getDefaultVibrator();
-            if(vibrator!=null&&vibrator.hasVibrator())vibrator.vibrate(VibrationEffect.createOneShot(duration,legacy?GestureHaptics.amplitude(values):VibrationEffect.DEFAULT_AMPLITUDE));
-        }catch(RuntimeException ignored){}
+        GestureHapticPlayer.perform(this,service.getSharedPreferences("edgeflow",Context.MODE_PRIVATE).getAll(),longer);
     }
     public void cancel(){main.removeCallbacks(longCheck);if(gesture!=null){gesture.cancel();if(trial!=null)trial.cancel();else{QuickLauncherOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);MagnificationOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);ScreenMoveOverlay.onGestureMotion(MotionEvent.ACTION_CANCEL,0,0);}}gesture=null;trial=null;pointer=-1;service.releaseWave();}
     @Override protected void onDetachedFromWindow(){cancel();super.onDetachedFromWindow();}

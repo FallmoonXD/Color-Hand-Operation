@@ -29,7 +29,7 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityWindowInfo;
 
-/** Standalone accessibility-bound gesture host. No dependency on an existing APK. */
+/** Retired accessibility host; the application no longer registers or starts this component. */
 public final class GestureService extends AccessibilityService implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG="EdgeGesture";
     private static volatile GestureService running;
@@ -127,31 +127,9 @@ public final class GestureService extends AccessibilityService implements Shared
         String enabled=Settings.Secure.getString(c.getContentResolver(),Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);if(enabled==null)return false;
         ComponentName own=new ComponentName(c,GestureService.class);for(String entry:enabled.split(":"))if(own.equals(ComponentName.unflattenFromString(entry)))return true;return false;
     }
-    @Override public int onStartCommand(Intent intent,int flags,int startId){
-        // A sticky start keeps the existing system binding eligible for process recovery.
-        // It never grants access and cannot create the accessibility Binder connection.
-        if(!isEnabledByUser(this)){stopSelf(startId);return START_NOT_STICKY;}
-        notification();Log.i(TAG,"Started gesture host; awaiting/retaining authorized system binding");return START_STICKY;
-    }
-    @Override protected void onServiceConnected(){
-        super.onServiceConnected();running=this;connected=true;
-        AccessibilityServiceInfo info=getServiceInfo();if(info!=null){info.eventTypes=AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED|AccessibilityEvent.TYPE_WINDOWS_CHANGED;info.feedbackType=AccessibilityServiceInfo.FEEDBACK_GENERIC;info.flags|=AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;info.notificationTimeout=30;setServiceInfo(info);}
-        IntentFilter f=new IntentFilter();f.addAction(Intent.ACTION_SCREEN_OFF);f.addAction(Intent.ACTION_SCREEN_ON);f.addAction(Intent.ACTION_USER_PRESENT);f.addAction(getPackageName()+".RELOAD_GESTURES");
-        if(!receiverRegistered){registerReceiver(changes,f,Context.RECEIVER_NOT_EXPORTED);receiverRegistered=true;}screenOn=((PowerManager)getSystemService(POWER_SERVICE)).isInteractive();
-        notification();rebuild();
-        if(isEnabledByUser(this))try{startService(new Intent(this,GestureService.class));}catch(RuntimeException e){Log.w(TAG,"Cannot retain started lifecycle; system binding remains",e);}
-        Log.i(TAG,"Accessibility gesture service connected");
-        sendBroadcast(new Intent(getPackageName()+".SERVICE_STATE").setPackage(getPackageName()));
-    }
-    private void notification(){
-        try{
-            NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);String channel="gesture_service";nm.createNotificationChannel(new NotificationChannel(channel,"侧边手势服务",NotificationManager.IMPORTANCE_LOW));
-            Intent open=new Intent(Intent.ACTION_MAIN).setClassName(this,"dev.edgeflow.MainActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            PendingIntent pi=PendingIntent.getActivity(this,1,open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-            Notification n=new Notification.Builder(this,channel).setSmallIcon(R.drawable.ic_stat_hand_operation).setContentTitle(getString(R.string.app_name)+" 手势已启用").setContentText("左右侧滑动 · 点此调整手势与工具").setContentIntent(pi).setOngoing(true).setCategory(Notification.CATEGORY_SERVICE).build();
-            startForeground(17001,n);
-        }catch(Exception e){Log.w(TAG,"Foreground notification unavailable; accessibility binding remains",e);}
-    }
+    // Retained only for source compatibility with archived helpers; no manifest component.
+    @Override public int onStartCommand(Intent intent,int flags,int startId){stopSelf(startId);return START_NOT_STICKY;}
+    @Override protected void onServiceConnected(){super.onServiceConnected();disableSelf();}
     @Override public void onAccessibilityEvent(AccessibilityEvent e){
         if(!connected)return;
         if(e.getEventType()==AccessibilityEvent.TYPE_WINDOWS_CHANGED||e.getEventType()==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
@@ -191,6 +169,7 @@ public final class GestureService extends AccessibilityService implements Shared
     }
     public boolean canStartGesture(){
         if(!connected||!screenOn||!prefs.getBoolean("enabled",true))return false;
+        if(BackendChoice.lsp(this))return false;
         if(((KeyguardManager)getSystemService(KEYGUARD_SERVICE)).isKeyguardLocked())return false;
         if(getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE&&HandleSettings.hideInLandscape(prefs))return false;
         if(imeVisible&&prefs.getBoolean("hide_keyboard",prefs.getBoolean("hide_when_keyboard",false)))return false;
@@ -243,6 +222,7 @@ public final class GestureService extends AccessibilityService implements Shared
     private float number(String key,float fallback){try{return prefs.getFloat(key,fallback);}catch(ClassCastException e){try{return prefs.getInt(key,(int)fallback);}catch(ClassCastException ignored){return fallback;}}}
     private void rebuild(){
         if(!connected)return;removeGestureWindows();
+        if(BackendChoice.lsp(this)){removeHandlePreviews();return;}
         try{
             handleArea=HandleDisplayArea.current(this);screenWidth=handleArea.displayWidth;screenHeight=handleArea.displayHeight;screenDensity=getResources().getDisplayMetrics().density;refreshWindowState();
             // The vendor fraud detector considers window bounds, not transparent pixels.
@@ -264,12 +244,7 @@ public final class GestureService extends AccessibilityService implements Shared
         }catch(Exception e){Log.e(TAG,"Cannot attach gesture surfaces",e);removeWindows();}
     }
     private int[] handleBounds(String id){
-        boolean extra=GestureHandleConfig.isExtra(id);float density=getResources().getDisplayMetrics().density;
-        float width=number(id+"_handle_width_dp",extra?12.3f:number("handle_width_dp",12.3f));
-        if(handleArea.landscape())width=number(id+"_landscape_handle_width_dp",width);
-        float start=number(id+"_handle_start_fraction",extra?GestureHandleConfig.defaultStart(id):number("handle_start_fraction",.13084841f)),end=number(id+"_handle_end_fraction",extra?GestureHandleConfig.defaultEnd(id):number("handle_end_fraction",1f));
-        if(!extra&&(prefs.contains("handle_center_fraction")||prefs.contains("handle_height_fraction"))){float center=number("handle_center_fraction",.5654242f),height=number("handle_height_fraction",.8691516f);start=center-height/2;end=center+height/2;}
-        return GestureHandleConfig.bounds(id,width,start,end,density,handleArea);
+        return GestureHandleConfig.bounds(id,prefs.getAll(),getResources().getDisplayMetrics().density,handleArea);
     }
     private EdgeHandleView addHandle(String id){
         int[] b=handleBounds(id);EdgeHandleView handle=new EdgeHandleView(this,id);handle.setVisibility(handlesVisible&&handleEnabled(id)?View.VISIBLE:View.GONE);
@@ -309,6 +284,11 @@ public final class GestureService extends AccessibilityService implements Shared
     static void enterTrial(){GestureService service=running;if(service!=null)service.cancelGesture();}
     private void removeGestureWindows(){cancelGesture();remove(left);remove(right);remove(extraLeft);remove(extraRight);remove(extra2Left);remove(extra2Right);remove(leftWave);remove(rightWave);left=right=extraLeft=extraRight=extra2Left=extra2Right=null;wave=leftWave=rightWave=null;handlesVisible=false;}
     private void removeWindows(){removeGestureWindows();removeHandlePreviews();}
+    public static void backendChanged(){
+        GestureService service=running;if(service==null)return;
+        service.main.post(()->{if(BackendChoice.lsp(service)){service.removeWindows();service.dismissPanels();ActionExecutor.release(service);}else service.rebuild();});
+    }
+    public static void disableForLsp(){GestureService service=running;if(service!=null&&BackendChoice.lsp(service))service.disableSelf();}
     private void remove(View v){if(v!=null)try{windows.removeViewImmediate(v);}catch(IllegalArgumentException ignored){}}
     @Override public void onSharedPreferenceChanged(SharedPreferences p,String key){
         if("enabled".equals(key)&&!p.getBoolean("enabled",true)){dismissPanels();}
@@ -323,7 +303,7 @@ public final class GestureService extends AccessibilityService implements Shared
         RecentTaskList.release(this);
         connected=false;if(running==this)running=null;main.removeCallbacksAndMessages(null);pendingConfiguration=pendingWindowState=pendingGeometry=false;
         if(receiverRegistered){try{unregisterReceiver(changes);}catch(IllegalArgumentException ignored){}receiverRegistered=false;}
-        removeWindows();dismissPanels();ActionExecutor.release(this);stopForeground(STOP_FOREGROUND_REMOVE);
+        removeWindows();if(!BackendChoice.lsp(this)){dismissPanels();ActionExecutor.release(this);}stopForeground(STOP_FOREGROUND_REMOVE);
         sendBroadcast(new Intent(getPackageName()+".SERVICE_STATE").setPackage(getPackageName()));
     }
     @Override public boolean onUnbind(Intent intent){disconnect();stopSelf();return super.onUnbind(intent);}

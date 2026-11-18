@@ -13,12 +13,13 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
-import dev.edgeflow.GestureService;
 import java.lang.ref.WeakReference;
 
 /** Owns results for system widget binding/configuration and the preview without a service. */
 public final class WidgetActivity extends Activity {
     private static final String SETUP = "dev.edgeflow.WIDGET_SETUP";
+    static final String RETURN_REQUEST="dev.edgeflow.WIDGET_RETURN_REQUEST";
+    private long returnRequest;
     private static final int BIND = 1, CONFIGURE = 2;
     private static WeakReference<WidgetActivity> current = new WeakReference<>(null);
     private WidgetPanel panel;
@@ -36,12 +37,12 @@ public final class WidgetActivity extends Activity {
                 .putExtra("existing", existing).putExtra("page", page).putExtra(NativeState.GESTURE_EXTRA, anchor);
     }
 
-    static boolean setupInProgress() {
+    public static boolean setupInProgress() {
         WidgetActivity owner = current.get();
         return owner != null && !owner.isFinishing() && (owner.pending >= 0 || owner.fromOverlay);
     }
 
-    static boolean resumeSetup() {
+    static boolean resumeSetup(Context host,float[] anchor) {
         if (!setupInProgress()) return false;
         WidgetActivity owner = current.get();
         if (owner == null) return false;
@@ -49,6 +50,7 @@ public final class WidgetActivity extends Activity {
             for (android.app.ActivityManager.AppTask task : owner.getSystemService(android.app.ActivityManager.class).getAppTasks()) {
                 if (task.getTaskInfo().taskId == owner.getTaskId()) {
                     task.moveToFront();
+                    if(owner.fromOverlay)owner.returnRequest=WidgetOverlay.rememberSetup(host,anchor);
                     return true;
                 }
             }
@@ -73,6 +75,7 @@ public final class WidgetActivity extends Activity {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         anchor = NativeState.intentGesture(this, state);
         fromOverlay = SETUP.equals(getIntent().getAction());
+        returnRequest=state==null?getIntent().getLongExtra(RETURN_REQUEST,0):state.getLong(RETURN_REQUEST);
         panel = new WidgetPanel(this, getWindow(), anchor, false, this::startSetup,this::finish);
         if (state != null) {
             pending = state.getInt("pending", -1);
@@ -158,6 +161,7 @@ public final class WidgetActivity extends Activity {
         if (motion != null) { motion.cancel(); motion = null; }
         closing = false;
         returnToOverlay = false;
+        returnRequest=intent.getLongExtra(RETURN_REQUEST,0);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         fromOverlay = SETUP.equals(intent.getAction());
         if (fromOverlay) {
@@ -180,7 +184,7 @@ public final class WidgetActivity extends Activity {
         out.putFloatArray(NativeState.GESTURE_EXTRA, anchor); out.putInt("pending", pending);
         out.putBoolean("existing", existing); out.putInt("page", targetPage);
         if (provider != null) out.putString("provider", provider.flattenToString());
-        out.putParcelable("profile",profile);
+        out.putParcelable("profile",profile);out.putLong(RETURN_REQUEST,returnRequest);
     }
     @Override protected void onStart() { super.onStart(); if (!fromOverlay) panel.start(); }
     @Override protected void onPause() { panel.dismissEditors(); super.onPause(); }
@@ -204,7 +208,6 @@ public final class WidgetActivity extends Activity {
         if (motion != null) motion.cancel();
         if (isFinishing() && pending >= 0 && !existing) panel.host.deleteAppWidgetId(pending);
         panel.close(); super.onDestroy();
-        GestureService service = GestureService.instance();
-        if (returnToOverlay && service != null) WidgetOverlay.show(service, anchor);
+        if(isFinishing()&&fromOverlay)WidgetOverlay.finishSetup(returnRequest,returnToOverlay);
     }
 }

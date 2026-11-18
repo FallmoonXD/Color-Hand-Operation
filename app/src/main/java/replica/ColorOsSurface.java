@@ -4,6 +4,11 @@ import java.lang.ref.WeakReference;import java.util.ArrayList;import java.util.W
 
 /** Native backdrop and original optical constants, with live system material policy. */
 public final class ColorOsSurface extends Drawable implements Drawable.Callback {
+ public static void rootVerified(Context context,boolean retryStartup){
+  if(retryStartup)NativeBlur.rootAuthorized();
+  if(ColorOsTheme.materialBlur(context))NativeBlur.prepare(context);
+ }
+ public static void keepWarm(Context context,boolean warm){NativeBlur.keepWarm(context,warm&&ColorOsTheme.materialBlur(context));}
  private final OriginalMaterial optics;private final float corner;private final NativeMaterial nativeMaterial;
  private final MaterialThemeBinding theme;
  public ColorOsSurface(Context c,float radius,int style){

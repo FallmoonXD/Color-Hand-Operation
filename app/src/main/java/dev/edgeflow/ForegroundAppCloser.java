@@ -11,6 +11,16 @@ import android.view.accessibility.AccessibilityWindowInfo;
 
 /** Resolves a fresh target for the close-app action. Never uses recent-app history. */
 public final class ForegroundAppCloser {
+    public static String target(android.content.Context context){
+        ToolActionHost host=ToolActionHost.find(context);
+        if(host==null)return context instanceof AccessibilityService service?target(service):null;
+        String candidate=host.foregroundPackage();
+        if(!eligible(candidate,context.getPackageName()))return null;
+        for(ResolveInfo info:context.getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),0)){
+            if(info.activityInfo!=null&&candidate.equals(info.activityInfo.packageName))return null;
+        }
+        return candidate;
+    }
     public static String target(AccessibilityService service) {
         if (service == null || service != GestureService.instance()) return null;
         try {
@@ -43,8 +53,8 @@ public final class ForegroundAppCloser {
                 && !pkg.equals(own) && !pkg.equals("com.android.systemui");
     }
 
-    static boolean close(AccessibilityService service, String expected) throws Exception {
-        if (expected == null || service != GestureService.instance()) return false;
+    static boolean close(android.content.Context service, String expected) throws Exception {
+        if (expected == null || (ToolActionHost.find(service)==null&&service != GestureService.instance())) return false;
         // Dismissing a focusable panel can leave no focused application for a frame.
         // The authorization handshake below checks the live window before allowing the operation.
         String focused = target(service);

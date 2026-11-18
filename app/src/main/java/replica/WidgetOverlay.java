@@ -1,6 +1,6 @@
 package replica;
 
-import android.accessibilityservice.AccessibilityService;
+import android.content.Context;
 import android.app.KeyguardManager;
 import android.os.PowerManager;
 import android.view.WindowManager;
@@ -8,29 +8,58 @@ import android.view.WindowManager;
 /** The normal widget entry point shares its host ID and layout with the manual preview. */
 public final class WidgetOverlay {
     private static WidgetOverlay current;
+    private record SetupReturn(long id,java.lang.ref.WeakReference<Context> host,android.os.IBinder windowToken,float[] anchor){}
+    private static SetupReturn pendingSetup;
+
+    static long rememberSetup(Context host,float[] anchor){
+        OverlayWindowToken owner=OverlayWindowToken.find(host);
+        android.os.IBinder token=owner==null?null:owner.overlayWindowToken();
+        Context base=owner instanceof Context context?context:host;
+        long id=android.os.SystemClock.elapsedRealtimeNanos();
+        pendingSetup=new SetupReturn(id,new java.lang.ref.WeakReference<>(base),token,anchor.clone());
+        return id;
+    }
+
+    static void finishSetup(long id,boolean reopen){
+        SetupReturn pending=pendingSetup;
+        if(pending==null||pending.id()!=id)return;
+        pendingSetup=null;
+        Context host=pending.host().get();
+        if(!reopen||host==null)return;
+        OverlayWindowToken owner=OverlayWindowToken.find(host);
+        if(owner!=null&&(pending.windowToken()==null||owner.overlayWindowToken()!=pending.windowToken()))return;
+        show(host,pending.anchor());
+    }
     private final PanelOverlayDialog dialog;
     private final WidgetPanel panel;
     private ColorMotion motion;
     private float[] anchor;
     private boolean closing, removed;
 
-    private WidgetOverlay(AccessibilityService service, float[] anchor) {
+    private WidgetOverlay(Context service, float[] anchor) {
         this.anchor = anchor.clone();
         dialog = new PanelOverlayDialog(service, this::back, this::outside);
         WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
         lp.setTitle(service.getString(dev.edgeflow.R.string.app_name) + " 小组件面板");
         dialog.getWindow().setAttributes(lp);
         panel = new WidgetPanel(service, dialog.getWindow(), anchor, true, (provider, profile, id, bound, existing, page) -> {
-            service.startActivity(WidgetActivity.setupIntent(service, provider, profile, id, bound, existing, page, this.anchor));
+            long request=rememberSetup(service,this.anchor);
+            try{
+                service.startActivity(WidgetActivity.setupIntent(service,provider,profile,id,bound,existing,page,this.anchor)
+                    .putExtra(WidgetActivity.RETURN_REQUEST,request));
+            }catch(RuntimeException failure){
+                finishSetup(request,false);
+                throw failure;
+            }
             remove();
         },this::remove);
         dialog.setOnDismissListener(d -> remove());
     }
 
-    public static void show(AccessibilityService service, float[] anchor) {
+    public static void show(Context service, float[] anchor) {
         if (!service.getSystemService(PowerManager.class).isInteractive()
                 || service.getSystemService(KeyguardManager.class).isKeyguardLocked()) return;
-        if (WidgetActivity.resumeSetup()) return;
+        if (WidgetActivity.resumeSetup(service,anchor)) return;
         if (current != null && !current.closing) {
             current.anchor = anchor.clone();
             if(current.motion!=null)current.motion.reanchor(anchor[0]<PanelGeometry.screen(service).x/2f,anchor[1]);
@@ -63,7 +92,9 @@ public final class WidgetOverlay {
         if (current != null && !current.closing) current.panel.render();
     }
 
-    public static void dismissAll() { if (current != null) current.remove(); }
+    public static void dismissForDisplayChange(){if(current!=null)current.remove();}
+    public static void dismissAll(){pendingSetup=null;dismissForDisplayChange();}
+    public static boolean isShowing(){return current!=null&&!current.removed&&current.dialog.isShowing();}
     private void back() { if (!closing && !panel.backInEditor()) close(); }
     private void outside() { if (!panel.dismissMenuOnOutside()&&!panel.hasEditor()) close(); }
     private void close() {

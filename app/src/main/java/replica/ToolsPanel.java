@@ -87,7 +87,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
         super(base,base.getResources().getIdentifier(PanelStyle.dark(base)?"ReplicaGlassDark":"ReplicaGlass","style",base.getPackageName()));this.window=window;this.close=close;tiles=ToolsConfig.load(this);
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        gesture=anchor==null?NativeState.gesture(this):anchor;audio=(AudioManager)getSystemService(AUDIO_SERVICE);closeTarget=dev.edgeflow.ForegroundAppCloser.target(dev.edgeflow.GestureService.instance());
+        gesture=anchor==null?NativeState.gesture(this):anchor;audio=(AudioManager)getSystemService(AUDIO_SERVICE);closeTarget=dev.edgeflow.ForegroundAppCloser.target(dev.edgeflow.ToolActionHost.find(this)==null?dev.edgeflow.GestureService.instance():this);
         cameras=(CameraManager)getSystemService(CAMERA_SERVICE);
         try{for(String id:cameras.getCameraIdList())if(Boolean.TRUE.equals(cameras.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE))){cameraId=id;break;}}catch(Exception ignored){}
         if(cameraId!=null)cameras.registerTorchCallback(torchCallback,new Handler());
@@ -282,7 +282,7 @@ public class ToolsPanel extends android.view.ContextThemeWrapper {
                     command("settings put system screen_off_timeout "+(seconds[which]*1000));dialog.dismiss();
                 }).setNegativeButton("取消",null).create());break;
             case 11:
-                closeThen(()->dev.edgeflow.ActionExecutor.closeCurrentApp(dev.edgeflow.GestureService.instance(),closeTarget));
+                closeThen(()->dev.edgeflow.ActionExecutor.closeCurrentApp(dev.edgeflow.ToolActionHost.find(this)==null?dev.edgeflow.GestureService.instance():this,closeTarget));
                 break;
         }
     }

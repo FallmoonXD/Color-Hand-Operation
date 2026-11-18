@@ -86,8 +86,8 @@ public final class ShortcutPicker {
   private volatile boolean closed;private volatile int generation;private boolean started,selecting,selectionCancelled;
   Session(Context c,String chosen,Callback cb,boolean embedded){
    context=c;callback=cb;this.embedded=embedded;selected=ShortcutEntry.valid(chosen)?chosen:"";
-   Context base=c;while(base instanceof ContextWrapper&&!(base instanceof Activity)&&!(base instanceof AccessibilityService)){Context next=((ContextWrapper)base).getBaseContext();if(next==base)break;base=next;}
-   owner=base instanceof Activity?(Activity)base:null;overlay=base instanceof AccessibilityService;if(embedded&&owner==null)throw new IllegalArgumentException("Embedded shortcuts require an Activity");
+   Context base=c;while(base instanceof ContextWrapper&&!(base instanceof Activity)&&!(base instanceof AccessibilityService)&&!(base instanceof replica.OverlayWindowToken)){Context next=((ContextWrapper)base).getBaseContext();if(next==base)break;base=next;}
+   owner=base instanceof Activity?(Activity)base:null;overlay=base instanceof AccessibilityService||base instanceof replica.OverlayWindowToken;if(embedded&&owner==null)throw new IllegalArgumentException("Embedded shortcuts require an Activity");
    boolean dark=(c.getResources().getConfiguration().uiMode&48)==32;int theme=c.getResources().getIdentifier(dark?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());themed=new ContextThemeWrapper(c,theme);
    content=new LinearLayout(c){@Override protected void onDetachedFromWindow(){super.onDetachedFromWindow();if(Session.this.embedded&&started&&!closed)Session.this.close();}};content.setOrientation(LinearLayout.VERTICAL);
    content.setContentDescription("应用快捷方式分组列表");

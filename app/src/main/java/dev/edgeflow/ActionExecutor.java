@@ -55,7 +55,7 @@ public final class ActionExecutor {
   }
   return title(id);
  }
- public static void execute(AccessibilityService c,String id,float[] anchor){
+ public static void execute(Context c,String id,float[] anchor){
   if(c==null||id==null||id.equals("none"))return;
   float[] points=anchor==null?replica.NativeState.defaultGesture(c):anchor.clone();
   if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->execute(c,id,points));return;}
@@ -85,7 +85,7 @@ public final class ActionExecutor {
     case "quick_settings":global(c,AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS,"cmd statusbar expand-settings");break;
     case "screen_off":global(c,AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN,"input keyevent 223");break;
     case "screenshot":int generation=lifecycleGeneration;MAIN.postDelayed(()->{if(generation==lifecycleGeneration)global(c,AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT,"input keyevent 120");},180);break;
-    case "volume_up":case "volume_down":audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,id.equals("volume_up")?1:-1,AudioManager.FLAG_SHOW_UI);replica.VolumeOverlay.show(c,points);break;
+    case "volume_up":case "volume_down":audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,id.equals("volume_up")?1:-1,AudioManager.FLAG_SHOW_UI);if(c instanceof AccessibilityService||c instanceof replica.NativeVolumeSource)replica.VolumeOverlay.show(c,points);break;
     case "volume_mute":audio.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_TOGGLE_MUTE,AudioManager.FLAG_SHOW_UI);break;
     case "quick_tools":replica.ToolsOverlay.show(c,points);break;
     case "quick_launcher":QuickLauncherOverlay.show(c,points);break;
@@ -93,21 +93,21 @@ public final class ActionExecutor {
     case "virtual_touchpad":TouchpadOverlay.show(c,points);break;
     case "navigation_panel":NavigationOverlay.show(c,points);break;
     case "keyboard_shortcuts":KeyboardShortcutsOverlay.show(c,points);break;
-    case "system_magnification":magnify(c,points);break;
-    case "screen_magnifier":MagnificationOverlay.show(c,points);break;
-    case "screen_free_move":ScreenMoveOverlay.show(c,points);break;
+    case "system_magnification":if(c instanceof AccessibilityService access)magnify(access,points);else message(c,"屏幕放大尚未接入当前运行方式");break;
+    case "screen_magnifier":if(c instanceof AccessibilityService access)MagnificationOverlay.show(access,points);else message(c,"放大镜尚未接入当前运行方式");break;
+    case "screen_free_move":if(c instanceof AccessibilityService access)ScreenMoveOverlay.show(access,points);else message(c,"屏幕自由移动尚未接入当前运行方式");break;
     case "widgets":replica.WidgetOverlay.show(c,points);break;
     case "one_hand":root(c,bridge(c,"onehand 1"),title(id));break;
     case "sidebar":root(c,"content call --uri content://com.coloros.sidebar --method OVOICE_OPEN_FLOATBAR_ACTION",title(id));break;
-    case "power_menu":if(!c.performGlobalAction(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG))message(c,"系统未允许打开电源菜单");break;
-    case "split_screen":if(!c.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN))message(c,"当前系统或应用不支持分屏动作");break;
+    case "power_menu":if(!performGlobal(c,AccessibilityService.GLOBAL_ACTION_POWER_DIALOG))message(c,"系统未允许打开电源菜单");break;
+    case "split_screen":if(!performGlobal(c,AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN))message(c,"当前系统或应用不支持分屏动作");break;
     case "assistant":start(c,new Intent(Intent.ACTION_VOICE_COMMAND));break;
     case "search":root(c,"input keyevent 84",title(id));break;
     case "menu":root(c,"input keyevent 82",title(id));break;
     case "media_previous":dispatchMediaKey(audio,KeyEvent.KEYCODE_MEDIA_PREVIOUS);break;
     case "media_play_pause":dispatchMediaKey(audio,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);break;
     case "media_next":dispatchMediaKey(audio,KeyEvent.KEYCODE_MEDIA_NEXT);break;
-    case "scroll_up":scroll(c,false);break;case "scroll_down":scroll(c,true);break;
+    case "scroll_up":case "scroll_down":if(c instanceof AccessibilityService access)scroll(access,id.equals("scroll_down"));else message(c,"页面滚动尚未接入当前运行方式");break;
     case "browser_forward":root(c,"input keyevent 125",title(id));break;
     case "close_app":closeCurrentApp(c, ForegroundAppCloser.target(c));break;
     case "flashlight":torch(c);break;
@@ -153,7 +153,8 @@ public final class ActionExecutor {
   }
   if (!accepted) message(service, "系统未允许屏幕放大，请检查无障碍服务状态");
  }
- private static void global(AccessibilityService c,int id,String fallback){if(!c.performGlobalAction(id))root(c,fallback,"系统动作");}
+ private static boolean performGlobal(Context c,int id){ToolActionHost host=ToolActionHost.find(c);return host!=null?host.globalAction(id):c instanceof AccessibilityService access&&access.performGlobalAction(id);}
+ private static void global(Context c,int id,String fallback){if(!performGlobal(c,id)){if(ToolActionHost.find(c)==null)root(c,fallback,"系统动作");else message(c,"当前运行方式未提供此系统动作");}}
  public static void dispatchMediaKey(AudioManager audio,int key){audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,key));audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,key));}
  private static void rotate(Context c,int add){int current=Settings.System.getInt(c.getContentResolver(),Settings.System.USER_ROTATION,0);root(c,"settings put system accelerometer_rotation 0; settings put system user_rotation "+((current+add)%4),"屏幕旋转");}
  private static void toggle(Context c,String ns,String key,String label){root(c,"if [ \"$(settings get "+ns+" "+key+")\" = 1 ]; then settings put "+ns+" "+key+" 0; else settings put "+ns+" "+key+" 1; fi",label);}
@@ -166,9 +167,22 @@ public final class ActionExecutor {
   }catch(Exception e){android.util.Log.e("EdgeActions",label,e);message(app,label+"需要可用的 Root 授权");}finally{if(p!=null){p.destroy();try{p.getInputStream().close();}catch(Exception ignored){}}}
  });}
  static boolean commandFailed(int exit,String output){if(exit!=0)return true;String value=output.toLowerCase(java.util.Locale.ROOT);if(value.contains("exception:")||value.contains("exception in thread")||value.contains("permission denial")||value.contains("permission denied")||value.contains("unknown command"))return true;for(String line:value.split("\\r?\\n")){String s=line.trim();if(s.startsWith("error:")||s.startsWith("error type ")||s.startsWith("failure [")||s.startsWith("/system/bin/sh:")||s.startsWith("sh:"))return true;}return false;}
+ static void rootWhenFocused(Context context,String command,String label,String expected){
+  WORK.execute(()->{
+   try{
+    boolean executed=new PendingRootCommand(command).run(()->{
+     ToolActionHost host=ToolActionHost.find(context);
+     if(host==null&&context!=GestureService.instance())return false;
+     return expected!=null&&!expected.isEmpty()&&expected.equals(replica.NativeState.foreground(context));
+    });
+    if(!executed)message(context,"前台应用已变化，未发送快捷键");
+   }catch(InterruptedException interrupted){Thread.currentThread().interrupt();}
+   catch(Exception failure){android.util.Log.w("EdgeActions",label,failure);message(context,label+"执行失败，请检查 Root 授权");}
+  });
+ }
  private static void start(Context c,Intent i){i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);try{c.startActivity(i);}catch(Exception e){message(c,"当前系统没有可处理此操作的应用");android.util.Log.w("EdgeActions","Launch unavailable",e);}}
  private static void launchApp(Context c,String value){ComponentName component=ComponentName.unflattenFromString(value);Intent i=component!=null?new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(component):c.getPackageManager().getLaunchIntentForPackage(value);if(i==null){message(c,"找不到所选应用");return;}start(c,i);}
- public static void closeCurrentApp(AccessibilityService service, String expected) {
+ public static void closeCurrentApp(Context service, String expected) {
   if (service == null) return;
   if (expected == null) { message(service, "没有可关闭的前台应用"); return; }
   WORK.execute(() -> {
@@ -202,7 +216,8 @@ public final class ActionExecutor {
  private static void show(AlertDialog d){d.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);d.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);d.setOnDismissListener(x->DIALOGS.remove(d));DIALOGS.add(d);try{d.show();}catch(RuntimeException e){DIALOGS.remove(d);throw e;}}
  private static void dismissDialogs(){dialogGeneration++;for(AlertDialog d:new ArrayList<>(DIALOGS))try{replica.ColorDialogBuilder.dismissImmediately(d);}catch(Exception ignored){}DIALOGS.clear();}
  /** Called when the accessibility service disconnects; never turns off a user-owned torch. */
- public static void release(AccessibilityService service){if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->release(service));return;}lifecycleGeneration++;dismissDialogs();KeyboardShortcutsOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();releaseTorch();}
+ public static void release(Context service){if(Looper.myLooper()!=Looper.getMainLooper()){MAIN.post(()->release(service));return;}lifecycleGeneration++;dismissDialogs();KeyboardShortcutsOverlay.dismissAll();QuickLauncherOverlay.dismissAll();TaskSwitcherOverlay.dismissAll();MagnificationOverlay.dismissAll();ScreenMoveOverlay.dismissAll();ShortcutPicker.dismissAll();releaseTorch();}
+ static boolean dialogShowing(){for(AlertDialog d:DIALOGS)if(d.isShowing())return true;return false;}
  private static void timeout(Context c,float[] anchor){
   int[] seconds={15,30,60,120,300,600};String[] names={"15 秒","30 秒","1 分钟","2 分钟","5 分钟","10 分钟"};
   int current=Settings.System.getInt(c.getContentResolver(),Settings.System.SCREEN_OFF_TIMEOUT,30000)/1000,selected=-1;

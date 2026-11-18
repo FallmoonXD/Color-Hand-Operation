@@ -40,6 +40,7 @@ public final class PanelOverlayDialog extends Dialog {
         setCanceledOnTouchOutside(false);
         Window window = getWindow();
         window.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+        OverlayWindowToken.apply(context,window);
         PanelOutsideTouch.makeModal(window);
         window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);

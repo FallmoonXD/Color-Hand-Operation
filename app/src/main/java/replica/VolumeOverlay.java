@@ -36,6 +36,7 @@ public final class VolumeOverlay {
  private final long openedAt=SystemClock.uptimeMillis();
  private long entranceEndsAt;
  private boolean triedAudio,observingAudio;
+ private boolean nativeTracked;
  private final Runnable idleTimeout=this::onCompactIdle;
  private final BroadcastReceiver volumeChanges=new BroadcastReceiver(){
   @Override public void onReceive(Context c,Intent intent){armCompactTimeout();}
@@ -50,6 +51,7 @@ public final class VolumeOverlay {
  /** Avoid retaining an accessibility context after its service is disabled. */
  public static void dismissAll(){if(current!=null)current.remove();}
  public static void close(){if(current!=null)current.dismiss();}
+ public static boolean isShowing(){return current!=null&&current.mounted&&!current.removed;}
  public static void show(Context c,float[] anchor){
   if(current!=null){
    boolean reopen=current.closing;
@@ -80,7 +82,7 @@ public final class VolumeOverlay {
   down=new RepeatPress(minus,()->{if(!closing){audio.adjustStreamVolume(3,-1,AudioManager.FLAG_SHOW_UI);adjusted(1500);}});
   view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){public void onViewAttachedToWindow(View v){}public void onViewDetachedFromWindow(View v){if(mounted)remove();}});
   int flags=WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
-  params=new WindowManager.LayoutParams(PanelStyle.dp(c,60),-2,c instanceof android.accessibilityservice.AccessibilityService?2032:2038,flags,android.graphics.PixelFormat.TRANSLUCENT);
+  params=new WindowManager.LayoutParams(PanelStyle.dp(c,60),-2,c instanceof android.accessibilityservice.AccessibilityService||c instanceof OverlayWindowToken?2032:2038,flags,android.graphics.PixelFormat.TRANSLUCENT);
   float[] g=anchor;android.graphics.Point screen=PanelGeometry.screen(c);displayWidth=screen.x;displayHeight=screen.y;
   params.gravity=Gravity.TOP|Gravity.LEFT;
   edgeDirection=g[0]<screen.x/2f?-1f:1f;params.alpha=0;
@@ -92,7 +94,7 @@ public final class VolumeOverlay {
    int theme=c.getResources().getIdentifier(PanelStyle.dark(c)?"ReplicaGlassDark":"ReplicaGlass","style",c.getPackageName());
    dialog=new Dialog(c,theme){@Override public boolean dispatchTouchEvent(MotionEvent event){return outsideTouch(event)||super.dispatchTouchEvent(event);}};
    dialog.setCanceledOnTouchOutside(false);dialog.setOnDismissListener(d->{if(d==dialog&&mounted)remove();});dialog.setContentView(view);
-   Window window=dialog.getWindow();window.setType(params.type);window.setAttributes(params);
+   Window window=dialog.getWindow();window.setType(params.type);window.setAttributes(params);OverlayWindowToken.apply(c,window);
    window.setWindowAnimations(0);window.setBackgroundDrawable(new ColorOsSurface(c,22,2).attach(window));
    window.getClass().getMethod("setBackgroundBlurRadius",int.class).invoke(window,PanelStyle.blurRadius(c));
    dialog.show();window.setLayout(params.width,-2);window.getDecorView().setClipToOutline(true);mounted=true;
@@ -102,19 +104,28 @@ public final class VolumeOverlay {
    if(view.getParent() instanceof ViewGroup)((ViewGroup)view.getParent()).removeView(view);
    view.setBackground(new ColorOsSurface(c,22,2).attach(view));
    PanelGeometry.reserveShadow(params,(int)Math.ceil(view.getElevation()*4));
-   try{manager.addView(view,params);mounted=true;}catch(Exception ignored){}
+   try{OverlayWindowToken.apply(c,params);manager.addView(view,params);mounted=true;}catch(Exception ignored){}
   }
   if(mounted){
    View target=dialog==null?view:dialog.getWindow().getDecorView();
    motion=new ToolMotionPlayer(target,edgeDirection<0,Float.NaN,false,this::windowAlpha);
    motion.prepare();view.post(this::enter);armFallback(3000);queueWindowCheck();
+   if(c instanceof NativeVolumeSource source)source.observeVolume(this::nativeVolumeChanged);
   }
+ }
+
+ private void nativeVolumeChanged(android.os.Bundle state){
+  if(removed||closing||state==null)return;
+  if(!state.getBoolean("available")){dismiss();return;}
+  if(state.getBoolean("expanded")||state.getBoolean("dismissing")){dismiss();return;}
+  if(state.getBoolean("showing")){nativeTracked=true;handler.removeCallbacks(fallbackTimeout);}
+  else if(nativeTracked)dismiss();
  }
 
  private ImageView button(String name,String description){ImageView t=new ImageView(context);t.setImageDrawable(SystemIcons.raw(context,name));t.setColorFilter(android.graphics.Color.WHITE);t.setScaleType(ImageView.ScaleType.FIT_CENTER);t.setPadding(PanelStyle.dp(context,14),PanelStyle.dp(context,19),PanelStyle.dp(context,14),PanelStyle.dp(context,19));t.setContentDescription(description);return t;}
 
  private void armFallback(int millis){
-  if(closing||systemWindow.tracked())return;
+  if(closing||systemWindow.tracked()||nativeTracked)return;
   android.view.accessibility.AccessibilityManager a=context.getSystemService(android.view.accessibility.AccessibilityManager.class);
   handler.removeCallbacks(fallbackTimeout);handler.postDelayed(fallbackTimeout,a.getRecommendedTimeoutMillis(millis,android.view.accessibility.AccessibilityManager.FLAG_CONTENT_CONTROLS));
  }
@@ -249,6 +260,7 @@ public final class VolumeOverlay {
  private void remove(){
   if(removed)return;removed=true;mounted=false;up.stop();down.stop();handler.removeCallbacksAndMessages(null);
   if(observingAudio){context.unregisterReceiver(volumeChanges);observingAudio=false;}
+  if(context instanceof NativeVolumeSource source)source.observeVolume(null);
   NativeMaterial.cancelEntrance(dialog!=null?dialog.getWindow().getDecorView():view);
   cancelMotion();
   try{if(dialog!=null)dialog.dismiss();else manager.removeView(view);}catch(Exception ignored){}

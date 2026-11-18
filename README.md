@@ -8,9 +8,11 @@
 
 ## 安装和设置
 
-需要 Android 13 及以上。主要测试设备是一加 PKR110，运行 ColorOS 17 / Android 17。基础手势需要无障碍服务，ColorOS 原生模糊和部分系统动作还需要 Root。[兼容与已知问题](docs/compatibility.md)
+**从 0.5.0 起，CHO 需要 Android 13 及以上、Root 和支持现代 API 102 的 LSPosed。** 主要测试设备是一加 PKR110，运行 ColorOS 17 / Android 17。[兼容与已知问题](docs/compatibility.md)
 
-1. 安装 APK，打开右上角菜单里的「权限与后台运行」，按提示开启 Color Hand Operation 的无障碍服务。
+从 0.4.1 升级时请直接覆盖安装，以保留手势、面板和已有的小组件绑定。依赖无障碍服务或暂时无法使用 Root + LSPosed 的用户请保留 [0.4.1](https://github.com/FallmoonXD/Color-Hand-Operation/releases/tag/v0.4.1)。
+
+1. 安装 APK，在 LSPosed 中启用 Color Hand Operation，确认系统框架和系统界面作用域，然后重启。首次解锁后打开 CHO，在「权限与运行」中完成 Root 授权，确认 LSPosed 已连接。
 2. 回到首页，打开手势总开关。左右两侧的默认动作相同。从边缘向内短直滑或短下斜滑会返回，上斜滑打开最近任务。
 3. 想用长滑，点进对应的「左侧触钮」或「右侧触钮」，开启「长距离滑动」。默认长直滑打开快速工具，上斜长滑打开快速启动，下斜长滑打开任务切换器。
 4. 够不到触钮时，到「触钮范围」调位置和宽度。点「手势试划」可以看实际触区和识别结果。
@@ -31,13 +33,13 @@
 
 ## 自己编译
 
-使用 JDK 21，安装 Android SDK Platform 35 和 Build Tools 36.0.0。设置 `ANDROID_HOME`，或在 `local.properties` 里填写 `sdk.dir`，然后从项目根目录编译。
+使用 JDK 21，安装 Android SDK Platform 37、Platform 35（编译隐藏接口声明）和 Build Tools 36.0.0。设置 `ANDROID_HOME`，或在 `local.properties` 里填写 `sdk.dir`，然后从项目根目录编译。
 
 ```sh
-./gradlew assembleDebug
+./gradlew :app:assembleDebug
 ```
 
-Windows 用 `.\gradlew.bat assembleDebug`。调试包在 `app/build/outputs/apk/debug/`，编译发布包用 `assembleRelease`。自己编译的 APK 使用本机签名，覆盖安装需要与已装版本签名一致。[开发笔记](docs/README.md)
+Windows 用 `.\gradlew.bat :app:assembleDebug`。调试包在 `app/build/outputs/apk/debug/`，编译发布包用 `:app:assembleRelease`。自己编译的 APK 使用本机签名，覆盖安装需要与已装版本签名一致。[开发笔记](docs/README.md)
 
 ## 反馈
 

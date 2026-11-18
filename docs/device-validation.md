@@ -18,7 +18,7 @@
 | 亮度/音量 | 自动亮度往返切换；手动滑条实际写入 raw 2728；工具内长按音量增加 5 级，独立音量按钮长按增加 6 级；外部点击关闭。测试结束恢复媒体音量 0 和自动亮度。 |
 | B 站 | 实际视频播放中展开工具、音量按钮时，媒体会话保持 PLAYING(3)，B 站 Activity 保持 resumed；横屏全屏下再次通过。没有点击关注、点赞、发送弹幕等账户动作。 |
 | 横屏 | 通过 B 站全屏进入真实 2780×1264 横屏；手柄重建为对应边缘坐标，工具三排共 12 个按钮完整位于屏幕内，播放继续。退出后回到竖屏。 |
-| 小组件 | 支付宝提供方重新绑定给新 UID，宿主 ID 21，旧版 ID 17 保留；完整显示组件。添加第二页、删除该空页后回到原页面。 |
+| 小组件 | 小组件提供方重新绑定给新 UID，旧宿主的绑定保留，组件显示完整。添加第二页、删除该空页后回到原页面。 |
 | 快速启动 | 创建文件夹，加入“返回”动作并移入、打开文件夹；最终删除测试文件夹，恢复空的初始启动器。 |
 | 任务切换器 | 查询真实 taskId，点击设置条目恢复对应设置任务。 |
 | 触控板/导航 | 触控板单击实际触发指针下的小组件入口；修正后初始光标窗口为 `(579,920),105×105`，与预期中心相符。外部点击后光标窗口消失。导航 Home 和横竖排列持久化通过。 |
@@ -42,7 +42,7 @@
 | 真实应用快捷方式 | 选择器读到支付宝4个公开动态入口和真实图标。随后在设置页选择系统设置发布的 WLAN 入口，手势直接启动 `com.oplus.wirelesssettings/com.android.settings.SettingsActivity`；WLAN 状态未修改，测试手势恢复“返回”。支付宝“更多设置”虽被系统接受启动，却没有持久前台页面，因此不计作该入口成功测试。 |
 | 放大控制区 | 真实系统2倍放大，滑动改变视野中心，调到2.5倍，再关闭回到1倍。控制区用 NOT_MAGNIFIABLE 和 EXCLUDE_FROM_SCREEN_MAGNIFICATION 两个窗口标志保持原尺寸。UI 自动化探针连接/断开会重置系统放大，已通过前后状态对照确认，因此缩放验证期间使用系统 dump 和坐标操作。 |
 | 屏幕自由移动 | 平移截图后抬手，映射点击打开原坐标上的左侧手势设置；前台窗口ID和包名均校验，退出释放截图。窗口透明度0.94适配当前ColorOS整屏无障碍窗口检测，没有修改系统检测策略。 |
-| 小组件四边编辑 | 支付宝组件左边缩进一格、恢复，再从底边缩小一格、恢复；取消一次缩放后持久布局不变。最终仍为原ID21、x0/y0/w4/h2，单页。 |
+| 小组件四边编辑 | 支付宝组件左边缩进一格、恢复，再从底边缩小一格、恢复；取消一次缩放后持久布局不变。最终绑定、格位和页数与测试前一致。 |
 
 对应结果文件：`extension-validation.json`、`configuration-ui-validation.json`、`shortcut-start-validation.json`、`task-preview-validation.json`、`widget-edit-validation.json`。放大窗口标志语义另核对了 [AOSP WindowState](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/services/core/java/com/android/server/wm/WindowState.java) 与 [WindowManager](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/core/java/android/view/WindowManager.java)，实际常量取自本机固件。
 

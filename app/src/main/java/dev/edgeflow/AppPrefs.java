@@ -49,18 +49,11 @@ public final class AppPrefs {
  public static int handleColor(SharedPreferences p,String id){return p.getInt(id+"_color",p.getInt("handle_color",0xff188dff));}
  /** Older stores used a floating fraction; current UI and archives use integer percent. */
  private static int opacityPercent(Object value) {
-  if (!(value instanceof Number)) return 0;
-  double amount = ((Number)value).doubleValue();
-  if (!Double.isFinite(amount)) return 0;
-  boolean integralType = value instanceof Integer || value instanceof Long || value instanceof Short
-          || value instanceof Byte || value instanceof java.math.BigInteger;
-  if (!integralType && amount >= 0 && amount <= 1) amount *= 100;
-  return (int)Math.round(Math.max(0, Math.min(100, amount)));
+  return GestureAppearance.opacityPercent(value);
  }
  public static int handleOpacity(SharedPreferences prefs) { return opacityPercent(prefs.getAll().get("handle_opacity")); }
  public static int visibleHandleColor(SharedPreferences p,String id){
-  int color=handleColor(p,id);
-  return (Math.round((color>>>24)*handleOpacity(p)/100f)<<24)|(color&0x00ffffff);
+  return GestureAppearance.visibleColor(p.getAll(),id);
  }
  private static boolean isHandleColor(String key){return key.equals("handle_color")||key.matches("(extra2?_)?(left|right)_color");}
  public static JSONObject export(Context c)throws Exception{JSONObject o=new JSONObject();for(Map.Entry<String,?> e:get(c).getAll().entrySet()){Object v=e.getValue();if(e.getKey().equals("handle_opacity"))v=opacityPercent(v);o.put(e.getKey(),v instanceof Set?new JSONArray((Set<?>)v):v);}return o;}

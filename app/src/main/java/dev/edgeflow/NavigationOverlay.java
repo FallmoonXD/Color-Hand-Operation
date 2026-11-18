@@ -1,6 +1,6 @@
 package dev.edgeflow;
 
-import android.accessibilityservice.AccessibilityService;
+
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
@@ -21,15 +21,16 @@ import replica.SystemIcons;
 /** Floating native navigation actions; non-focusable so media keeps playing. */
 public final class NavigationOverlay {
  private static NavigationOverlay current;
- private final AccessibilityService service;
+ private final Context service;
  private final Dialog dialog;
  private final float[] anchor;
  private final GestureHandleConfig.Area displayArea;
  private final int density;
  private ColorMotion motion;
  private boolean removed,closing;
- public static void show(AccessibilityService service,float[] anchor){dismissAll();NavigationOverlay next=new NavigationOverlay(service,anchor);if(!next.removed)current=next;}
+ public static void show(Context service,float[] anchor){dismissAll();NavigationOverlay next=new NavigationOverlay(service,anchor);if(!next.removed)current=next;}
  public static void dismissAll(){if(current!=null)current.remove();}
+ public static boolean isShowing(){return current!=null&&!current.removed&&current.dialog.isShowing();}
  static void displayChanged(GestureHandleConfig.Area next,int dpi){
   NavigationOverlay old=current;
   if(old==null||old.closing)return;
@@ -42,7 +43,7 @@ public final class NavigationOverlay {
   show(old.service,new float[]{x,y,x,y});
  }
  private int dp(float v){return PanelStyle.dp(service,v);}
- private NavigationOverlay(AccessibilityService service,float[] anchor){
+ private NavigationOverlay(Context service,float[] anchor){
   this.service=service;this.anchor=anchor.clone();
   GestureHandleConfig.Area area=displayArea=HandleDisplayArea.current(service);density=service.getResources().getDisplayMetrics().densityDpi;boolean left=anchor[0]<area.displayWidth/2f;
   String[] actions=NavigationConfig.load(service);int gripGap=dp(7),gripHeight=dp(32),gutter=dp(3);
@@ -52,7 +53,7 @@ public final class NavigationOverlay {
   int navHeight=showNav!=0&&!service.getResources().getBoolean(showNav)?0:PanelGeometry.inset(service,"navigation_bar_height");
   int minY=Math.max(area.top,navHeight),maxY=Math.min(area.bottom,area.displayHeight-navHeight);
   if(maxY-minY<2*gutter+gripHeight+gripGap+actions.length){minY=area.top;maxY=area.bottom;}
-  int clearance=service instanceof GestureService gestures?gestures.visibleHandleWidth(left):0;
+  ToolActionHost host=ToolActionHost.find(service);int clearance=host!=null?host.handleClearance(left):service instanceof GestureService gestures?gestures.visibleHandleWidth(left):0;
   int safeMargin=left?area.left-area.handleEdge(true):area.handleEdge(false)-area.right;
   int inset=Math.min(Math.max(0,clearance-safeMargin),Math.max(0,area.width()-1));
   int roomPerKey=(maxY-minY-2*gutter-gripHeight-gripGap)/actions.length;
@@ -63,6 +64,7 @@ public final class NavigationOverlay {
   dialog=new Dialog(service,theme);
   dialog.setOnDismissListener(d->remove());
   Window w=dialog.getWindow();w.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+  replica.OverlayWindowToken.apply(service,w);
   Rail rail=new Rail(service);rail.setPadding(0,gutter,0,gutter);dialog.setContentView(rail);
   replica.ToolsBackdrop backdrop=PanelStyle.controlsWindow(service,w,Math.min(24,Math.round(size/(2f*service.getResources().getDisplayMetrics().density))),true);
   ImageView grip=new NavigationGlyph(service,null,"关闭虚拟导航键",true);

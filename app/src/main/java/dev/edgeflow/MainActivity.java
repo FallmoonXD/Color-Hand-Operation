@@ -4,8 +4,8 @@ import replica.ColorOsTheme;import replica.ColorSwitch;import replica.ColorSlide
 import android.app.*;import android.os.*;import android.content.*;import android.content.pm.*;import android.graphics.Color;import android.net.Uri;import android.provider.Settings;import android.view.*;import android.widget.*;import android.text.*;import org.json.*;import java.io.*;import java.util.*;
 
 /** OHO menu hierarchy with the accepted ColorOS settings palette and native controls. */
-public final class MainActivity extends Activity {
- private final Object handlePreviewOwner=new Object();
+public class MainActivity extends Activity {
+ private final IBinder lspPreviewOwner=new Binder();private Runnable previewPublish;
  private FrameLayout pageHost;private ColorSettingsScaffold scaffold;private final ColorPageMotion pageMotion=new ColorPageMotion();private int transition;private boolean uiActive,previewNavigation;private AutoCloseable themeObserver;private android.window.OnBackInvokedCallback backCallback;
  private HomeControls homeControls;private ColorPopupMenu openMenu;private ActionChooser chooser;private replica.ColorPaletteSheet colorPalette;private final HashMap<String,ColorSwatch> colorSwatches=new HashMap<>();private boolean resumedOnce,themeDirty;
  private String overridePackage,trialPackage;private boolean moreNavActions;private GestureTrial trial;
@@ -16,6 +16,36 @@ public final class MainActivity extends Activity {
  private final HashMap<String,Runnable> directionSummaries=new HashMap<>();
  private boolean checkingUpdate,updateFailed;
  private boolean motionEntering=true;
+ private final Handler backendHandler=new Handler(Looper.getMainLooper());private boolean backendQuery,activationTried,trialWasRunning;private BackendActions.Capabilities actionCapabilities=BackendActions.Capabilities.NONE;private String activationError="";
+ private TextView rootStatus,lspStatus;
+ private final Runnable backendPoll=()->pollBackend();
+ private void pollBackend(){
+  if(!uiActive||backendQuery)return;
+  backendQuery=true;RuntimeBackend.query(this,state->{backendQuery=false;if(!uiActive||isDestroyed())return;
+   if(state.active())activationError="";
+   BackendActions.Capabilities available=state.actions();
+   boolean capabilityChanged=!available.equals(actionCapabilities);
+   actionCapabilities=available;
+   refreshRuntimeRows();
+   if(capabilityChanged){
+    if(chooser!=null&&screen.equals("actions"))chooser.refresh();
+    for(Runnable update:directionSummaries.values())update.run();
+    if(screen.equals("navigation_action"))navigationResults(navigationEditIndex,searches.getOrDefault(screen,""));
+    if(screen.equals("app_gestures"))render();
+   }
+   if(trial!=null){
+    if(trialWasRunning!=state.active())render();else trial.sync(state);
+   }
+   if(state.ready()&&!state.requested()&&RootAccess.granted()&&!activationTried&&!RuntimeBackend.starting()){
+    activationTried=true;RuntimeBackend.enable(this,error->{activationError=error==null?"":error;if(uiActive&&!isDestroyed()){refreshRuntimeRows();pollBackend();}});
+   }
+   backendHandler.removeCallbacks(backendPoll);backendHandler.postDelayed(backendPoll,1500);
+  });
+ }
+ private String lspSummary(){return !activationError.isEmpty()?activationError:RuntimeBackend.starting()?"正在启动":RuntimeBackend.status().message();}
+ private String runtimeSummary(){return "Root "+RootAccess.summary()+" · LSPosed "+lspSummary();}
+ private void refreshRuntimeRows(){if(homeControls!=null)homeControls.refresh(false);if(rootStatus!=null)rootStatus.setText(RootAccess.summary()+" · 高级材质、系统动作");if(lspStatus!=null)lspStatus.setText(lspSummary()+" · 手势识别、输入控制");}
+ private void checkRoot(boolean force){RootAccess.check(this,force,state->{if(!uiActive||isDestroyed())return;activationTried=false;activationError="";refreshRuntimeRows();pollBackend();});refreshRuntimeRows();}
  private replica.ToolAnimationPreview.Loop animationPreviews;
  private GestureDistancePreview distancePreview;
  private String updateStatus="";
@@ -24,7 +54,10 @@ public final class MainActivity extends Activity {
  private void observePageData(boolean observe){for(String name:new String[]{"edgeflow","replica_widgets","edgeflow_launcher"}){android.content.SharedPreferences store=getSharedPreferences(name,0);if(observe)store.registerOnSharedPreferenceChangeListener(pagePreferenceChanged);else store.unregisterOnSharedPreferenceChangeListener(pagePreferenceChanged);}}
  private int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
  private String appName(){return getString(R.string.app_name);}
- @Override public void onCreate(Bundle b){boolean dark=(getResources().getConfiguration().uiMode&48)==32;setTheme(getResources().getIdentifier(dark?"AppThemeDark":"AppTheme","style",getPackageName()));super.onCreate(b);AppPrefs.defaults(this);prefs=AppPrefs.get(this);if(b!=null)restoreNavigation(b);pageHost=new FrameLayout(this);getWindow().setDecorFitsSystemWindows(false);setContentView(pageHost);registerReceiver(serviceStateReceiver,new IntentFilter(getPackageName()+".SERVICE_STATE"),Context.RECEIVER_NOT_EXPORTED);serviceReceiverRegistered=true;render();registerBack();observePageData(true);themeObserver=ColorOsTheme.observe(this,()->runOnUiThread(()->{themeDirty=true;if(uiActive&&!isFinishing()&&!isDestroyed())render();}));migrateWidgetsIfPresent();}
+ @Override public void onCreate(Bundle b){boolean dark=(getResources().getConfiguration().uiMode&48)==32;setTheme(getResources().getIdentifier(dark?"AppThemeDark":"AppTheme","style",getPackageName()));super.onCreate(b);AppPrefs.defaults(this);prefs=AppPrefs.get(this);if(b!=null)restoreNavigation(b);
+  if(this instanceof GestureTrialActivity){screen="trial";trialPackage=getIntent().getStringExtra("application");}
+  else if(screen.equals("trial")){screen=history.isEmpty()?"home":history.remove(history.size()-1);startTrial(trialPackage);}
+  pageHost=new FrameLayout(this);getWindow().setDecorFitsSystemWindows(false);setContentView(pageHost);registerReceiver(serviceStateReceiver,new IntentFilter(getPackageName()+".SERVICE_STATE"),Context.RECEIVER_NOT_EXPORTED);serviceReceiverRegistered=true;render();registerBack();observePageData(true);themeObserver=ColorOsTheme.observe(this,()->runOnUiThread(()->{themeDirty=true;if(uiActive&&!isFinishing()&&!isDestroyed())render();}));migrateWidgetsIfPresent();}
  private void restoreNavigation(Bundle b){
   motionEntering=b.getBoolean("motionEntering",true);
   overridePackage=b.getString("overridePackage");trialPackage=b.getString("trialPackage");moreNavActions=b.getBoolean("moreNavActions");
@@ -80,6 +113,7 @@ public final class MainActivity extends Activity {
   if(themeDirty||!first&&!Objects.equals(renderedPageData,pageData()))render();
   else{if(!first&&homeControls!=null)homeControls.refresh(false);refreshGeometryPreview();}
   if(trial!=null)trial.activate();
+  activationTried=false;activationError="";checkRoot(false);pollBackend();
   resumeAnimationPreviews();
   if(restoreChoice!=null){
    String choice=restoreChoice;boolean columns=choice.equals("columns");restoreChoice=null;
@@ -91,6 +125,7 @@ public final class MainActivity extends Activity {
  }
  @Override public void onPause(){
   uiActive=false;if(trial!=null)trial.deactivate();dismissMenu();
+  backendHandler.removeCallbacks(backendPoll);
   if(animationPreviews!=null)animationPreviews.stop();
   if(distancePreview!=null)distancePreview.clear();
   dismissColorPalette();if(content!=null)android.transition.TransitionManager.endTransitions(content);endGeometryPreview();pageMotion.cancel();super.onPause();
@@ -126,7 +161,7 @@ public final class MainActivity extends Activity {
  }
  @Override public void onBackPressed(){
   previewNavigation=false;endGeometryPreview();hideSearchKeyboard();
-  if(screen.equals("home")){finish();return;}
+  if(screen.equals("home")||this instanceof GestureTrialActivity){finish();return;}
   if(screen.equals("actions"))chooser=null;
   if(isExternalActionPage())externalGestureKey=null;
   transition=-1;screen=history.isEmpty()?"home":history.remove(history.size()-1);render();
@@ -142,7 +177,7 @@ public final class MainActivity extends Activity {
   if(animationPreviews!=null){animationPreviews.stop();animationPreviews=null;}
   if(trial!=null){trial.deactivate();trial=null;}
   if(themeDirty&&chooser!=null)chooser.scaffold=null;
-  closeAppDirectory();closeShortcutPage();dismissMenu();homeControls=null;colorSwatches.clear();directionSummaries.clear();themeDirty=false;
+  closeAppDirectory();closeShortcutPage();dismissMenu();homeControls=null;rootStatus=lspStatus=null;colorSwatches.clear();directionSummaries.clear();themeDirty=false;
   if(scroller!=null&&screen.equals(renderedScreen))scrollPositions.put(screen,scroller.getScrollY());renderedScreen=screen;
   endGeometryPreview();renderGeneration++;boolean dark=ColorOsTheme.dark(this);
   bg=ColorOsTheme.background(this);card=ColorOsTheme.card(this);fg=ColorOsTheme.text(this);secondary=ColorOsTheme.secondary(this);
@@ -155,6 +190,7 @@ public final class MainActivity extends Activity {
   if(screen.equals("home"))scaffold.setMore(this::moreMenu,"更多选项");
   scroller=scaffold.scroll;content=scaffold.content;
   switch(screen){
+   case "backend":permissions();break;
    case "left":case "right":case "extra_left":case "extra_right":case "extra2_left":case "extra2_right":side(screen);break;
    case "trial":trialPage();break;case "overrides":overrideList();break;case "override_picker":overridePicker();break;case "app_gestures":appGestures();break;case "panels":panels();break;case "tool_animations":animationTools();break;case "ranges":rangeList();break;case "actions":actionDirectory();break;case "advanced":advanced();break;case "gestures":gestureSettings();break;case "angle":angleSettings();break;case "exceptions":excludedApps();break;
    case "touchpad":touchpadSettings();break;case "navigation":navigationSettings();break;case "launcher":launcherSettings();break;case "tasks":taskSettings();break;case "widgets":widgetSettings();break;case "tools":toolsSettings();break;case "keyboard":keyboardSettings();break;
@@ -169,7 +205,7 @@ public final class MainActivity extends Activity {
   replica.ToolAnimationPreview.Loop loop=animationPreviews;
   if(uiActive&&loop!=null)pageMotion.whenSettled(()->{if(uiActive&&loop==animationPreviews)loop.start();});
  }
- private String pageTitle(){if(animationTool()!=null)return animationTool().title+"动画";if(rangeHandle()!=null)return "触钮范围";return switch(screen){case "trial"->"手势试划";case "overrides"->"按应用设置";case "override_picker"->"选择应用";case "app_gestures"->packageTitle(overridePackage);case "panels"->"面板与工具";case "tool_animations"->"动画设置";case "ranges"->"触钮范围";case "actions"->"选择操作";case "left","right","extra_left","extra_right","extra2_left","extra2_right"->handleTitle(screen);case "advanced"->"高级设置";case "gestures"->"手势设置";case "angle"->"手势角度";case "exceptions"->"应用例外";case "touchpad"->"虚拟触控板";case "navigation"->"虚拟导航键";case "launcher"->"快速启动";case "tasks"->"任务切换器";case "widgets"->"小组件面板";case "tools"->"快速工具";case "keyboard"->"键盘快捷方式";case "navigation_action"->"选择导航动作";case "action_app"->"启动指定应用";case "action_shortcut"->"应用快捷方式";case "permissions"->"权限与后台运行";case "backup"->"备份与恢复";case "widget_migration"->"插件迁移结果";case "about"->"关于 "+appName();default->appName();};}
+ private String pageTitle(){if(animationTool()!=null)return animationTool().title+"动画";if(rangeHandle()!=null)return "触钮范围";return switch(screen){case "backend"->"权限与运行";case "trial"->"手势试划";case "overrides"->"按应用设置";case "override_picker"->"选择应用";case "app_gestures"->packageTitle(overridePackage);case "panels"->"面板与工具";case "tool_animations"->"动画设置";case "ranges"->"触钮范围";case "actions"->"选择操作";case "left","right","extra_left","extra_right","extra2_left","extra2_right"->handleTitle(screen);case "advanced"->"高级设置";case "gestures"->"手势设置";case "angle"->"手势角度";case "exceptions"->"应用例外";case "touchpad"->"虚拟触控板";case "navigation"->"虚拟导航键";case "launcher"->"快速启动";case "tasks"->"任务切换器";case "widgets"->"小组件面板";case "tools"->"快速工具";case "keyboard"->"键盘快捷方式";case "navigation_action"->"选择导航动作";case "action_app"->"启动指定应用";case "action_shortcut"->"应用快捷方式";case "permissions"->"权限与运行";case "backup"->"备份与恢复";case "widget_migration"->"插件迁移结果";case "about"->"关于 "+appName();default->appName();};}
  private ImageView icon(String name,String description){return icon(name,description,false);}
  private ImageView icon(String name,String description,boolean accent){ImageView view=new ImageView(this);view.setImageDrawable(replica.SystemIcons.raw(this,name));Runnable tint=()->view.setColorFilter(accent?ColorOsTheme.accent(this):ColorOsTheme.text(this));tint.run();ColorOsTheme.watch(view,tint);view.setScaleType(ImageView.ScaleType.FIT_CENTER);view.setContentDescription(description);return view;}
  private LinearLayout card(){return card(content);}
@@ -181,7 +217,7 @@ public final class MainActivity extends Activity {
  private LinearLayout row(LinearLayout box,String title,String detail){divider(box);LinearLayout row=new LinearLayout(this);row.setBaselineAligned(false);row.setGravity(Gravity.CENTER_VERTICAL);boolean hasDetail=detail!=null&&!detail.isEmpty();row.setPadding(dp(16),dp(hasDetail?10:4),dp(12),dp(hasDetail?10:4));row.setMinimumHeight(dp(hasDetail?64:56));LinearLayout labels=new LinearLayout(this);labels.setOrientation(LinearLayout.VERTICAL);TextView rowTitle=text(title,16,fg);rowTitle.setTypeface(ColorOsTheme.typeface(this,500));rowTitle.setLineSpacing(0,1.05f);labels.addView(rowTitle);if(detail!=null&&!detail.isEmpty()){TextView sub=text(detail,13,secondary);sub.setLineSpacing(0,1.2f);sub.setPadding(0,dp(4),dp(4),0);labels.addView(sub);}row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));box.addView(row);return row;}
  private LinearLayout link(LinearLayout box,String title,String detail,Runnable action){LinearLayout r=row(box,title,detail);ImageView arrow=new ImageView(this);arrow.setImageDrawable(replica.SystemIcons.raw(this,"com.android.settings:ic_arrow_forward"));arrow.setScaleType(ImageView.ScaleType.FIT_CENTER);arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);Runnable tint=()->arrow.setColorFilter(ColorOsTheme.secondary(this));tint.run();ColorOsTheme.watch(arrow,tint);r.addView(arrow,new LinearLayout.LayoutParams(dp(18),dp(18)));r.setContentDescription(title);r.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x15808080),null,replica.PanelStyle.shape(this,Color.WHITE,16)));r.setOnClickListener(v->action.run());return r;}
  private void toggle(LinearLayout box,String title,String detail,String key,boolean def){LinearLayout r=row(box,title,detail);ColorSwitch sw=new ColorSwitch(this);sw.setChecked(prefs.getBoolean(key,def));sw.setContentDescription(title);r.addView(sw);sw.setOnCheckedChangeListener((v,on)->{prefs.edit().putBoolean(key,on).apply();renderedPageData=pageData();reload();});r.setOnClickListener(v->sw.setChecked(!sw.isChecked()));}
- private void reload(){GestureService.reload(this);}
+ private void reload(){refreshGeometryPreview();pollBackend();}
  private void home(){new HomeControls();}
  private void beginListChange(LinearLayout parent){
   android.transition.TransitionManager.endTransitions(parent);
@@ -193,19 +229,19 @@ public final class MainActivity extends Activity {
  }
  /** Keep switches, the title and scroll position alive when state changes. */
  private final class HomeControls {
-  final ColorSwitch enabled;final TextView status,add,remove;final LinearLayout body,pairsHost,serviceCard;
+  final ColorSwitch enabled;final TextView status,add,remove,runtimeSummary;final LinearLayout body,pairsHost;
   final ArrayList<LinearLayout> pairs=new ArrayList<>();final HashMap<String,ColorSwitch> switches=new HashMap<>();final HashMap<String,View> markers=new HashMap<>();
   boolean binding;
   HomeControls(){
    homeControls=this;
    LinearLayout master=card();LinearLayout masterRow=row(master,"",null);status=(TextView)((LinearLayout)masterRow.getChildAt(0)).getChildAt(0);
    enabled=new ColorSwitch(MainActivity.this);enabled.setChecked(prefs.getBoolean("enabled",true));enabled.setContentDescription("启用手势");masterRow.addView(enabled);
-   enabled.setOnCheckedChangeListener((v,on)->{if(binding)return;prefs.edit().putBoolean("enabled",on).apply();refresh(false);reload();});masterRow.setOnClickListener(v->enabled.setChecked(!enabled.isChecked()));
+   enabled.setOnCheckedChangeListener((v,on)->{if(binding)return;prefs.edit().putBoolean("enabled",on).apply();activationTried=false;activationError="";refresh(false);reload();if(on)checkRoot(false);pollBackend();});masterRow.setOnClickListener(v->enabled.setChecked(!enabled.isChecked()));
 
    TextView help=note("在屏幕左侧或右侧添加手势触钮，以便单手轻松控制手机。\n您可以自定义从各个触钮向不同方向滑动时要执行的操作。");
    int lineHeight=Math.round(android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,20,getResources().getDisplayMetrics()));
    help.setLineHeight(Math.max(lineHeight,help.getPaint().getFontMetricsInt(null)));
-   serviceCard=card();link(serviceCard,"开启无障碍服务","启用后即可从屏幕边缘滑动操作",()->open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+   LinearLayout runtime=link(card(),"权限与运行",runtimeSummary(),()->{page("permissions");pollBackend();});runtimeSummary=(TextView)((LinearLayout)runtime.getChildAt(0)).getChildAt(1);
    body=new LinearLayout(MainActivity.this);body.setOrientation(LinearLayout.VERTICAL);content.addView(body,new LinearLayout.LayoutParams(-1,-2));
    pairsHost=new LinearLayout(MainActivity.this);pairsHost.setOrientation(LinearLayout.VERTICAL);body.addView(pairsHost,new LinearLayout.LayoutParams(-1,-2));
    LinearLayout controls=new LinearLayout(MainActivity.this);LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(48));cp.bottomMargin=dp(20);body.addView(controls,cp);
@@ -224,8 +260,8 @@ public final class MainActivity extends Activity {
     int count=HandleSettings.pairCount(prefs);if(animate)beginListChange(body);
     while(pairs.size()>count){int index=pairs.size()-1;String prefix=index==1?"extra_":"extra2_";switches.remove(prefix+"left");switches.remove(prefix+"right");markers.remove(prefix+"left");markers.remove(prefix+"right");pairsHost.removeView(pairs.remove(index));}
     while(pairs.size()<count){int index=pairs.size();LinearLayout pair=card(pairsHost);pairs.add(pair);String prefix=index==0?"":index==1?"extra_":"extra2_";handleRow(pair,prefix+"left");handleRow(pair,prefix+"right");}
-    boolean active=prefs.getBoolean("enabled",true);enabled.setChecked(active);status.setText(active?"已开启":"已关闭");
-    serviceCard.setVisibility(GestureService.instance()==null?View.VISIBLE:View.GONE);
+    boolean active=prefs.getBoolean("enabled",true);enabled.setChecked(active);status.setText(!active?"已关闭":RootAccess.granted()?RuntimeBackend.status().homeLabel():"等待授权");
+    runtimeSummary.setText(runtimeSummary());
 
     for(Map.Entry<String,ColorSwitch> item:switches.entrySet()){String id=item.getKey();boolean on=prefs.getBoolean(id+"_enabled",!GestureHandleConfig.isExtra(id));item.getValue().setChecked(on);setGroupMarker(markers.get(id),id,on);}
     enableTree(pairsHost,active);pairsHost.setAlpha(active?1:.4f);
@@ -249,7 +285,7 @@ public final class MainActivity extends Activity {
     homeControls.refresh(true);reload();
    }).show();
  }
- private void moreMenu(View anchor){dismissMenu();openMenu=new ColorPopupMenu(anchor).setItems(new String[]{"权限与后台运行","备份与恢复","恢复默认设置","关于"},n->{switch(n){case 0:page("permissions");break;case 1:page("backup");break;case 2:resetSettings();break;case 3:page("about");break;}}).setDividerBefore(3).show();}
+ private void moreMenu(View anchor){dismissMenu();openMenu=new ColorPopupMenu(anchor).setItems(new String[]{"权限与运行","备份与恢复","恢复默认设置","关于"},n->{switch(n){case 0:page("permissions");break;case 1:page("backup");break;case 2:resetSettings();break;case 3:page("about");break;}}).setDividerBefore(3).show();}
  private void resetSettings(){new ColorDialogBuilder(this).setSettingsConfirmation().setTitle("恢复默认设置？").setMessage("重置触钮、手势动作和识别设置。面板布局、应用快捷方式和已绑定的插件保留。").setNegativeButton("取消",null).setPositiveDestructive("恢复",(d,n)->{AppPrefs.resetGestures(this);history.clear();screen="home";scrollPositions.clear();reload();render();}).show();}
  private String permissionState(String permission){return checkSelfPermission(permission)==PackageManager.PERMISSION_GRANTED?"已允许":"未允许";}
  private void permissionRow(LinearLayout box,String name,String use,String permission){
@@ -262,13 +298,15 @@ public final class MainActivity extends Activity {
   super.onRequestPermissionsResult(code,permissions,results);if(code==10&&screen.equals("permissions"))render();
  }
  private void permissions(){
-  LinearLayout service=group("手势服务");
-  link(service,"无障碍服务",GestureService.instance()!=null?"已连接":"需要开启 "+appName()+" 服务",()->open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+  LinearLayout required=group("必需授权");
+  LinearLayout rootRow=link(required,"Root",RootAccess.summary()+" · 高级材质、系统动作",()->checkRoot(true));rootStatus=(TextView)((LinearLayout)rootRow.getChildAt(0)).getChildAt(1);
+  LinearLayout lspRow=link(required,"LSPosed",lspSummary()+" · 手势识别、输入控制",()->{Intent launch=getPackageManager().getLaunchIntentForPackage("org.lsposed.manager");if(launch!=null)open(launch);else toast("请从 LSPosed 通知打开管理器");});lspStatus=(TextView)((LinearLayout)lspRow.getChildAt(0)).getChildAt(1);
+  note("在 LSPosed 中启用 Color Hand Operation，作用域为系统框架和系统界面，重启后生效。连接状态会自动刷新。");
+  LinearLayout service=group("后台运行");
   link(service,"后台运行",getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(getPackageName())?"已允许后台运行":"允许不受电池优化限制",()->open(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,Uri.parse("package:"+getPackageName()))));
   link(service,"系统自启动","前往 ColorOS 自启动设置",()->ActionExecutor.root(this,"am start -n com.oplus.battery/com.oplus.startupapp.view.StartupAppListActivity","系统自启动"));
   LinearLayout features=group("按功能授权");
   permissionRow(features,"相机","手电筒",android.Manifest.permission.CAMERA);
-  permissionRow(features,"通知","后台服务通知",android.Manifest.permission.POST_NOTIFICATIONS);
   permissionRow(features,"蓝牙","蓝牙快捷开关",android.Manifest.permission.BLUETOOTH_CONNECT);
   link(features,"勿扰访问权限",(getSystemService(NotificationManager.class).isNotificationPolicyAccessGranted()?"已允许":"未允许")+" · 声音模式与勿扰",()->open(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)));
  }
@@ -323,7 +361,7 @@ public final class MainActivity extends Activity {
   try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}
   catch(ActivityNotFoundException|SecurityException unavailable){toast("没有可用的应用打开此链接");}
  }
- private void preview(String id){GestureService s=GestureService.instance();if(s!=null)ActionExecutor.execute(s,id,replica.NativeState.defaultGesture(this));else if(id.equals("widgets"))open(new Intent(this,replica.WidgetActivity.class));else toast("请先开启无障碍服务");}
+ private void preview(String id){RuntimeBackend.preview(this,id,replica.NativeState.defaultGesture(this),error->{if(error!=null)toast(error);});}
  private void side(String id){
   LinearLayout shortActions=group("短距离滑动");directionRows(shortActions,id,false);
   LinearLayout longActions=group("");LinearLayout switchRow=row(longActions,"长距离滑动","当执行较长距离滑动并用手指按住屏幕时，执行不同的操作。");ColorSwitch longer=new ColorSwitch(this);longer.setChecked(prefs.getBoolean(id+"_long_enabled",true));longer.setContentDescription("长距离滑动");switchRow.addView(longer);
@@ -526,9 +564,13 @@ public final class MainActivity extends Activity {
  private void refreshGeometryPreview(){showGeometryPreview(null,false,null);}
  private void showGeometryPreview(String changed,boolean both,HandleSettings.Geometry draft){
   if(!uiActive||previewNavigation){endGeometryPreview();return;}
-  GestureService.setSettingsHandlePreviews(this,handlePreviewOwner,HandleSettings.previewRegions(prefs,screen.equals("trial")?"home":rangeHandle()==null?screen:rangeHandle(),changed,both,draft));
+   var values=HandleSettings.previewRegions(prefs,screen.equals("trial")?"home":rangeHandle()==null?screen:rangeHandle(),changed,both,draft);
+   Bundle regions=new Bundle(),colors=new Bundle();values.forEach((id,region)->{regions.putFloatArray(id,region);colors.putInt(id,HandlePreviewView.groupColor(this,id));});
+   if(previewPublish!=null)backendHandler.removeCallbacks(previewPublish);
+   previewPublish=()->{Bundle data=new Bundle();data.putBinder("owner",lspPreviewOwner);data.putBundle("regions",regions);data.putBundle("colors",colors);Bundle outer=new Bundle();outer.putBundle("preview",data);RuntimeBackend.signal(this,"settings_preview",outer);};
+   backendHandler.postDelayed(previewPublish,16);
  }
- private void endGeometryPreview(){GestureService.endSettingsHandlePreviews(handlePreviewOwner);}
+ private void endGeometryPreview(){if(previewPublish!=null)backendHandler.removeCallbacks(previewPublish);Bundle data=new Bundle();data.putBinder("owner",lspPreviewOwner);Bundle outer=new Bundle();outer.putBundle("preview",data);RuntimeBackend.signal(this,"settings_preview",outer);}
  private void registerBack(){
   if(android.os.Build.VERSION.SDK_INT>=34){backCallback=new android.window.OnBackAnimationCallback(){
    public void onBackStarted(android.window.BackEvent event){previewNavigation=true;endGeometryPreview();pageMotion.cancel();}
@@ -555,7 +597,7 @@ public final class MainActivity extends Activity {
    public void onCancel(){refreshColorSwatches();}
   });sheet.setOnDismissListener(()->{if(colorPalette==sheet)colorPalette=null;});colorPalette=sheet;sheet.show();
  }
- private String actionTitle(String id){return ActionExecutor.title(this,id);}
+ private String actionTitle(String id){return ActionExecutor.title(this,id)+(!actionCapabilities.supported(id)?"（暂未支持）":"");}
  private static boolean isHandlePage(String value){return value!=null&&Arrays.asList("left","right","extra_left","extra_right","extra2_left","extra2_right").contains(value);}
  private final class ActionChooser {
   final String key,owner;
@@ -604,7 +646,7 @@ public final class MainActivity extends Activity {
     if(list==null)list=group(group.title);else divider(list);
     ActionChoice choice=actionChoiceRow(list,name,
       ()->selectDirectoryAction(state,id),destination==null?null:()->{if(inDirectory(state))page(destination);});
-    state.bindings.add(()->choice.update(id.equals(current),null));
+    state.bindings.add(()->choice.updateCapability(id,id.equals(current)));
    }
   }
   LinearLayout external=null;
@@ -650,8 +692,13 @@ public final class MainActivity extends Activity {
   new ColorDialogBuilder(this).setTitle("选择快速启动文件夹").setSingleChoiceItems(labels,checked,(dialog,index)->
     ColorDialogBuilder.dismissThen(dialog,()->selectDirectoryAction(state,"folder:"+ids.get(index)))).setNegativeButton("取消",null).show();
  }
+ private boolean canAssignSystemAction(String action){
+  if(actionCapabilities.supported(action))return true;
+  toast("当前连接未提供"+ActionExecutor.title(action));return false;
+ }
  private void selectDirectoryAction(ActionChooser state,String target){
   if(!inDirectory(state))return;
+  if(!canAssignSystemAction(target))return;
   ActionTarget.select(prefs,state.key,target);reload();onBackPressed();
  }
  private void actionSection(LinearLayout list,String title){
@@ -661,6 +708,11 @@ public final class MainActivity extends Activity {
  private final class ActionChoice {
   final String name;final LinearLayout row,choice;final TextView summary;final ColorRadioButton radio;
   ActionChoice(String name,LinearLayout row,LinearLayout choice,TextView summary,ColorRadioButton radio){this.name=name;this.row=row;this.choice=choice;this.summary=summary;this.radio=radio;}
+  void updateCapability(String id,boolean selected){
+   boolean available=actionCapabilities.supported(id);
+   choice.setEnabled(available);choice.setAlpha(available?1f:.45f);
+   update(selected,available?null:"暂未支持");
+  }
   void update(boolean selected,String detail){
    radio.setChecked(selected);boolean hasDetail=detail!=null&&!detail.isEmpty();summary.setText(hasDetail?detail:"");summary.setVisibility(hasDetail?View.VISIBLE:View.GONE);
    row.setMinimumHeight(dp(hasDetail?68:56));choice.setContentDescription(name+(hasDetail?"，"+detail:""));choice.setStateDescription(selected?"已选择":null);
@@ -844,8 +896,7 @@ public final class MainActivity extends Activity {
   int columns=store.getInt("columns",4);link(g,"列数",columns+" 列",()->chooseCount(true));g=card();link(g,"编辑快速启动","添加应用、快捷方式和文件夹",this::editLauncher);
  }
  private void editLauncher(){
-  GestureService service=GestureService.instance();if(service==null){toast("请先开启无障碍服务");return;}
-  QuickLauncherOverlay.openEditor(service,replica.NativeState.defaultGesture(this));
+  RuntimeBackend.preview(this,"edit_launcher",replica.NativeState.defaultGesture(this),error->{if(error!=null)toast(error);});
  }
  private void chooseCount(boolean columns){
   SharedPreferences store=getSharedPreferences("edgeflow_launcher",MODE_PRIVATE);
@@ -879,9 +930,8 @@ public final class MainActivity extends Activity {
   g=group("预览");link(g,"左侧边缘",null,()->previewNavigationRail(true));link(g,"右侧边缘",null,()->previewNavigationRail(false));
  }
  private void previewNavigationRail(boolean left){
-  GestureService service=GestureService.instance();if(service==null){toast("请先开启无障碍服务");return;}
   android.graphics.Point size=replica.PanelGeometry.screen(this);float x=left?0:size.x-1,y=size.y*.5f;
-  ActionExecutor.execute(service,"navigation_panel",new float[]{x,y,x,y});
+  RuntimeBackend.preview(this,"navigation_panel",new float[]{x,y,x,y},error->{if(error!=null)toast(error);});
  }
  private ArrayList<String> navigationActions(){return new ArrayList<>(Arrays.asList(NavigationConfig.load(this)));}
  private boolean saveNavigation(ArrayList<String> actions){try{prefs.edit().putString("navigation_actions",NavigationConfig.validate(new JSONArray(actions).toString())).apply();reload();return true;}catch(Exception e){toast("无法保存导航键："+e.getMessage());return false;}}
@@ -906,7 +956,7 @@ public final class MainActivity extends Activity {
   content.removeAllViews();ArrayList<String> current=navigationActions();String selected=index>=0&&index<current.size()?current.get(index):"";
   List<String> common=Arrays.asList("back","home","recents","previous_app");
   if(query.trim().isEmpty()&&!moreNavActions&&!selected.isEmpty()&&!common.contains(selected)){
-   ActionChoice currentRow=actionChoiceRow(group("当前动作"),ActionExecutor.title(selected),this::onBackPressed,null);currentRow.update(true,null);
+   ActionChoice currentRow=actionChoiceRow(group("当前动作"),ActionExecutor.title(selected),this::onBackPressed,null);currentRow.updateCapability(selected,true);
   }
   boolean any=false;
   for(boolean primary:new boolean[]{true,false}){
@@ -916,10 +966,11 @@ public final class MainActivity extends Activity {
     if(!primary&&common.contains(id)||current.contains(id)&&!id.equals(selected)||!matches(query,ActionExecutor.title(id),ActionCatalog.groupTitle(id),id))continue;
     if(list==null)list=group(primary?"常用导航":"其他动作");else divider(list);any=true;
     ActionChoice choice=actionChoiceRow(list,ActionExecutor.title(id),()->{
+     if(!canAssignSystemAction(id))return;
      ArrayList<String> values=navigationActions();if(index<0){if(values.size()>=5||values.contains(id))return;values.add(id);}
      else{if(index>=values.size()||values.contains(id)&&!values.get(index).equals(id))return;values.set(index,id);}
      if(saveNavigation(values))onBackPressed();
-    },null);choice.update(id.equals(selected),null);
+    },null);choice.updateCapability(id,id.equals(selected));
    }
   }
   if(!any&&!query.trim().isEmpty())note("没有匹配的动作");
@@ -957,10 +1008,12 @@ public final class MainActivity extends Activity {
    }
   }
  }
- private void trialLink(String pkg){link(card(),"手势试划","查看识别结果",()->{trialPackage=pkg;page("trial");});}
+ private static final int OPEN_TRIAL=43;
+ private void startTrial(String pkg){startActivityForResult(new Intent(this,GestureTrialActivity.class).putExtra("application",pkg),OPEN_TRIAL);}
+ private void trialLink(String pkg){link(card(),"手势试划","查看识别结果",()->startTrial(pkg));}
  private void trialPage(){
-  boolean service=GestureService.instance()!=null;
-  if(!service)link(card(),"开启无障碍服务","试划使用实际边缘触钮",()->open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+  boolean service=RuntimeBackend.status().active();trialWasRunning=service;
+  if(!service)link(card(),"权限与运行","试划使用实际边缘触钮",()->{setResult(RESULT_OK);finish();});
   else if(!prefs.getBoolean("enabled",true))note("手势总开关已关闭。");
   else if(getResources().getConfiguration().orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE&&HandleSettings.hideInLandscape(prefs))note("横屏触钮已隐藏。可在「高级设置 → 隐藏触钮」中关闭「横屏模式」。");
   else note("屏幕边缘的色条是触摸范围。从色条内起手，向内滑动查看判定结果。");
@@ -983,6 +1036,7 @@ public final class MainActivity extends Activity {
  private void openDocument(boolean export){Intent in=new Intent(export?Intent.ACTION_CREATE_DOCUMENT:Intent.ACTION_OPEN_DOCUMENT).setType("application/json").addCategory(Intent.CATEGORY_OPENABLE);if(export)in.putExtra(Intent.EXTRA_TITLE,"color-hand-operation-settings.json");startActivityForResult(in,export?41:42);}
  @Override protected void onActivityResult(int request,int result,Intent data){
   super.onActivityResult(request,result,data);
+  if(request==OPEN_TRIAL){if(result==RESULT_OK)page("permissions");return;}
   if(result!=RESULT_OK||data==null||(request!=41&&request!=42)||data.getData()==null)return;
   Uri uri=data.getData();
   io.execute(()->{

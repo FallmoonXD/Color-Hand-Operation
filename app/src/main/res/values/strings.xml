@@ -1,5 +1,6 @@
 <resources>
  <string name="app_name">Color Hand Operation</string>
+ <string name="module_description">为 ColorOS 添加可自定义的侧边手势，支持快捷工具、小组件和单手操作。</string>
  <string name="service_description">识别屏幕两侧手势，执行返回、最近任务和单手操作。应用不上传屏幕内容。</string>
  <color name="settings_start_background">#F0F1F2</color>
  <bool name="settings_light_system_bars">true</bool>

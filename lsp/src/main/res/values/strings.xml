@@ -1,0 +1,13 @@
+<resources>
+    <string name="pilot_title">CHO LSP 原型</string>
+    <string name="pilot_description">开发测试。常驻模式保存开关，使用 CHO 当前配置；锁屏时暂停，解锁后恢复。需要关闭 CHO 无障碍输入。\n下面三个限时测试均在 30 秒后停止；旁听与返回测试使用两侧 40dp、中间 70% 高度。\n暂接入导航、音量、媒体和应用启动，未接入动作列在 unsupported_actions 中。音量仅打开系统音量条。\n需要在 LSPosed 启用 SystemUI 作用域并重载该进程。</string>
+    <string name="pilot_check">检查连接</string>
+    <string name="pilot_observe">旁听 30 秒</string>
+    <string name="pilot_capture">返回测试 30 秒</string>
+    <string name="pilot_configured">读取 CHO 配置并测试 30 秒</string>
+    <string name="pilot_stop">停止限时测试</string>
+    <string name="pilot_enable_persistent">开启常驻输入</string>
+    <string name="pilot_disable_persistent">关闭常驻输入</string>
+    <string name="pilot_waiting">等待 SystemUI…</string>
+    <string name="pilot_disconnected">未连接。请检查模块和作用域；此结果不代表 Hook 已加载。</string>
+</resources>

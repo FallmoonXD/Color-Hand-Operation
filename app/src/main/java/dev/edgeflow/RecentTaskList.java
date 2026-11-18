@@ -1,6 +1,6 @@
 package dev.edgeflow;
 
-import android.accessibilityservice.AccessibilityService;
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -33,17 +33,17 @@ final class RecentTaskList {
     private static final Handler main=new Handler(Looper.getMainLooper());
     private static final ExecutorService worker=Executors.newSingleThreadExecutor();
     private static final ArrayList<Request> listeners=new ArrayList<>();
-    private static AccessibilityService owner;
+    private static Context owner;
     private static JSONArray cached;
     private static long timestamp;
     private static Job job;
-    static void invalidate(AccessibilityService service){if(owner==service){cached=null;if(job!=null)job.cacheable=false;}}
-    static void release(AccessibilityService service){
+    static void invalidate(Context service){if(owner==service){cached=null;if(job!=null)job.cacheable=false;}}
+    static void release(Context service){
         if(owner!=service)return;
         for(Request r:listeners)r.cancelled=true;listeners.clear();
         if(job!=null)job.stop();job=null;cached=null;owner=null;
     }
-    static Request read(AccessibilityService service,boolean refresh,Listener listener){
+    static Request read(Context service,boolean refresh,Listener listener){
         if(service!=owner){release(owner);owner=service;}
         Request request=new Request(listener);
         if(job==null&&!refresh&&cached!=null&&SystemClock.uptimeMillis()-timestamp<5000){

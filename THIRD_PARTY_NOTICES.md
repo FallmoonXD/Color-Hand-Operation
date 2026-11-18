@@ -11,6 +11,13 @@ Color Hand Operation 是个人项目，与 Samsung、OPPO、OnePlus 官方无关
 
 Gradle wrapper 来自 Gradle 项目，使用 Apache License 2.0。构建时下载的 Android/Gradle 工具链不包含在本仓库中。
 
+## libxposed API
+
+- CHO 和独立的 `lsp/` 调试应用以 `compileOnly` 引用 `io.github.libxposed:api:102.0.0`。
+- 上游：[libxposed/api](https://github.com/libxposed/api)，许可为 [Apache License 2.0](https://github.com/libxposed/api/blob/master/LICENSE)。
+- API 类由手机上的框架提供，不打包进 APK。`lsp/src/stubs/` 是用于编译的 Android 隐藏接口签名声明，同样不打包；打包检查见 `validation/lsp/apk_check.py`。
+- 常驻配置通道使用 `io.github.libxposed:service:102.0.0` 和其 `interface:102.0.0` 依赖，随 APK 打包。上游为 [libxposed/service](https://github.com/libxposed/service/tree/102.0.0)，采用 Apache License 2.0；许可证全文放在两种 APK 的 `assets/licenses/libxposed-service.txt`。
+
 ## OEM 图形与视觉来源
 
 - OHO+ 手势箭头、图标原始轮廓及归档矢量来自 Samsung One Hand Operation+ 9.3.13.0。当前彩色图标在 Clip Studio Paint 中重新调整了背景、配色和混合效果，MD3 保留原有三色阶设计。分层文件在 `design/user-layered/`，原始素材和导出文件哈希见 `design/color-hand-operation-icon.json`。

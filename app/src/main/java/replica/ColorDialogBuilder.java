@@ -152,7 +152,7 @@ public class ColorDialogBuilder extends AlertDialog.Builder {
   ColorDialog(Context c){super(c);}
   @Override public void setCancelable(boolean value){allowCancel=value;super.setCancelable(value);}
   @Override public void setCanceledOnTouchOutside(boolean value){outsideDismiss=value;super.setCanceledOnTouchOutside(value);}
-  @Override public void show(){if(finished)return;try{super.show();}catch(RuntimeException failure){finishDismiss();throw failure;}}
+  @Override public void show(){if(finished)return;try{OverlayWindowToken.apply(getContext(),getWindow());super.show();}catch(RuntimeException failure){finishDismiss();throw failure;}}
   @Override protected void onCreate(Bundle state){
    super.onCreate(state);Context c=getContext();
    root=new LinearLayout(c);root.setOrientation(LinearLayout.VERTICAL);root.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);

@@ -2,6 +2,22 @@ package dev.edgeflow;
 
 /** Stable identities keep extra handles separate from the migrated primary mappings. */
 public final class GestureHandleConfig {
+    public static float number(java.util.Map<String,?> p,String key,float fallback){Object v=p.get(key);return v instanceof Number&&Float.isFinite(((Number)v).floatValue())?((Number)v).floatValue():fallback;}
+    public static boolean flag(java.util.Map<String,?> p,String key,boolean fallback){Object v=p.get(key);return v instanceof Boolean?(Boolean)v:fallback;}
+    public static String resolveAction(java.util.Map<String,?> p,String pkg,String id,String direction,boolean longer){
+        String slot=actionKey(id,direction,longer);
+        String fallback=number(p,"schema",1)>=FACTORY_SCHEMA?defaultAction(id,direction,longer):legacyAction(id,direction,longer);
+        Object global=p.get(slot),scoped=pkg==null||pkg.isEmpty()?null:p.get("app_override/"+pkg+"/"+slot);
+        return scoped instanceof String?(String)scoped:global instanceof String?(String)global:fallback;
+    }
+    public static int[] bounds(String id,java.util.Map<String,?> p,float density,Area area){
+        boolean extra=isExtra(id);float width=number(p,id+"_handle_width_dp",extra?12.3f:number(p,"handle_width_dp",12.3f));
+        if(area.landscape())width=number(p,id+"_landscape_handle_width_dp",width);
+        float start=number(p,id+"_handle_start_fraction",extra?defaultStart(id):number(p,"handle_start_fraction",.13084841f));
+        float end=number(p,id+"_handle_end_fraction",extra?defaultEnd(id):number(p,"handle_end_fraction",1));
+        if(!extra&&(p.containsKey("handle_center_fraction")||p.containsKey("handle_height_fraction"))){float center=number(p,"handle_center_fraction",.5654242f),height=number(p,"handle_height_fraction",.8691516f);start=center-height/2;end=center+height/2;}
+        return bounds(id,width,start,end,density,area);
+    }
     static final int FACTORY_SCHEMA=2;
     public static final String[] IDS={"left","right","extra_left","extra_right","extra2_left","extra2_right"};
     public static boolean isExtra(String id){checkId(id);return id.startsWith("extra");}
